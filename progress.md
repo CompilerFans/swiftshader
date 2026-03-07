@@ -26,4 +26,7 @@
 - Task 4 RED: added `SemanticIRTests.cpp` and confirmed the build failed because `Pipeline/SemanticIR.hpp` was missing.
 - Task 4 GREEN: added a minimal `SemanticIRModule` and `ResourceAccessKind`, wired `SemanticIR` into `src/Pipeline` build files, and adjusted the header to depend only on Vulkan public headers.
 - Validation: `./build/backend-unittests --gtest_filter=SemanticIR.*` passed.
+- Task 5 RED: added `KernelIRTests.cpp` and confirmed the build failed because `KernelABI.hpp` / `KernelIR.hpp` were missing.
+- Task 5 GREEN: added minimal `KernelABIHeader`, `FragmentExecutionInfo`, and `KernelIRModule`, then wired them into `src/Pipeline` build files.
+- Validation: `./build/backend-unittests --gtest_filter=KernelABI.*:KernelIR.*` passed after removing default member initializers from `KernelABIHeader` to keep it trivial.
 

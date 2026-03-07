@@ -22,6 +22,10 @@ set(PIPELINE_SRC_FILES
     ComputeProgram.hpp
     Constants.cpp
     Constants.hpp
+    KernelABI.cpp
+    KernelABI.hpp
+    KernelIR.cpp
+    KernelIR.hpp
     PixelProgram.cpp
     PixelProgram.hpp
     PixelRoutine.cpp

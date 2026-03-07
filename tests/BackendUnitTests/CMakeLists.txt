@@ -8,6 +8,7 @@ set(ROOT_PROJECT_LINK_LIBRARIES
 )
 
 set(BACKEND_UNIT_TESTS_SRC_FILES
+    KernelIRTests.cpp
     SemanticIRTests.cpp
     BackendFactoryTests.cpp
     main.cpp

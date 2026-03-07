@@ -59,6 +59,7 @@ Implementation - Task 1 complete
 - Task 2 complete: backend-neutral queue seam added with CPU default backend.
 - Task 3 complete: dedicated `backend-unittests` target added and passing.
 - Task 4 complete: minimal `SemanticIR` skeleton and tests added.
+- Task 5 complete: minimal `KernelIR`/`KernelABI` skeletons and quad metadata tests added.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.

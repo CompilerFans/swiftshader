@@ -18,6 +18,8 @@ swiftshader_source_set("Pipeline_headers") {
   sources = [
     "ComputeProgram.hpp",
     "Constants.hpp",
+    "KernelABI.hpp",
+    "KernelIR.hpp",
     "PixelProgram.hpp",
     "PixelRoutine.hpp",
     "SamplerCore.hpp",
@@ -37,6 +39,8 @@ swiftshader_source_set("Pipeline") {
   sources = [
     "ComputeProgram.cpp",
     "Constants.cpp",
+    "KernelABI.cpp",
+    "KernelIR.cpp",
     "PixelProgram.cpp",
     "PixelRoutine.cpp",
     "SamplerCore.cpp",
