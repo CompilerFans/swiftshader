@@ -968,6 +968,7 @@ if(BUILD_VULKAN_WRAPPER)
 endif()
 
 if(SWIFTSHADER_BUILD_TESTS)
+    add_subdirectory(${TESTS_DIR}/BackendUnitTests ${CMAKE_BINARY_DIR}/tests/BackendUnitTests) # Add backend-unittests target
     add_subdirectory(${TESTS_DIR}/ReactorUnitTests) # Add ReactorUnitTests target
     add_subdirectory(${TESTS_DIR}/MathUnitTests) # Add math-unittests target
     add_subdirectory(${TESTS_DIR}/SystemUnitTests) # Add system-unittests target

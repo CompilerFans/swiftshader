@@ -57,6 +57,7 @@ Implementation - Task 1 complete
 ## Notes
 - Task 1: backend build skeleton complete.
 - Task 2 complete: backend-neutral queue seam added with CPU default backend.
+- Task 3 complete: dedicated `backend-unittests` target added and passing.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.

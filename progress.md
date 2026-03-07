@@ -20,4 +20,7 @@
 - Task 2 RED: added `BackendSelectionTests.cpp` and confirmed the build failed because `Backend/BackendFactory.hpp` was missing.
 - Task 2 GREEN: added `ExecutionBackend` and `BackendFactory` interfaces, threaded `vk::Queue` through a backend-owned execution seam, and kept CPU execution as the default implementation inside `VkQueue.cpp`.
 - Validation: `cmake --build build --target vk_backend --parallel 1` passed, `BackendSelectionTests.cpp` compiled with explicit test includes, and `VkQueue.cpp` compiled directly with the Vulkan target include/macro set.
+- Task 3 RED: added `tests/BackendUnitTests` and confirmed `backend-unittests` target was initially missing from the root build.
+- Task 3 GREEN: wired `backend-unittests` into root CMake with an explicit binary directory.
+- Validation: `cmake --build build --target backend-unittests --parallel 1 && ./build/backend-unittests` passed.
 
