@@ -191,6 +191,7 @@ target_link_options(vk_swiftshader
 target_link_libraries(vk_swiftshader
     PRIVATE
         vk_system
+        vk_backend
         vk_pipeline
         vk_device
         vk_wsi

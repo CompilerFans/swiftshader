@@ -22,6 +22,7 @@ set(ROOT_PROJECT_LINK_LIBRARIES
 
 set(VULKAN_UNIT_TESTS_SRC_FILES
     BasicTests.cpp
+    BackendSelectionTests.cpp
     ComputeTests.cpp
     Device.cpp
     Device.hpp

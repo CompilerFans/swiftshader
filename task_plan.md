@@ -55,7 +55,8 @@ Implementation - Task 1 complete
 | Shell backtick expansion in `rg` command | 1 | Re-ran with `grep -F` and proper quoting |
 
 ## Notes
-- Task 1: backend build skeleton complete; next is backend-neutral queue seam.
+- Task 1: backend build skeleton complete.
+- Task 2 complete: backend-neutral queue seam added with CPU default backend.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.

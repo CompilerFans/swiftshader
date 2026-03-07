@@ -30,6 +30,10 @@ class Renderer;
 
 }  // namespace sw
 
+namespace backend {
+class ExecutionBackend;
+}
+
 namespace vk {
 
 class Device;
@@ -192,6 +196,7 @@ public:
 		};
 
 		sw::Renderer *renderer = nullptr;
+		backend::ExecutionBackend *executionBackend = nullptr;
 		sw::CountedEvent *events = nullptr;
 		RenderPass *renderPass = nullptr;
 		Framebuffer *renderPassFramebuffer = nullptr;

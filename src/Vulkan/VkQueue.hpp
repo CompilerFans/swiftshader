@@ -16,7 +16,7 @@
 #define VK_QUEUE_HPP_
 
 #include "VkObject.hpp"
-#include "Device/Renderer.hpp"
+#include "Backend/ExecutionBackend.hpp"
 #include "System/Synchronization.hpp"
 
 #include <thread>
@@ -81,7 +81,7 @@ private:
 	void submitQueue(const Task &task);
 
 	Device *device;
-	std::unique_ptr<sw::Renderer> renderer;
+	std::unique_ptr<backend::ExecutionBackend> executionBackend;
 	sw::Chan<Task> pending;
 	sw::Chan<SubmitInfo *> toDelete;
 	std::thread queueThread;

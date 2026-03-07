@@ -17,4 +17,7 @@
 - Task 1 GREEN: wired `src/Backend` into root CMake/GN and linked `vk_device` to `vk_backend`.
 - Validation: `cmake --build build --target vk_backend --parallel 1` passed.
 - Validation: `cmake --build build --target vk_swiftshader -- -n` showed `vk_backend` in the dependency graph; full parallel builds hit memory limits, so graph validation was used instead of waiting for a full serial LLVM build.
+- Task 2 RED: added `BackendSelectionTests.cpp` and confirmed the build failed because `Backend/BackendFactory.hpp` was missing.
+- Task 2 GREEN: added `ExecutionBackend` and `BackendFactory` interfaces, threaded `vk::Queue` through a backend-owned execution seam, and kept CPU execution as the default implementation inside `VkQueue.cpp`.
+- Validation: `cmake --build build --target vk_backend --parallel 1` passed, `BackendSelectionTests.cpp` compiled with explicit test includes, and `VkQueue.cpp` compiled directly with the Vulkan target include/macro set.
 

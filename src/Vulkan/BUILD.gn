@@ -71,6 +71,8 @@ config("swiftshader_libvulkan_private_config") {
 }
 
 swiftshader_source_set("swiftshader_libvulkan_headers") {
+  public_deps = [ "../Backend:Backend_headers" ]
+
   sources = [
     "Version.hpp",
     "VkBuffer.hpp",
@@ -183,6 +185,7 @@ swiftshader_source_set("_swiftshader_libvulkan") {
     "../../third_party/SPIRV-Tools:spvtools_opt",
     "../../third_party/SPIRV-Tools:spvtools_val",
     "../../third_party/marl:Marl",
+    "../Backend",
     "../Device",
     "../Pipeline",
     "../Reactor:swiftshader_reactor",
