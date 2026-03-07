@@ -33,6 +33,8 @@ set(PIPELINE_SRC_FILES
     SamplerCore.cpp
     SemanticIR.cpp
     SemanticIR.hpp
+    SemanticIRBuilder.cpp
+    SemanticIRBuilder.hpp
     SamplerCore.hpp
     SetupRoutine.cpp
     SetupRoutine.hpp

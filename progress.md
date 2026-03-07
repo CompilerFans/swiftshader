@@ -29,4 +29,7 @@
 - Task 5 RED: added `KernelIRTests.cpp` and confirmed the build failed because `KernelABI.hpp` / `KernelIR.hpp` were missing.
 - Task 5 GREEN: added minimal `KernelABIHeader`, `FragmentExecutionInfo`, and `KernelIRModule`, then wired them into `src/Pipeline` build files.
 - Validation: `./build/backend-unittests --gtest_filter=KernelABI.*:KernelIR.*` passed after removing default member initializers from `KernelABIHeader` to keep it trivial.
+- Task 6 RED: added `SpirvToSemanticIRTests.cpp` and confirmed the build failed because `SemanticIRBuilder.hpp` was missing.
+- Task 6 GREEN: added standalone `SemanticIRBuilder`, lightweight `ParsedSpirvInfo`, and thin `Spirv` accessors for stage and entry-point name; kept the `SpirvShader` overload in a separate implementation path.
+- Validation: `./build/backend-unittests --gtest_filter=SpirvToSemanticIR.*` passed, and `src/Pipeline/SemanticIRBuilder.cpp` compiled directly with the expected pipeline include set.
 

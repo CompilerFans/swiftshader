@@ -33,6 +33,7 @@ Spirv::Spirv(
     const char *entryPointName,
     const SpirvBinary &insns)
     : insns{ insns }
+    , entryPointNameString(entryPointName ? entryPointName : "")
     , inputs{ MAX_INTERFACE_COMPONENTS }
     , outputs{ MAX_INTERFACE_COMPONENTS }
 {

@@ -537,6 +537,16 @@ public:
 		return ((uint64_t)entryPoint.value() << 32) | insns.getIdentifier();
 	}
 
+	VkShaderStageFlagBits getStage() const
+	{
+		return executionModelToStage(executionModel);
+	}
+
+	const std::string &getEntryPointName() const
+	{
+		return entryPointNameString;
+	}
+
 	struct ExecutionModes
 	{
 		bool EarlyFragmentTests : 1;
@@ -826,6 +836,7 @@ public:
 	WorkgroupMemory workgroupMemory;
 
 	Function::ID entryPoint;
+	std::string entryPointNameString;
 	spv::ExecutionModel executionModel = spv::ExecutionModelMax;  // Invalid prior to OpEntryPoint parsing.
 	ExecutionModes executionModes = {};
 	Capabilities capabilities = {};
