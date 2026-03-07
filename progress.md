@@ -23,4 +23,7 @@
 - Task 3 RED: added `tests/BackendUnitTests` and confirmed `backend-unittests` target was initially missing from the root build.
 - Task 3 GREEN: wired `backend-unittests` into root CMake with an explicit binary directory.
 - Validation: `cmake --build build --target backend-unittests --parallel 1 && ./build/backend-unittests` passed.
+- Task 4 RED: added `SemanticIRTests.cpp` and confirmed the build failed because `Pipeline/SemanticIR.hpp` was missing.
+- Task 4 GREEN: added a minimal `SemanticIRModule` and `ResourceAccessKind`, wired `SemanticIR` into `src/Pipeline` build files, and adjusted the header to depend only on Vulkan public headers.
+- Validation: `./build/backend-unittests --gtest_filter=SemanticIR.*` passed.
 

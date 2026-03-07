@@ -8,6 +8,7 @@ set(ROOT_PROJECT_LINK_LIBRARIES
 )
 
 set(BACKEND_UNIT_TESTS_SRC_FILES
+    SemanticIRTests.cpp
     BackendFactoryTests.cpp
     main.cpp
 )
@@ -24,6 +25,7 @@ set_target_properties(backend-unittests PROPERTIES
 target_include_directories(backend-unittests
     PRIVATE
         "${SWIFTSHADER_DIR}/include"
+        "${SWIFTSHADER_DIR}/src"
 )
 
 target_compile_options(backend-unittests

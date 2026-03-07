@@ -27,6 +27,8 @@ set(PIPELINE_SRC_FILES
     PixelRoutine.cpp
     PixelRoutine.hpp
     SamplerCore.cpp
+    SemanticIR.cpp
+    SemanticIR.hpp
     SamplerCore.hpp
     SetupRoutine.cpp
     SetupRoutine.hpp
