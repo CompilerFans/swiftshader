@@ -35,4 +35,7 @@
 - Task 7 RED: added codegen and ABI parity tests and confirmed the build failed because the emitter headers were missing.
 - Task 7 GREEN: added `CodegenTarget`, normalized ABI description, CUDA-like and LLVM IR text emitters, and ABI parity helpers.
 - Validation: `./build/backend-unittests --gtest_filter=CodegenEmitter.*:AbiParity.*` passed.
+- Task 8 RED: added `RuntimeAPITests.cpp` and confirmed the build failed because `FakeRuntimeAPI.hpp` was missing.
+- Task 8 GREEN: added `RuntimeAPI`, `ModuleHandle`, and `FakeRuntimeAPI`, then wired them into `vk_backend`.
+- Validation: `./build/backend-unittests --gtest_filter=RuntimeAPI.*` passed.
 

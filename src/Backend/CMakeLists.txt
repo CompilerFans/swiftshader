@@ -1,8 +1,12 @@
 set(BACKEND_SRC_FILES
     BackendConfig.hpp
     BackendFactory.cpp
+    FakeRuntimeAPI.cpp
+    FakeRuntimeAPI.hpp
     BackendFactory.hpp
     ExecutionBackend.cpp
+    RuntimeAPI.cpp
+    RuntimeAPI.hpp
     ExecutionBackend.hpp
 )
 

@@ -4,14 +4,18 @@ swiftshader_source_set("Backend_headers") {
   sources = [
     "BackendConfig.hpp",
     "BackendFactory.hpp",
+    "FakeRuntimeAPI.hpp",
     "ExecutionBackend.hpp",
+    "RuntimeAPI.hpp",
   ]
 }
 
 swiftshader_source_set("Backend") {
   sources = [
     "BackendFactory.cpp",
+    "FakeRuntimeAPI.cpp",
     "ExecutionBackend.cpp",
+    "RuntimeAPI.cpp",
   ]
 
   deps = [
