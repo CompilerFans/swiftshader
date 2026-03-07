@@ -18,6 +18,11 @@ set(ROOT_PROJECT_COMPILE_OPTIONS
 )
 
 set(PIPELINE_SRC_FILES
+    CodegenTarget.hpp
+    CudaLikeSourceEmitter.cpp
+    CudaLikeSourceEmitter.hpp
+    LlvmIREmitter.cpp
+    LlvmIREmitter.hpp
     ComputeProgram.cpp
     ComputeProgram.hpp
     Constants.cpp

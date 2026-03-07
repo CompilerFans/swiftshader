@@ -16,8 +16,11 @@ import("../swiftshader.gni")
 
 swiftshader_source_set("Pipeline_headers") {
   sources = [
+    "CodegenTarget.hpp",
     "ComputeProgram.hpp",
     "Constants.hpp",
+    "CudaLikeSourceEmitter.hpp",
+    "LlvmIREmitter.hpp",
     "KernelABI.hpp",
     "KernelIR.hpp",
     "PixelProgram.hpp",
@@ -39,6 +42,8 @@ swiftshader_source_set("Pipeline_headers") {
 swiftshader_source_set("Pipeline") {
   sources = [
     "ComputeProgram.cpp",
+    "CudaLikeSourceEmitter.cpp",
+    "LlvmIREmitter.cpp",
     "Constants.cpp",
     "KernelABI.cpp",
     "KernelIR.cpp",

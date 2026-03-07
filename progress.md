@@ -32,4 +32,7 @@
 - Task 6 RED: added `SpirvToSemanticIRTests.cpp` and confirmed the build failed because `SemanticIRBuilder.hpp` was missing.
 - Task 6 GREEN: added standalone `SemanticIRBuilder`, lightweight `ParsedSpirvInfo`, and thin `Spirv` accessors for stage and entry-point name; kept the `SpirvShader` overload in a separate implementation path.
 - Validation: `./build/backend-unittests --gtest_filter=SpirvToSemanticIR.*` passed, and `src/Pipeline/SemanticIRBuilder.cpp` compiled directly with the expected pipeline include set.
+- Task 7 RED: added codegen and ABI parity tests and confirmed the build failed because the emitter headers were missing.
+- Task 7 GREEN: added `CodegenTarget`, normalized ABI description, CUDA-like and LLVM IR text emitters, and ABI parity helpers.
+- Validation: `./build/backend-unittests --gtest_filter=CodegenEmitter.*:AbiParity.*` passed.
 

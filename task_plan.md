@@ -61,6 +61,7 @@ Implementation - Task 1 complete
 - Task 4 complete: minimal `SemanticIR` skeleton and tests added.
 - Task 5 complete: minimal `KernelIR`/`KernelABI` skeletons and quad metadata tests added.
 - Task 6 complete: standalone `SemanticIRBuilder` bootstrap path added.
+- Task 7 complete: codegen text emitters and ABI parity checks added.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.

@@ -8,7 +8,11 @@ set(ROOT_PROJECT_LINK_LIBRARIES
 )
 
 set(BACKEND_UNIT_TESTS_SRC_FILES
+    CodegenEmitterTests.cpp
+    AbiParityTests.cpp
     SpirvToSemanticIRTests.cpp
+    ${SWIFTSHADER_DIR}/src/Pipeline/CudaLikeSourceEmitter.cpp
+    ${SWIFTSHADER_DIR}/src/Pipeline/LlvmIREmitter.cpp
     KernelIRTests.cpp
     SemanticIRTests.cpp
     BackendFactoryTests.cpp
