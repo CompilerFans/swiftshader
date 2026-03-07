@@ -1,0 +1,44 @@
+# Findings & Decisions
+
+## Requirements
+- Review two existing plan documents using new user-provided feedback.
+- Decide technically whether the design doc and implementation plan need modification.
+- Modify the documents when warranted.
+- Keep documents bilingual.
+- Persist reasoning in project-root planning files.
+
+## Research Findings
+- Current design doc already covers architecture, IR, runtime, synchronization, WSI/present, and phased rollout.
+- Current implementation plan already has 14 tasks with TDD structure and precise file paths.
+- `src/Pipeline/SpirvShader.*` is strongly coupled to Reactor code emission today: `SpirvShader.hpp` directly exposes `emit*`, `SpirvEmitter`, `rr::Value`, `SpirvRoutine`, and many `Emit*` methods. This validates the concern that a simple member method like `SpirvShader::buildSemanticIR()` would likely accumulate technical debt.
+- `README.md` is clearly public-facing project documentation, not an internal bring-up note. Adding custom backend instructions there early would be risky unless the backend becomes a public/project-level feature.
+- Current design doc mentions quad/helper-lane formation, but does not yet spell out execution invariants such as 2x2 residency, helper-lane execution without export, discard/demote behavior, or derivative constraints.
+- Current design doc mentions image/sampler categories, but does not distinguish combined image sampler, separate sampler, storage image, or non-uniform descriptor indexing.
+- Current design doc says the CUDA-like source and LLVM IR paths share ABI, but does not define a verification mechanism.
+- Current design doc reserves a native displayable-image fast path, but does not define clear eligibility conditions.
+- Current implementation plan adds `ResourceStateTracker` before graphics/present stubs, but does not explicitly require those later tasks to integrate with it.
+- Current implementation plan adds a compute compile path, but does not yet require fake dispatch validation of launch parameters and buffer binding.
+
+## Decisions
+- **Accept:** Expand design doc with explicit quad/helper-lane fragment execution invariants.
+- **Accept:** Expand design doc with explicit `SemanticIR` modeling rules for combined image sampler, separate sampler, storage image, and non-uniform descriptor access.
+- **Accept:** Add an explicit ABI conformance verification mechanism shared by CUDA-like source and LLVM IR codegen paths.
+- **Accept:** Clarify native displayable-image fast-path eligibility versus fallback copy/blit conditions.
+- **Accept:** Change implementation plan so `SemanticIR` lowering is built as a standalone builder/visitor, not as a `SpirvShader` member API.
+- **Accept:** Strengthen the compute bring-up task with fake dispatch validation, not only executable creation.
+- **Accept:** Require `GraphicsBackend` and `PresentAdapter` tasks to integrate with `ResourceStateTracker`.
+- **Accept:** Remove near-term `README.md` edits from the implementation plan; keep backend bring-up docs in internal or specialized docs first.
+- **Partial accept:** The existing design is directionally correct, so these changes are refinements and risk reductions, not architectural reversals.
+
+## Open Questions
+- Whether ABI equivalence should be validated through textual ABI header comparison, structured metadata comparison, or both.
+- Whether quad/helper-lane semantics deserve a dedicated subsection or should extend the existing `KernelIR` section only.
+
+## Relevant Files
+- `docs/plans/2026-03-07-cuda-vulkan-icd-design.md`
+- `docs/plans/2026-03-07-custom-gpu-vulkan-icd-implementation.md`
+- `src/Pipeline/SpirvShader.hpp`
+- `src/Vulkan/VkQueue.cpp`
+- `src/Vulkan/VkCommandBuffer.hpp`
+- `src/WSI/VkSurfaceKHR.hpp`
+- `README.md`
