@@ -92,3 +92,7 @@ if (build_with_chromium) {
     }
   }
 }
+
+group("swiftshader_backend") {
+  public_deps = [ "src/Backend:Backend" ]
+}

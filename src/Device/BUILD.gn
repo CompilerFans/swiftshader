@@ -80,6 +80,7 @@ swiftshader_source_set("Device") {
   deps = [
     "../../third_party/SPIRV-Tools:spvtools_headers",
     "../../third_party/marl:Marl_headers",
+    "../Backend:Backend_headers",
     "../Pipeline:Pipeline_headers",
     "../System:System_headers",
     "../Vulkan:swiftshader_libvulkan_headers",

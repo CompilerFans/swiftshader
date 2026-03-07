@@ -1,0 +1,13 @@
+import("../swiftshader.gni")
+
+swiftshader_source_set("Backend_headers") {
+  sources = [ "BackendConfig.hpp" ]
+}
+
+swiftshader_source_set("Backend") {
+  deps = [
+    "../System:System_headers",
+  ]
+
+  public_deps = [ ":Backend_headers" ]
+}

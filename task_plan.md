@@ -4,7 +4,7 @@
 结合新的 review 意见，技术性判断哪些反馈应采纳，并据此修订双语设计文档与实施计划，同时把判断依据记录到持久化规划文件中。
 
 ## Current Phase
-Phase 5
+Implementation - Task 1 complete
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -45,6 +45,7 @@ Phase 5
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
+| 在当前工作区执行实现 | 用户明确要求不创建 worktree |
 | Use `planning-with-files` for this turn | User explicitly requested it and task spans multiple document updates |
 | Evaluate feedback with `receiving-code-review` discipline | Need technical verification instead of blind acceptance |
 
@@ -54,6 +55,7 @@ Phase 5
 | Shell backtick expansion in `rg` command | 1 | Re-ran with `grep -F` and proper quoting |
 
 ## Notes
+- Task 1: backend build skeleton complete; next is backend-neutral queue seam.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.
