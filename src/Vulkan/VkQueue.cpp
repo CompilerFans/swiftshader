@@ -41,8 +41,7 @@ std::unique_ptr<backend::ExecutionBackend> createExecutionBackend(vk::Device *de
 	case backend::BackendKind::CPU:
 		return backend::createCpuExecutionBackend(device);
 	case backend::BackendKind::CUSTOM_GPU:
-		UNSUPPORTED("Custom GPU backend is not implemented yet");
-		return backend::createCpuExecutionBackend(device);
+		return backend::createCustomExecutionBackend(device);
 	default:
 		UNREACHABLE("Unknown backend kind");
 		return backend::createCpuExecutionBackend(device);

@@ -72,6 +72,7 @@ Complete
 - Task 14 complete: smoke tests, bring-up checklist, and design status update added.
 - Post-bootstrap compute runtime routing complete: custom backend now owns a device runtime and compute dispatch can flow into fake runtime capture when the custom backend flag is enabled.
 - Post-bootstrap present factory complete: present adapter selection now follows backend factory rules, and custom builds expose fake acquire/present capture.
+- Post-bootstrap graphics execution routing complete: custom builds now select an explicit custom execution backend bootstrap mode that still delegates graphics to CPU fallback cleanly.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.

@@ -18,6 +18,7 @@ swiftshader_source_set("Backend") {
   sources = [
     "BackendFactory.cpp",
     "ComputeExecutable.cpp",
+    "CustomExecutionBackend.cpp",
     "CpuExecutionBackend.cpp",
     "FakeRuntimeAPI.cpp",
     "GraphicsBackend.cpp",

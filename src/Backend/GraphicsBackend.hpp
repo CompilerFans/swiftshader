@@ -15,6 +15,12 @@ class Device;
 
 namespace backend {
 
+enum class GraphicsBootstrapMode
+{
+	CpuOnly,
+	CustomWithCpuGraphicsFallback,
+};
+
 class GraphicsBackend
 {
 public:
@@ -24,7 +30,9 @@ public:
 	virtual void synchronize() = 0;
 };
 
+GraphicsBootstrapMode defaultGraphicsBootstrapMode();
 std::unique_ptr<ExecutionBackend> createCpuExecutionBackend(vk::Device *device);
+std::unique_ptr<ExecutionBackend> createCustomExecutionBackend(vk::Device *device);
 
 }  // namespace backend
 

@@ -61,4 +61,6 @@
 - Validation: default `backend-unittests` stayed green, and `build-custom` with `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON` built and ran the focused `BackendFactory`, `RuntimeAPI`, and `ComputeDispatchValidation` tests successfully.
 - Post-bootstrap present milestone: present path now goes through a factory-selected adapter, and custom builds use a fake adapter with explicit acquire/present capture.
 - Validation: default build `PresentAdapterFactory.*` passed, and custom build `PresentAdapterFactory.*` passed including the custom capture assertions.
+- Post-bootstrap graphics execution milestone: added an explicit custom execution backend bootstrap mode so custom builds no longer rely on an `UNSUPPORTED` queue-selection branch.
+- Validation: default and custom builds both passed `GraphicsBootstrapMode.*`, and `src/Vulkan/VkQueue.cpp` compiled after the execution-backend split.
 
