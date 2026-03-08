@@ -29,6 +29,7 @@ SwapchainKHR::SwapchainKHR(const VkSwapchainCreateInfoKHR *pCreateInfo, void *me
     , images(reinterpret_cast<PresentImage *>(mem))
     , imageCount(pCreateInfo->minImageCount)
     , retired(false)
+    , presentAdapter(backend::createFallbackPresentAdapter())
 {
 	memset(reinterpret_cast<void *>(images), 0, imageCount * sizeof(PresentImage));
 }
@@ -195,6 +196,10 @@ VkResult SwapchainKHR::getNextImage(uint64_t timeout, BinarySemaphore *semaphore
 		if(currentImage.isAvailable())
 		{
 			currentImage.setStatus(DRAWING);
+			if(presentAdapter)
+			{
+				presentAdapter->acquire(resourceStateTracker, reinterpret_cast<uint64_t>(currentImage.getImage()));
+			}
 			*pImageIndex = i;
 
 			if(semaphore)
@@ -218,6 +223,10 @@ VkResult SwapchainKHR::present(uint32_t index)
 {
 	auto &image = images[index];
 	image.setStatus(PRESENTING);
+	if(presentAdapter)
+	{
+		presentAdapter->present(resourceStateTracker, reinterpret_cast<uint64_t>(image.getImage()));
+	}
 	VkResult result = surface->present(&image);
 
 	releaseImage(index);

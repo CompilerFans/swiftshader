@@ -31,6 +31,7 @@ set(VULKAN_UNIT_TESTS_SRC_FILES
     GraphicsBackendSelectionTests.cpp
     Driver.cpp
     Driver.hpp
+    PresentAdapterTests.cpp
     main.cpp
     VkGlobalFuncs.hpp
     VkInstanceFuncs.hpp
@@ -73,6 +74,7 @@ target_link_options(vk-unittests
 
 target_link_libraries(vk-unittests
     PRIVATE
+        vk_backend
         gtest
         gmock
         SPIRV-Tools

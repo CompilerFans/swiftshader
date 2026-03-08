@@ -15,6 +15,7 @@
 #ifndef SWIFTSHADER_VKSWAPCHAINKHR_HPP
 #define SWIFTSHADER_VKSWAPCHAINKHR_HPP
 
+#include "Backend/PresentAdapter.hpp"
 #include "VkSurfaceKHR.hpp"
 #include "Vulkan/VkImage.hpp"
 #include "Vulkan/VkObject.hpp"
@@ -56,6 +57,9 @@ private:
 	PresentImage *images = nullptr;
 	uint32_t imageCount = 0;
 	bool retired = false;
+
+	backend::ResourceStateTracker resourceStateTracker = {};
+	std::unique_ptr<backend::PresentAdapter> presentAdapter;
 
 	void resetImages();
 };

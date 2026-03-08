@@ -1,7 +1,7 @@
 #ifndef SWIFTSHADER_RESOURCE_STATE_TRACKER_HPP_
 #define SWIFTSHADER_RESOURCE_STATE_TRACKER_HPP_
 
-#include <vulkan/vulkan_core.h>
+#include "Vulkan/VulkanPlatform.hpp"
 
 #include <cstdint>
 #include <unordered_map>

@@ -5,6 +5,8 @@ set(BACKEND_SRC_FILES
     CpuExecutionBackend.cpp
     ComputeExecutable.hpp
     GraphicsBackend.cpp
+    PresentAdapter.cpp
+    PresentAdapter.hpp
     GraphicsBackend.hpp
     FakeRuntimeAPI.cpp
     FakeRuntimeAPI.hpp
