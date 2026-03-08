@@ -32,6 +32,7 @@ set(VULKAN_UNIT_TESTS_SRC_FILES
     GraphicsBackendSelectionTests.cpp
     Driver.cpp
     Driver.hpp
+    PresentAdapterCaptureTests.cpp
     PresentAdapterTests.cpp
     main.cpp
     VkGlobalFuncs.hpp
