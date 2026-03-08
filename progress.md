@@ -160,6 +160,13 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+- Attribute/binding lowering RED/GREEN:
+  - added failing backend tests that require generated CUDA source to fetch `vec3 position` via `vertexData + vertexStride + positionOffset`
+  - introduced `GraphicsBootstrapBindingConfig` and a raw-vertex-data bootstrap overload so the wrapper now performs minimal attribute/binding lowering instead of assuming a typed vertex array
+  - verified runtime execution against an interleaved padded vertex layout to prove the fetch path is no longer hard-coded to `GraphicsBootstrapVertexInput`
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
 - Runtime offset params RED/GREEN:
   - added failing backend tests that require `VsParams` to carry runtime offsets and `vs_main` to consume them in emitted CUDA source
   - introduced `GraphicsBootstrapRuntimeConfig` and a new bootstrap overload so runtime-configured offsets flow through the launch ABI instead of being baked into source

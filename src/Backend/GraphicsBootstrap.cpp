@@ -1,5 +1,6 @@
 #include "GraphicsBootstrap.hpp"
 
+#include <cstring>
 #include <limits>
 #include <sstream>
 #include <vector>
@@ -8,9 +9,11 @@ namespace backend {
 namespace {
 struct BootstrapVsParams
 {
-	const GraphicsBootstrapVertexInput *inVertices = nullptr;
+	const uint8_t *vertexData = nullptr;
 	GraphicsBootstrapVertexOutput *outVertices = nullptr;
 	uint32_t vertexCount = 0;
+	uint32_t vertexStride = 0;
+	uint32_t positionOffset = 0;
 	float runtimeOffsetX = 0.0f;
 	float runtimeOffsetY = 0.0f;
 	float runtimeOffsetZ = 0.0f;
@@ -61,9 +64,11 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "};\n\n"
 	          "struct VsParams\n"
 	          "{\n"
-	          "\tconst VertexInput *inVertices;\n"
+	          "\tconst unsigned char *vertexData;\n"
 	          "\tVertexOutput *outVertices;\n"
 	          "\tunsigned int vertexCount;\n"
+	          "\tunsigned int vertexStride;\n"
+	          "\tunsigned int positionOffset;\n"
 	          "\tfloat runtimeOffsetX;\n"
 	          "\tfloat runtimeOffsetY;\n"
 	          "\tfloat runtimeOffsetZ;\n"
@@ -82,7 +87,9 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "\t{\n"
 	          "\t\treturn;\n"
 	          "\t}\n\n"
-	          "\tVertexInput inVertex = params.inVertices[vertexIndex];\n"
+	          "\tconst unsigned char *vertexBase = params.vertexData + vertexIndex * params.vertexStride + params.positionOffset;\n"
+	          "\tconst float *position = reinterpret_cast<const float *>(vertexBase);\n"
+	          "\tVertexInput inVertex = { position[0], position[1], position[2] };\n"
 	          "\tVertexOutput outVertex = {};\n"
 	          "\tvs_main(params, vertexIndex, inVertex, outVertex);\n"
 	          "\tparams.outVertices[vertexIndex] = outVertex;\n"
@@ -106,19 +113,32 @@ bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstr
 
 bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstrapVertexInput> &inputs, const GraphicsBootstrapShaderConfig &config, const GraphicsBootstrapRuntimeConfig &runtimeConfig, std::vector<GraphicsBootstrapVertexOutput> *outputs)
 {
+	std::vector<uint8_t> rawVertexData(sizeof(GraphicsBootstrapVertexInput) * inputs.size());
+	if(!rawVertexData.empty())
+	{
+		std::memcpy(rawVertexData.data(), inputs.data(), rawVertexData.size());
+	}
+
+	GraphicsBootstrapBindingConfig bindingConfig = {};
+	bindingConfig.vertexStride = sizeof(GraphicsBootstrapVertexInput);
+	bindingConfig.positionOffset = 0;
+	return runGraphicsBootstrap(runtime, rawVertexData, static_cast<uint32_t>(inputs.size()), bindingConfig, config, runtimeConfig, outputs);
+}
+
+bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<uint8_t> &rawVertexData, uint32_t vertexCount, const GraphicsBootstrapBindingConfig &bindingConfig, const GraphicsBootstrapShaderConfig &config, const GraphicsBootstrapRuntimeConfig &runtimeConfig, std::vector<GraphicsBootstrapVertexOutput> *outputs)
+{
 	auto module = runtime.createModule(graphicsBootstrapCudaSource(config), "vs_entry");
 	if(!module.valid())
 	{
 		return false;
 	}
 
-	size_t vertexCount = inputs.size();
-	if(vertexCount == 0)
+	if(vertexCount == 0 || rawVertexData.empty())
 	{
 		return false;
 	}
 
-	auto inputMemory = runtime.allocateMemory(sizeof(GraphicsBootstrapVertexInput) * vertexCount);
+	auto inputMemory = runtime.allocateMemory(rawVertexData.size());
 	auto outputMemory = runtime.allocateMemory(sizeof(GraphicsBootstrapVertexOutput) * vertexCount);
 	if(!inputMemory.valid() || !outputMemory.valid())
 	{
@@ -133,12 +153,14 @@ bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstr
 		return false;
 	}
 
-	runtime.copyHostToMemory(inputMemory, inputs.data(), sizeof(GraphicsBootstrapVertexInput) * vertexCount);
+	runtime.copyHostToMemory(inputMemory, rawVertexData.data(), rawVertexData.size());
 
 	BootstrapVsParams params = {};
-	params.inVertices = reinterpret_cast<const GraphicsBootstrapVertexInput *>(static_cast<uintptr_t>(runtime.memoryAddress(inputMemory)));
+	params.vertexData = reinterpret_cast<const uint8_t *>(static_cast<uintptr_t>(runtime.memoryAddress(inputMemory)));
 	params.outVertices = reinterpret_cast<GraphicsBootstrapVertexOutput *>(static_cast<uintptr_t>(runtime.memoryAddress(outputMemory)));
-	params.vertexCount = static_cast<uint32_t>(vertexCount);
+	params.vertexCount = vertexCount;
+	params.vertexStride = bindingConfig.vertexStride;
+	params.positionOffset = bindingConfig.positionOffset;
 	params.runtimeOffsetX = runtimeConfig.offsetX;
 	params.runtimeOffsetY = runtimeConfig.offsetY;
 	params.runtimeOffsetZ = runtimeConfig.offsetZ;
@@ -148,7 +170,7 @@ bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstr
 	record.groupCountX = 1;
 	record.groupCountY = 1;
 	record.groupCountZ = 1;
-	record.blockCountX = static_cast<uint32_t>(vertexCount);
+	record.blockCountX = vertexCount;
 	record.blockCountY = 1;
 	record.blockCountZ = 1;
 	record.argumentCount = arguments.size();

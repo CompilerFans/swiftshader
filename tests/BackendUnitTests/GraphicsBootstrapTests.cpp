@@ -4,6 +4,7 @@
 #	include "Backend/CudaRuntimeAPI.hpp"
 #endif
 
+#include <cstring>
 #include <gtest/gtest.h>
 
 TEST(GraphicsBootstrap, EmitsVertexStageWrapperAndShaderBody)
@@ -51,6 +52,14 @@ TEST(GraphicsBootstrap, EmitsRuntimeOffsetParams)
 	EXPECT_NE(source.find("float runtimeOffsetY;"), std::string::npos);
 	EXPECT_NE(source.find("float runtimeOffsetZ;"), std::string::npos);
 	EXPECT_NE(source.find("outVertex.x = inVertex.x + 0.0f + params.runtimeOffsetX;"), std::string::npos);
+}
+
+TEST(GraphicsBootstrap, EmitsAttributeBindingFetch)
+{
+	std::string source = backend::graphicsBootstrapCudaSource();
+
+	EXPECT_NE(source.find("const unsigned char *vertexBase = params.vertexData + vertexIndex * params.vertexStride + params.positionOffset;"), std::string::npos);
+	EXPECT_NE(source.find("const float *position = reinterpret_cast<const float *>(vertexBase);"), std::string::npos);
 }
 
 TEST(GraphicsBootstrap, LaunchUsesSingleVsParamsArgument)
@@ -170,6 +179,43 @@ TEST(GraphicsBootstrap, CudaRuntimeExecutesRuntimeOffset)
 		EXPECT_FLOAT_EQ(outputs[i].x, inputs[i].x + runtimeConfig.offsetX);
 		EXPECT_FLOAT_EQ(outputs[i].y, inputs[i].y + runtimeConfig.offsetY);
 		EXPECT_FLOAT_EQ(outputs[i].z, inputs[i].z + runtimeConfig.offsetZ);
+		EXPECT_FLOAT_EQ(outputs[i].w, 1.0f);
+	}
+}
+
+TEST(GraphicsBootstrap, CudaRuntimeFetchesPositionViaStrideAndOffset)
+{
+	struct InterleavedVertex
+	{
+		uint32_t tag;
+		float position[3];
+		uint32_t tail;
+	};
+
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	std::vector<InterleavedVertex> vertices = {
+		{ 11u, { -0.5f, -0.25f, 0.0f }, 101u },
+		{ 22u, { 0.0f, 0.75f, 0.0f }, 202u },
+		{ 33u, { 0.5f, -0.25f, 0.0f }, 303u },
+	};
+	std::vector<uint8_t> raw(sizeof(InterleavedVertex) * vertices.size());
+	std::memcpy(raw.data(), vertices.data(), raw.size());
+
+	backend::GraphicsBootstrapBindingConfig binding = {};
+	binding.vertexStride = sizeof(InterleavedVertex);
+	binding.positionOffset = offsetof(InterleavedVertex, position);
+
+	std::vector<backend::GraphicsBootstrapVertexOutput> outputs;
+	ASSERT_TRUE(backend::runGraphicsBootstrap(runtime, raw, static_cast<uint32_t>(vertices.size()), binding, backend::GraphicsBootstrapShaderConfig{}, backend::GraphicsBootstrapRuntimeConfig{}, &outputs));
+	ASSERT_EQ(outputs.size(), vertices.size());
+
+	for(size_t i = 0; i < vertices.size(); i++)
+	{
+		EXPECT_FLOAT_EQ(outputs[i].x, vertices[i].position[0]);
+		EXPECT_FLOAT_EQ(outputs[i].y, vertices[i].position[1]);
+		EXPECT_FLOAT_EQ(outputs[i].z, vertices[i].position[2]);
 		EXPECT_FLOAT_EQ(outputs[i].w, 1.0f);
 	}
 }
