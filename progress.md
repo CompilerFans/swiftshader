@@ -367,3 +367,19 @@
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexColorTriangleInterpolation')` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromPositionAndColorStreams:TrianglePipelineBootstrap.CudaRuntimeInterpolatesVertexColorFromRawVertexData:TrianglePipelineBootstrap.CudaRuntimeAppliesRequestedFragmentColor:TrianglePipelineBootstrap.CudaRuntimeAppliesFragCoordQuadrantFragmentMode')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexColorTriangleInterpolation:DrawTest.SolidColorTriangle:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed
+- Visible animated benchmark RED/GREEN:
+  - inserted a new benchmark task and wrote a failing draw test, `DrawTest.DynamicVertexBufferUpdateChangesRenderedColor`, to require that a second frame rendered through the same pipeline can observe updated vertex-buffer contents
+  - extended `DrawTester` with `updateVertexBufferData()`, then added a visible-window path by splitting a new `VulkanWrapperVisible` target out of the existing wrapper, allowing Linux/XCB native windows while leaving the existing test/benchmark headless defaults unchanged
+  - extended `Window` with `show()/pumpEvents()/setTitle()` support for headless, Win32, and Linux/XCB, and enabled `VK_KHR_XCB_SURFACE_EXTENSION_NAME` in `VulkanTester` when the visible wrapper is built
+  - added `tests/VulkanBenchmarks/AnimatedTriangleBenchmark.cpp`, which updates a mapped position+color vertex buffer every frame to rotate the triangle and shift its colors over time, then prints FPS to stdout and mirrors it into the window title
+  - added `tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh`, which honestly selects CPU vs CUDA by picking the corresponding build directory; during bring-up, the first XCB build failed because `libxcb` was not linked, and the first script run failed because the benchmark binary was launched from the repo root instead of its build directory
+  - fixed those two root causes with a narrow `xcb` link dependency on `animated-triangle-benchmark` and a `cd "${build_dir}"` before `exec`, then verified both CPU and CUDA script paths
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.DynamicVertexBufferUpdateChangesRenderedColor')` passed
+  - `cmake -S . -B build-benchmark-cpu -DSWIFTSHADER_BUILD_BENCHMARKS=ON -DSWIFTSHADER_BUILD_TESTS=ON -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=OFF` passed
+  - `cmake --build build-benchmark-cpu --target draw-unittests animated-triangle-benchmark --parallel $(nproc)` passed
+  - `(cd build-benchmark-cpu && ./draw-unittests --gtest_filter='DrawTest.DynamicVertexBufferUpdateChangesRenderedColor')` passed
+  - `(cd build-benchmark-cpu && timeout 5s ./animated-triangle-benchmark --seconds=2 --backend-label=cpu)` passed and printed `window_fps current=290.80 avg=290.80 case=AnimatedColorTriangle backend=cpu`
+  - `timeout 8s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cpu --seconds=2` passed and printed `window_fps current=297.83 avg=297.83 case=AnimatedColorTriangle backend=cpu`
+  - `timeout 8s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --seconds=2` passed and printed `window_fps current=0.81 avg=0.81 case=AnimatedColorTriangle backend=cuda`

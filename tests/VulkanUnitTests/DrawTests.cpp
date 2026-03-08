@@ -745,3 +745,76 @@ TEST_F(DrawTest, VertexColorTriangleInterpolation)
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
 #endif
 }
+
+TEST_F(DrawTest, DynamicVertexBufferUpdateChangesRenderedColor)
+{
+	struct Vertex
+	{
+		float position[3];
+		float color[3];
+	};
+
+	Vertex initialVertices[] = {
+		{ { -0.95f, -0.85f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
+		{ { 0.95f, -0.85f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
+		{ { 0.0f, 0.95f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
+	};
+
+	Vertex updatedVertices[] = {
+		{ { -0.95f, -0.85f, 0.5f }, { 1.0f, 0.0f, 0.0f } },
+		{ { 0.95f, -0.85f, 0.5f }, { 1.0f, 0.0f, 0.0f } },
+		{ { 0.0f, 0.95f, 0.5f }, { 1.0f, 0.0f, 0.0f } },
+	};
+
+	DrawTester tester;
+	tester.onCreateVertexBuffers([&](DrawTester &tester) {
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)));
+
+		tester.addVertexBuffer(initialVertices, sizeof(initialVertices), std::move(inputAttributes));
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 310 es
+			layout(location = 0) in vec3 inPos;
+			layout(location = 1) in vec3 inColor;
+			layout(location = 0) out vec3 vColor;
+
+			void main()
+			{
+				gl_Position = vec4(inPos, 1.0);
+				vColor = inColor;
+			})";
+
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 310 es
+			precision highp float;
+
+			layout(location = 0) in vec3 vColor;
+			layout(location = 0) out vec4 outColor;
+
+			void main()
+			{
+				outColor = vec4(vColor, 1.0);
+			})";
+
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.initialize();
+	tester.renderFrame();
+	auto firstPixel = tester.readbackPixel(640, 180);
+
+	tester.updateVertexBufferData(updatedVertices, sizeof(updatedVertices));
+	tester.renderFrame();
+	auto secondPixel = tester.readbackPixel(640, 180);
+
+	EXPECT_GT(firstPixel[3], 200);
+	EXPECT_GT(secondPixel[3], 200);
+	EXPECT_GT(firstPixel[2], firstPixel[0]);
+	EXPECT_GT(secondPixel[0], secondPixel[2]);
+}

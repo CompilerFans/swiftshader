@@ -15,6 +15,7 @@
 #include "DrawTester.hpp"
 
 #include <array>
+#include <cstring>
 #include <cstdint>
 #include <fstream>
 
@@ -191,9 +192,31 @@ void DrawTester::saveFrame(const std::filesystem::path &path)
 	readback.unmapMemory();
 }
 
+void DrawTester::updateVertexBufferData(const void *vertexBufferData, size_t vertexBufferDataSize)
+{
+	assert(vertices.buffer);
+	assert(vertices.memory);
+	assert(vertexBufferData != nullptr);
+	assert(vertexBufferDataSize <= vertices.size);
+
+	void *data = device.mapMemory(vertices.memory, 0, vertices.size);
+	std::memcpy(data, vertexBufferData, vertexBufferDataSize);
+	device.unmapMemory(vertices.memory);
+}
+
 void DrawTester::show()
 {
 	window->show();
+}
+
+void DrawTester::pumpWindowEvents()
+{
+	window->pumpEvents();
+}
+
+void DrawTester::setWindowTitle(const std::string &title)
+{
+	window->setTitle(title);
 }
 
 vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
@@ -510,6 +533,7 @@ void DrawTester::addVertexBuffer(void *vertexBufferData, size_t vertexBufferData
 	vertexBufferInfo.size = vertexBufferDataSize;
 	vertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer;
 	vertices.buffer = device.createBuffer(vertexBufferInfo);
+	vertices.size = vertexBufferDataSize;
 
 	vk::MemoryAllocateInfo memoryAllocateInfo;
 	vk::MemoryRequirements memoryRequirements = device.getBufferMemoryRequirements(vertices.buffer);

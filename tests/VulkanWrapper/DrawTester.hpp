@@ -26,6 +26,7 @@
 #include <filesystem>
 #include <functional>
 #include <memory>
+#include <string>
 
 enum class Multisample
 {
@@ -45,7 +46,10 @@ public:
 	void renderFrame();
 	std::array<uint8_t, 4> readbackPixel(uint32_t x, uint32_t y);
 	void saveFrame(const std::filesystem::path &path);
+	void updateVertexBufferData(const void *vertexBufferData, size_t vertexBufferDataSize);
 	void show();
+	void pumpWindowEvents();
+	void setWindowTitle(const std::string &title);
 
 	/////////////////////////
 	// Hooks
@@ -157,6 +161,7 @@ private:
 	{
 		vk::Buffer buffer;        // Owning handle
 		vk::DeviceMemory memory;  // Owning handle
+		size_t size = 0;
 
 		vk::VertexInputBindingDescription inputBinding;
 		std::vector<vk::VertexInputAttributeDescription> inputAttributes;

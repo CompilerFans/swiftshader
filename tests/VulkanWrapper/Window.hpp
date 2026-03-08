@@ -17,9 +17,13 @@
 
 #include "VulkanHeaders.hpp"
 
+#include <string>
+
 #if defined(_WIN32)
 #	define WIN32_LEAN_AND_MEAN
 #	include <Windows.h>
+#elif defined(VK_USE_PLATFORM_XCB_KHR)
+#	include <xcb/xcb.h>
 #endif
 
 #if USE_HEADLESS_SURFACE
@@ -30,6 +34,8 @@ public:
 	~Window();
 	vk::SurfaceKHR getSurface();
 	void show();
+	void pumpEvents();
+	void setTitle(const std::string &title);
 
 private:
 	const vk::Instance instance;
@@ -45,11 +51,33 @@ public:
 	~Window();
 	vk::SurfaceKHR getSurface();
 	void show();
+	void pumpEvents();
+	void setTitle(const std::string &title);
 
 private:
 	HWND window;
 	HINSTANCE moduleInstance;
 	WNDCLASSEX windowClass;
+	const vk::Instance instance;
+	vk::SurfaceKHR surface;
+};
+
+#elif defined(VK_USE_PLATFORM_XCB_KHR)
+
+class Window
+{
+public:
+	Window(vk::Instance instance, vk::Extent2D windowSize);
+	~Window();
+	vk::SurfaceKHR getSurface();
+	void show();
+	void pumpEvents();
+	void setTitle(const std::string &title);
+
+private:
+	xcb_connection_t *connection = nullptr;
+	xcb_screen_t *screen = nullptr;
+	xcb_window_t window = 0;
 	const vk::Instance instance;
 	vk::SurfaceKHR surface;
 };

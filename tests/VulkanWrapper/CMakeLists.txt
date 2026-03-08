@@ -40,6 +40,10 @@ add_library(VulkanWrapper STATIC
     ${VULKAN_WRAPPER_SRC_FILES}
 )
 
+add_library(VulkanWrapperVisible STATIC
+    ${VULKAN_WRAPPER_SRC_FILES}
+)
+
 if (NOT TARGET glslang)
     message(FATAL_ERROR "Missing required target: glslang")
 endif()
@@ -57,7 +61,18 @@ set_target_properties(VulkanWrapper PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
 )
 
+set_target_properties(VulkanWrapperVisible PROPERTIES
+    FOLDER "Tests"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
+
 target_include_directories(VulkanWrapper
+    PUBLIC
+        "."
+        "${SWIFTSHADER_DIR}/include"
+)
+
+target_include_directories(VulkanWrapperVisible
     PUBLIC
         "."
         "${SWIFTSHADER_DIR}/include"
@@ -68,7 +83,19 @@ target_compile_definitions(VulkanWrapper
         "STANDALONE"
 )
 
+target_compile_definitions(VulkanWrapperVisible
+    PUBLIC
+        "STANDALONE"
+        "SWIFTSHADER_VULKAN_WRAPPER_FORCE_NATIVE_WINDOW=1"
+        "USE_HEADLESS_SURFACE=0"
+)
+
 target_compile_options(VulkanWrapper
+    PRIVATE
+        ${ROOT_PROJECT_COMPILE_OPTIONS}
+)
+
+target_compile_options(VulkanWrapperVisible
     PRIVATE
         ${ROOT_PROJECT_COMPILE_OPTIONS}
 )
@@ -78,7 +105,19 @@ target_link_options(VulkanWrapper
         ${SWIFTSHADER_LINK_FLAGS}
 )
 
+target_link_options(VulkanWrapperVisible
+    PRIVATE
+        ${SWIFTSHADER_LINK_FLAGS}
+)
+
 target_link_libraries(VulkanWrapper
+    PUBLIC
+        glslang
+        glslang-default-resource-limits
+        SPIRV
+)
+
+target_link_libraries(VulkanWrapperVisible
     PUBLIC
         glslang
         glslang-default-resource-limits
