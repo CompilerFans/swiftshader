@@ -8,6 +8,8 @@
 
 **Tech Stack:** C++17, Vulkan ICD frontend, CMake, GN, GoogleTest, SPIR-V parsing, generated CUDA-like source, LLVM IR, backend runtime adapter, dual-path shader codegen. / C++17, Vulkan ICD frontend, CMake, GN, GoogleTest, SPIR-V parsing, generated CUDA-like source, LLVM IR, backend runtime adapter, and dual-path shader codegen.
 
+**VS Exit Gate / VS 阶段收尾门槛：** 在进入 raster / fragment / 其他图形阶段之前，vertex 路径必须先完成 4 项基础验证：其一，最小 builtin 支持（至少 `gl_VertexIndex`，后续补 `gl_InstanceIndex`）；其二，最小 attribute/binding lowering；其三，最小 `SPIR-V -> CUDA-like source` 顶点 lowering；其四，补充一组基于 GLSL 或 SPIR-V、通过 Vulkan runtime 运行的 vertex 测试。只有当这 4 项都稳定通过时，才视为“VS 框架验证完成”，再继续开展 raster、fragment 和后续阶段开发。 / Before moving into raster, fragment, or other graphics stages, the vertex path must clear four basic validation gates: (1) minimal builtin support (at least `gl_VertexIndex`, with `gl_InstanceIndex` next), (2) minimal attribute/binding lowering, (3) minimal `SPIR-V -> CUDA-like source` vertex lowering, and (4) a set of vertex-focused tests driven through the Vulkan runtime from GLSL or SPIR-V inputs. Only after all four are stable and passing should the project treat the VS framework as validated and continue to raster, fragment, and later-stage development.
+
 ---
 
 ### Task 1: Add backend build skeleton and feature switch / 添加后端构建骨架与特性开关

@@ -167,6 +167,8 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+- Planning decision:
+  - accepted a VS completion gate: finish minimal builtin support, minimal attribute/binding lowering, minimal `SPIR-V -> CUDA-like source` vertex lowering, and a small Vulkan-runtime test set based on GLSL or SPIR-V before starting raster/fragment follow-up development
 - Generated vertex-index RED/GREEN:
   - added failing backend tests that require the generated `vs_main` to reference `vertexIndex` in emitted CUDA source and to produce shifted `x` outputs at runtime
   - extended `GraphicsBootstrapShaderConfig` with a minimal `vertexIndexScaleX` builtin-lowering knob
