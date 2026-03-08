@@ -78,6 +78,7 @@
 - CUDA bootstrap RED: enabled a dedicated CUDA custom-backend build and confirmed the new runtime tests failed because `CudaRuntimeAPI` and related build wiring did not exist yet.
 - CUDA bootstrap GREEN:
   - added `CudaCompilerDriver` and `CudaRuntimeAPI`
+  - Architecture decision recorded: graphics pipeline stages remain separate kernels, with each programmable stage using a fixed `__global__` wrapper plus a generated `__device__` shader body instead of a cross-stage mega-kernel.
   - extended `RuntimeAPI` / `FakeRuntimeAPI` with module, device-memory, and launch primitives
   - added `SWIFTSHADER_CUSTOM_GPU_USE_CUDA`
   - added backend runtime test coverage for real `nvcc` compilation plus Driver API execution
