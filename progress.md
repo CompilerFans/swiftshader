@@ -160,6 +160,13 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+- Generated instance-index RED/GREEN:
+  - added failing backend tests that require generated `vs_main` to reference `params.instanceIndex` and to shift `y` accordingly at runtime
+  - extended `GraphicsBootstrapShaderConfig` with `instanceIndexScaleY` and `GraphicsBootstrapRuntimeConfig` with `instanceIndex`
+  - kept the default draw path unchanged by leaving the new builtin at zero unless a test explicitly requests it
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
 - Attribute/binding lowering RED/GREEN:
   - added failing backend tests that require generated CUDA source to fetch `vec3 position` via `vertexData + vertexStride + positionOffset`
   - introduced `GraphicsBootstrapBindingConfig` and a raw-vertex-data bootstrap overload so the wrapper now performs minimal attribute/binding lowering instead of assuming a typed vertex array

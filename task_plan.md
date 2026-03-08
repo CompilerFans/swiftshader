@@ -93,6 +93,7 @@ Complete
 - Current builtin-lowering milestone: generated `vs_main` now supports a minimal `gl_VertexIndex`-style term on `x`, proving the wrapper-supplied builtin can flow into emitted CUDA source and real runtime execution.
 - Current runtime-parameter milestone: `VsParams` now carries a minimal runtime offset payload, giving the bootstrap path its first push-constant-like data flow through the launch ABI.
 - Current attribute-lowering milestone: the vertex wrapper now fetches `vec3 position` from raw vertex memory through `vertexStride` and `positionOffset`, proving a first minimal attribute/binding lowering path.
+- Current instance-builtin milestone: generated `vs_main` now supports a minimal `gl_InstanceIndex`-style term on `y`, proving a second wrapper-supplied builtin can flow through emitted CUDA source and runtime execution.
 - Accepted VS completion gate: before starting raster/fragment follow-up work, vertex bring-up must finish minimal builtin support, minimal attribute/binding lowering, minimal `SPIR-V -> CUDA-like source` vertex lowering, and a small set of Vulkan-runtime vertex tests sourced from GLSL or SPIR-V.
 - Current limitation: Vulkan shared-library compute dispatch in the real CUDA build is not yet wired end-to-end and is explicitly skipped in `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp`.
 - Re-read this file before changing either plan document.

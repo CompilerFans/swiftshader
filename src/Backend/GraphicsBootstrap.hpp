@@ -30,6 +30,7 @@ struct GraphicsBootstrapShaderConfig
 	float offsetY = 0.0f;
 	float offsetZ = 0.0f;
 	float vertexIndexScaleX = 0.0f;
+	float instanceIndexScaleY = 0.0f;
 };
 
 struct GraphicsBootstrapRuntimeConfig
@@ -37,6 +38,7 @@ struct GraphicsBootstrapRuntimeConfig
 	float offsetX = 0.0f;
 	float offsetY = 0.0f;
 	float offsetZ = 0.0f;
+	uint32_t instanceIndex = 0;
 };
 
 struct GraphicsBootstrapBindingConfig

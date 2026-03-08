@@ -14,6 +14,7 @@ struct BootstrapVsParams
 	uint32_t vertexCount = 0;
 	uint32_t vertexStride = 0;
 	uint32_t positionOffset = 0;
+	uint32_t instanceIndex = 0;
 	float runtimeOffsetX = 0.0f;
 	float runtimeOffsetY = 0.0f;
 	float runtimeOffsetZ = 0.0f;
@@ -47,6 +48,11 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	{
 		xExpression += " + static_cast<float>(vertexIndex) * " + literalFloat(config.vertexIndexScaleX);
 	}
+	std::string yExpression = "inVertex.y + " + literalFloat(config.offsetY);
+	if(config.instanceIndexScaleY != 0.0f)
+	{
+		yExpression += " + static_cast<float>(params.instanceIndex) * " + literalFloat(config.instanceIndexScaleY);
+	}
 
 	std::ostringstream source;
 	source << "struct VertexInput\n"
@@ -69,6 +75,7 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "\tunsigned int vertexCount;\n"
 	          "\tunsigned int vertexStride;\n"
 	          "\tunsigned int positionOffset;\n"
+	          "\tunsigned int instanceIndex;\n"
 	          "\tfloat runtimeOffsetX;\n"
 	          "\tfloat runtimeOffsetY;\n"
 	          "\tfloat runtimeOffsetZ;\n"
@@ -76,7 +83,7 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "static __device__ void vs_main(VsParams params, unsigned int vertexIndex, const VertexInput &inVertex, VertexOutput &outVertex)\n"
 	          "{\n"
 	       << "\toutVertex.x = " << xExpression << " + params.runtimeOffsetX;\n"
-	       << "\toutVertex.y = inVertex.y + " << literalFloat(config.offsetY) << " + params.runtimeOffsetY;\n"
+	       << "\toutVertex.y = " << yExpression << " + params.runtimeOffsetY;\n"
 	       << "\toutVertex.z = inVertex.z + " << literalFloat(config.offsetZ) << " + params.runtimeOffsetZ;\n"
 	          "\toutVertex.w = 1.0f;\n"
 	          "}\n\n"
@@ -161,6 +168,7 @@ bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<uint8_t> &rawVe
 	params.vertexCount = vertexCount;
 	params.vertexStride = bindingConfig.vertexStride;
 	params.positionOffset = bindingConfig.positionOffset;
+	params.instanceIndex = runtimeConfig.instanceIndex;
 	params.runtimeOffsetX = runtimeConfig.offsetX;
 	params.runtimeOffsetY = runtimeConfig.offsetY;
 	params.runtimeOffsetZ = runtimeConfig.offsetZ;
