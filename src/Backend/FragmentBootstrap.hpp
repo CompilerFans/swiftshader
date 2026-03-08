@@ -9,6 +9,12 @@
 
 namespace backend {
 
+enum class FragmentBootstrapShaderKind
+{
+	ConstantColor,
+	FragCoordQuadrants,
+};
+
 struct FragmentBootstrapInvocation
 {
 	uint32_t x = 0;
@@ -19,6 +25,7 @@ struct FragmentBootstrapInvocation
 
 struct FragmentBootstrapConfig
 {
+	FragmentBootstrapShaderKind shaderKind = FragmentBootstrapShaderKind::ConstantColor;
 	float colorR = 1.0f;
 	float colorG = 0.0f;
 	float colorB = 0.0f;

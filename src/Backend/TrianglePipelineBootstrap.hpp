@@ -2,6 +2,7 @@
 #define SWIFTSHADER_TRIANGLE_PIPELINE_BOOTSTRAP_HPP_
 
 #include "Device/Stream.hpp"
+#include "FragmentBootstrap.hpp"
 #include "GraphicsBootstrap.hpp"
 #include "RuntimeAPI.hpp"
 
@@ -19,6 +20,7 @@ struct TrianglePipelineBootstrapConfig
 	float colorG = 1.0f;
 	float colorB = 0.0f;
 	float colorA = 1.0f;
+	FragmentBootstrapConfig fragmentConfig = {};
 	std::vector<uint8_t> rawVertexData;
 	uint32_t vertexCount = 0;
 	GraphicsBootstrapBindingConfig binding = {};

@@ -129,14 +129,17 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	}
 
 	RasterBootstrapConfig rasterConfig = {};
-	FragmentBootstrapConfig fragmentConfig = {};
+	FragmentBootstrapConfig fragmentConfig = config.fragmentConfig;
 	rasterConfig.width = config.width;
 	rasterConfig.height = config.height;
 
-	fragmentConfig.colorR = config.colorR;
-	fragmentConfig.colorG = config.colorG;
-	fragmentConfig.colorB = config.colorB;
-	fragmentConfig.colorA = config.colorA;
+	if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::ConstantColor)
+	{
+		fragmentConfig.colorR = config.colorR;
+		fragmentConfig.colorG = config.colorG;
+		fragmentConfig.colorB = config.colorB;
+		fragmentConfig.colorA = config.colorA;
+	}
 
 	if(vsOutputs.empty() || (vsOutputs.size() % 3) != 0)
 	{

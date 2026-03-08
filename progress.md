@@ -329,3 +329,11 @@
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromMultipleTrianglesPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersMultipleTrianglesFromRawVertexData:TrianglePipelineBootstrap.BuildsConfigFromVec3PositionStream:TrianglePipelineBootstrap.BuildsConfigFromVec2PositionStream')` passed
   - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed
+- Fragment semantic bootstrap RED/GREEN:
+  - added failing backend tests requiring `FragmentBootstrap` to emit a `gl_FragCoord`-style quadrant shader and for the real CUDA runtime to write stable quadrant colors, plus an integration test requiring `TrianglePipelineBootstrap` to pass that fragment mode through to the final stage module
+  - extended `FragmentBootstrapConfig` with a minimal `shaderKind` switch, added `FragCoordQuadrants` code generation in `fs_main`, and threaded the config through `TrianglePipelineBootstrap` while keeping the old constant-color fields as the compatibility path
+  - debugged the first integration failure and found it was caused by over-aggressive triangle sample-point assumptions in the pipeline test, not by broken fragment-mode propagation; the stable integration check is now a known-covered pixel plus validation that the last compiled fragment module contains the quadrant shader body
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.EmitsFragCoordQuadrantShaderWhenRequested:FragmentBootstrap.CudaRuntimeWritesFragCoordQuadrantColors:TrianglePipelineBootstrap.CudaRuntimeAppliesFragCoordQuadrantFragmentMode')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed

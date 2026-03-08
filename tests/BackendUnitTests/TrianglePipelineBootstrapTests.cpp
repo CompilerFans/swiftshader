@@ -114,6 +114,7 @@ TEST(TrianglePipelineBootstrap, CudaRuntimeProducesGreenTriangleColorBuffer)
 {
 	backend::CudaRuntimeAPI runtime;
 	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+	backend::CudaRuntimeAPI::resetGlobalCapture();
 
 	std::vector<uint8_t> colorBuffer;
 	backend::CudaRuntimeAPI::resetGlobalCapture();
@@ -277,5 +278,27 @@ TEST(TrianglePipelineBootstrap, CudaRuntimeRendersMultipleTrianglesFromRawVertex
 	EXPECT_EQ(colorBuffer[rightInside + 1], 255u);
 	EXPECT_EQ(colorBuffer[rightInside + 2], 0u);
 	EXPECT_EQ(colorBuffer[rightInside + 3], 255u);
+}
+
+TEST(TrianglePipelineBootstrap, CudaRuntimeAppliesFragCoordQuadrantFragmentMode)
+{
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	config.width = 64u;
+	config.height = 64u;
+	config.fragmentConfig.shaderKind = backend::FragmentBootstrapShaderKind::FragCoordQuadrants;
+
+	std::vector<uint8_t> colorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, config, &colorBuffer));
+	ASSERT_EQ(colorBuffer.size(), 64u * 64u * 4u);
+
+	size_t topRightInside = ((28u * 64u) + 34u) * 4u;
+	EXPECT_EQ(colorBuffer[topRightInside + 0], 0u);
+	EXPECT_EQ(colorBuffer[topRightInside + 1], 255u);
+	EXPECT_EQ(colorBuffer[topRightInside + 2], 0u);
+	EXPECT_EQ(colorBuffer[topRightInside + 3], 255u);
+	EXPECT_NE(backend::CudaRuntimeAPI::globalLastModuleSource().find("bool left = invocation.x * 2u < params.width"), std::string::npos);
 }
 #endif

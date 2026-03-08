@@ -60,13 +60,25 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "}\n\n"
 	          "static __device__ void fs_main(FsParams params, unsigned int invocationIndex, const FragmentInvocation &invocation, unsigned char &outR, unsigned char &outG, unsigned char &outB, unsigned char &outA)\n"
 	          "{\n"
-	          "\t(void)params;\n"
-	          "\t(void)invocationIndex;\n"
-	       << "\toutR = packColor(" << literalFloat(config.colorR) << ");\n"
-	       << "\toutG = packColor(" << literalFloat(config.colorG) << ");\n"
-	       << "\toutB = packColor(" << literalFloat(config.colorB) << ");\n"
-	       << "\toutA = packColor(" << literalFloat(config.colorA) << ");\n"
-	          "}\n\n"
+	          "\t(void)invocationIndex;\n";
+	if(config.shaderKind == FragmentBootstrapShaderKind::FragCoordQuadrants)
+	{
+		source << "\tbool left = invocation.x * 2u < params.width;\n"
+		          "\tbool top = invocation.y * 2u < params.height;\n"
+		          "\toutR = left && top ? 255u : (!left && !top ? 255u : 0u);\n"
+		          "\toutG = !left && top ? 255u : (!left && !top ? 255u : 0u);\n"
+		          "\toutB = left && !top ? 255u : 0u;\n"
+		          "\toutA = 255u;\n";
+	}
+	else
+	{
+		source << "\t(void)params;\n"
+		       << "\toutR = packColor(" << literalFloat(config.colorR) << ");\n"
+		       << "\toutG = packColor(" << literalFloat(config.colorG) << ");\n"
+		       << "\toutB = packColor(" << literalFloat(config.colorB) << ");\n"
+		       << "\toutA = packColor(" << literalFloat(config.colorA) << ");\n";
+	}
+	source << "}\n\n"
 	          "extern \"C\" __global__ void fs_entry(FsParams params)\n"
 	          "{\n"
 	          "\tunsigned int invocationIndex = blockIdx.x * blockDim.x + threadIdx.x;\n"
