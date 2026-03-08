@@ -38,6 +38,12 @@ std::array<RasterBootstrapVertex, 3> toRasterVertices(const std::vector<Graphics
 	return triangle;
 }
 
+std::array<RasterBootstrapVertex, 3> toRasterVertices(const GraphicsBootstrapVertexOutput *outputs, uint32_t width, uint32_t height)
+{
+	std::vector<GraphicsBootstrapVertexOutput> triangleOutputs(outputs, outputs + 3);
+	return toRasterVertices(triangleOutputs, width, height);
+}
+
 }  // namespace
 
 bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config)
@@ -46,7 +52,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, VkPr
 	{
 		return false;
 	}
-	if(topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST || primitiveCount != 1)
+	if(topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST || primitiveCount == 0)
 	{
 		return false;
 	}
@@ -63,7 +69,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, VkPr
 
 	config->width = renderArea.extent.width;
 	config->height = renderArea.extent.height;
-	config->vertexCount = 3;
+	config->vertexCount = primitiveCount * 3;
 	config->rawVertexData.resize(positionStream.vertexStride * config->vertexCount);
 	std::memcpy(config->rawVertexData.data(), positionStream.buffer, config->rawVertexData.size());
 	config->binding.vertexStride = positionStream.vertexStride;
@@ -132,7 +138,48 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	fragmentConfig.colorB = config.colorB;
 	fragmentConfig.colorA = config.colorA;
 
-	return runRasterFragmentBootstrap(runtime, toRasterVertices(vsOutputs, config.width, config.height), rasterConfig, fragmentConfig, colorBuffer);
+	if(vsOutputs.empty() || (vsOutputs.size() % 3) != 0)
+	{
+		return false;
+	}
+
+	const size_t triangleCount = vsOutputs.size() / 3;
+	std::vector<uint8_t> accumulatedColorBuffer;
+	if(colorBuffer)
+	{
+		accumulatedColorBuffer.assign(static_cast<size_t>(config.width) * config.height * 4u, 0u);
+	}
+
+	for(size_t triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++)
+	{
+		const auto triangle = toRasterVertices(vsOutputs.data() + triangleIndex * 3, config.width, config.height);
+		std::vector<uint8_t> triangleColorBuffer;
+		if(!runRasterFragmentBootstrap(runtime, triangle, rasterConfig, fragmentConfig, colorBuffer ? &triangleColorBuffer : nullptr))
+		{
+			return false;
+		}
+
+		if(colorBuffer)
+		{
+			for(size_t i = 0; i < triangleColorBuffer.size(); i += 4)
+			{
+				if(triangleColorBuffer[i + 3] != 0u)
+				{
+					accumulatedColorBuffer[i + 0] = triangleColorBuffer[i + 0];
+					accumulatedColorBuffer[i + 1] = triangleColorBuffer[i + 1];
+					accumulatedColorBuffer[i + 2] = triangleColorBuffer[i + 2];
+					accumulatedColorBuffer[i + 3] = triangleColorBuffer[i + 3];
+				}
+			}
+		}
+	}
+
+	if(colorBuffer)
+	{
+		*colorBuffer = std::move(accumulatedColorBuffer);
+	}
+
+	return true;
 }
 
 bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer)

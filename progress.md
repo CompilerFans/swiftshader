@@ -320,3 +320,12 @@
   - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexShaderAppliesOffsetFromGlsl:DrawTest.VertexShaderAppliesOffsetFromSpirvModule:DrawTest.VertexShaderNoPositionOutput')` passed
+- Multi-triangle bootstrap RED/GREEN:
+  - added failing backend tests requiring `TrianglePipelineBootstrap` to accept two triangle-list primitives from a real `sw::Stream` and for the real CUDA runtime path to render two separated triangles from raw vertex bytes
+  - widened the narrow draw-state bridge from exactly one triangle to any positive `triangle list` primitive count, copying `primitiveCount * 3` vertices out of the bound position stream
+  - taught `runTrianglePipelineBootstrap()` to process multiple triangles by reusing the existing `VS -> Raster -> FS` bootstrap per triangle and composing the per-triangle color buffers on the host, which keeps the implementation simple while making the bootstrap path useful for future `ManySolidTriangles` work
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromMultipleTrianglesPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersMultipleTrianglesFromRawVertexData:TrianglePipelineBootstrap.BuildsConfigFromVec3PositionStream:TrianglePipelineBootstrap.BuildsConfigFromVec2PositionStream')` passed
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed

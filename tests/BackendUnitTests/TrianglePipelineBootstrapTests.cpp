@@ -80,6 +80,35 @@ TEST(TrianglePipelineBootstrap, BuildsConfigFromVec2PositionStream)
 	EXPECT_EQ(std::memcmp(config.rawVertexData.data(), vertices.data(), config.rawVertexData.size()), 0);
 }
 
+TEST(TrianglePipelineBootstrap, BuildsConfigFromMultipleTrianglesPositionStream)
+{
+	struct Vertex
+	{
+		float position[3];
+	};
+
+	const std::array<Vertex, 6> vertices = {{
+		{ { -0.9f, -0.8f, 0.0f } },
+		{ { -0.3f, 0.6f, 0.0f } },
+		{ { -0.1f, -0.8f, 0.0f } },
+		{ { 0.1f, -0.8f, 0.0f } },
+		{ { 0.3f, 0.6f, 0.0f } },
+		{ { 0.9f, -0.8f, 0.0f } },
+	}};
+
+	sw::Stream positionStream = {};
+	positionStream.buffer = vertices.data();
+	positionStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	positionStream.vertexStride = sizeof(Vertex);
+	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 2u, { { 0, 0 }, { 96, 48 } }, &config));
+	EXPECT_EQ(config.vertexCount, 6u);
+	ASSERT_EQ(config.rawVertexData.size(), sizeof(Vertex) * vertices.size());
+	EXPECT_EQ(std::memcmp(config.rawVertexData.data(), vertices.data(), config.rawVertexData.size()), 0);
+}
+
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 TEST(TrianglePipelineBootstrap, CudaRuntimeProducesGreenTriangleColorBuffer)
 {
@@ -202,5 +231,51 @@ TEST(TrianglePipelineBootstrap, CudaRuntimeUsesRawVertexDataAndBinding)
 	EXPECT_EQ(colorBuffer[shiftedInside + 1], 0u);
 	EXPECT_EQ(colorBuffer[shiftedInside + 2], 0u);
 	EXPECT_EQ(colorBuffer[shiftedInside + 3], 255u);
+}
+
+TEST(TrianglePipelineBootstrap, CudaRuntimeRendersMultipleTrianglesFromRawVertexData)
+{
+	struct Vertex
+	{
+		float position[3];
+	};
+
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	const std::array<Vertex, 6> vertices = {{
+		{ { -0.9f, -0.8f, 0.0f } },
+		{ { -0.3f, 0.6f, 0.0f } },
+		{ { -0.1f, -0.8f, 0.0f } },
+		{ { 0.1f, -0.8f, 0.0f } },
+		{ { 0.3f, 0.6f, 0.0f } },
+		{ { 0.9f, -0.8f, 0.0f } },
+	}};
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	config.width = 96u;
+	config.height = 64u;
+	config.rawVertexData.resize(sizeof(Vertex) * vertices.size());
+	std::memcpy(config.rawVertexData.data(), vertices.data(), config.rawVertexData.size());
+	config.vertexCount = static_cast<uint32_t>(vertices.size());
+	config.binding.vertexStride = sizeof(Vertex);
+	config.binding.positionOffset = 0u;
+	config.binding.positionComponentCount = 3u;
+
+	std::vector<uint8_t> colorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, config, &colorBuffer));
+	ASSERT_EQ(colorBuffer.size(), 96u * 64u * 4u);
+
+	size_t leftInside = ((44u * 96u) + 18u) * 4u;
+	EXPECT_EQ(colorBuffer[leftInside + 0], 0u);
+	EXPECT_EQ(colorBuffer[leftInside + 1], 255u);
+	EXPECT_EQ(colorBuffer[leftInside + 2], 0u);
+	EXPECT_EQ(colorBuffer[leftInside + 3], 255u);
+
+	size_t rightInside = ((44u * 96u) + 78u) * 4u;
+	EXPECT_EQ(colorBuffer[rightInside + 0], 0u);
+	EXPECT_EQ(colorBuffer[rightInside + 1], 255u);
+	EXPECT_EQ(colorBuffer[rightInside + 2], 0u);
+	EXPECT_EQ(colorBuffer[rightInside + 3], 255u);
 }
 #endif
