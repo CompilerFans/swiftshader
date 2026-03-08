@@ -75,6 +75,13 @@ Complete
 - Post-bootstrap present factory complete: present adapter selection now follows backend factory rules, and custom builds expose fake acquire/present capture.
 - Post-bootstrap graphics execution routing complete: custom builds now select an explicit custom execution backend bootstrap mode that still delegates graphics to CPU fallback cleanly.
 - Pure color triangle milestone complete: `DrawTest.SolidColorTriangle` now performs pixel readback and passes in both default and custom fast-test builds.
+- CUDA bootstrap design and implementation docs added:
+  - `docs/plans/2026-03-08-custom-gpu-cuda-bootstrap-design.md`
+  - `docs/plans/2026-03-08-custom-gpu-cuda-bootstrap-implementation.md`
+- Real CUDA bootstrap milestone in progress: the repository now has a dedicated `SWIFTSHADER_CUSTOM_GPU_USE_CUDA` build mode, `CudaCompilerDriver`, `CudaRuntimeAPI`, and an extended `RuntimeAPI` with real module/memory/launch primitives.
+- Current verified CUDA milestone: direct backend unit tests can compile CUDA-like source with `nvcc`, launch `kernel_main` through the CUDA Driver API, and read back a 32-bit device-memory result.
+- Current graphics milestone: `DrawTest.SolidColorTriangle` passes in `build-cuda-bootstrap/` when run from the build directory, and the test's stamp-file assertion confirms that the custom CUDA build performed at least one real CUDA launch during initialization.
+- Current limitation: Vulkan shared-library compute dispatch in the real CUDA build is not yet wired end-to-end and is explicitly skipped in `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp`.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.

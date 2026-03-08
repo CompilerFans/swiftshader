@@ -1,22 +1,28 @@
-#ifndef SWIFTSHADER_FAKE_RUNTIME_API_HPP_
-#define SWIFTSHADER_FAKE_RUNTIME_API_HPP_
+#ifndef SWIFTSHADER_CUDA_RUNTIME_API_HPP_
+#define SWIFTSHADER_CUDA_RUNTIME_API_HPP_
 
 #include "RuntimeAPI.hpp"
 
-#include <unordered_map>
-#include <vector>
+#include <memory>
+#include <string>
 
 namespace backend {
 
-class FakeRuntimeAPI : public RuntimeAPI
+class CudaRuntimeAPI : public RuntimeAPI
 {
 public:
+	CudaRuntimeAPI();
+	~CudaRuntimeAPI() override;
+
 	static void resetGlobalCapture();
 	static const std::string &globalLastModuleSource();
 	static const LaunchRecord &globalLastLaunch();
 	static uint32_t globalLaunchCount();
 
-	bool isHardwareBacked() const override { return false; }
+	bool isAvailable() const;
+	const std::string &initializationError() const;
+
+	bool isHardwareBacked() const override;
 	ModuleHandle createModule(const std::string &sourceOrIR) override;
 	DeviceMemoryHandle allocateMemory(size_t numBytes) override;
 	void freeMemory(DeviceMemoryHandle memory) override;
@@ -24,19 +30,13 @@ public:
 	void copyMemoryToHost(void *destination, DeviceMemoryHandle memory, size_t numBytes) override;
 	uint64_t memoryAddress(DeviceMemoryHandle memory) const override;
 	void launch(ModuleHandle module, const LaunchRecord &record, const std::vector<void *> &arguments) override;
-	void synchronize() override {}
-
-	const std::string &lastModuleSource() const { return moduleSource; }
-	const LaunchRecord &lastLaunch() const { return launchRecord; }
+	void synchronize() override;
 
 private:
-	uint64_t nextId = 1;
-	uint64_t nextMemoryId = 1;
-	std::string moduleSource;
-	LaunchRecord launchRecord = {};
-	std::unordered_map<uint64_t, std::vector<uint8_t>> allocations;
+	struct Impl;
+	std::unique_ptr<Impl> impl;
 };
 
 }  // namespace backend
 
-#endif  // SWIFTSHADER_FAKE_RUNTIME_API_HPP_
+#endif  // SWIFTSHADER_CUDA_RUNTIME_API_HPP_

@@ -263,7 +263,7 @@ VkResult Device::CreateComputePipeline(
 		0,               // basePipelineIndex
 	};
 
-	return driver->vkCreateComputePipelines(device, 0, 1, &info, 0, out);
+	return driver->vkCreateComputePipelines(device, VkPipelineCache{}, 1, &info, nullptr, out);
 }
 
 void Device::DestroyPipeline(VkPipeline pipeline) const
@@ -446,7 +446,7 @@ VkResult Device::QueueSubmitAndWait(VkCommandBuffer commandBuffer) const
 		nullptr,                        // pSignalSemaphores
 	};
 
-	VkResult result = driver->vkQueueSubmit(queue, 1, &info, VK_NULL_HANDLE);
+	VkResult result = driver->vkQueueSubmit(queue, 1, &info, VkFence{});
 	if(result != VK_SUCCESS)
 	{
 		return result;

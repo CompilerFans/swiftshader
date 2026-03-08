@@ -13,6 +13,12 @@
 // limitations under the License.
 
 #include "DrawTester.hpp"
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#	include <cstdlib>
+#	include <filesystem>
+#	include <fstream>
+#	include <unistd.h>
+#endif
 
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
@@ -20,6 +26,32 @@
 class DrawTest : public testing::Test
 {
 };
+
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+namespace {
+
+std::filesystem::path makeCudaLaunchStampPath(const char *suffix)
+{
+	return std::filesystem::temp_directory_path() / (std::string("swiftshader-cuda-launch-") + suffix + "-" + std::to_string(::getpid()) + ".log");
+}
+
+uint32_t countStampedLaunches(const std::filesystem::path &path)
+{
+	std::ifstream stream(path);
+	uint32_t count = 0;
+	std::string line;
+	while(std::getline(stream, line))
+	{
+		if(!line.empty())
+		{
+			count++;
+		}
+	}
+	return count;
+}
+
+}  // namespace
+#endif
 
 // Test that a vertex shader with no gl_Position works.
 // This was fixed in swiftshader-cl/51808
@@ -78,6 +110,11 @@ TEST_F(DrawTest, VertexShaderNoPositionOutput)
 
 TEST_F(DrawTest, SolidColorTriangle)
 {
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	auto stampPath = makeCudaLaunchStampPath("draw");
+	std::filesystem::remove(stampPath);
+	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+#endif
 	DrawTester tester;
 	tester.onCreateVertexBuffers([](DrawTester &tester) {
 		struct Vertex
@@ -130,4 +167,8 @@ TEST_F(DrawTest, SolidColorTriangle)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_GT(pixel[3], 200);
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+#endif
 }

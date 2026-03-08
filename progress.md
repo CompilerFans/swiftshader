@@ -75,4 +75,15 @@
 - Began a full custom `vk-unittests` build and intentionally preserved the partially built `build-custom/` tree to maximize incremental progress on the next pass.
 - SolidColorTriangle milestone: added swapchain readback support, introduced a dedicated `draw-unittests` target, and verified `DrawTest.SolidColorTriangle` passes in both `build-draw-subzero` and `build-draw-custom-subzero`.
 - Fast draw build path: `REACTOR_BACKEND=Subzero` plus `SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT=ON` was sufficient to get the pure-color triangle test running quickly while reusing ccache.
-
+- CUDA bootstrap RED: enabled a dedicated CUDA custom-backend build and confirmed the new runtime tests failed because `CudaRuntimeAPI` and related build wiring did not exist yet.
+- CUDA bootstrap GREEN:
+  - added `CudaCompilerDriver` and `CudaRuntimeAPI`
+  - extended `RuntimeAPI` / `FakeRuntimeAPI` with module, device-memory, and launch primitives
+  - added `SWIFTSHADER_CUSTOM_GPU_USE_CUDA`
+  - added backend runtime test coverage for real `nvcc` compilation plus Driver API execution
+- Root-cause investigation note: early draw crashes were reproduced consistently and traced to running the Vulkan test binaries from the repository root. The loader path is build-directory-relative; running from the corresponding build directory avoids the false crash symptom.
+- Validation:
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter=RuntimeAPI.CudaRuntimeCompilesLaunchesAndReadsBackDeviceMemory` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+  - `(cd build-draw-custom-subzero && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` still passed after the CUDA bootstrap changes
+- Deferred path: `(cd build-cuda-bootstrap && ./vk-unittests --gtest_filter=ComputeBackendPipelineTest.DispatchUsesFakeRuntimeWhenCustomBackendEnabled)` is currently skipped in the CUDA build because Vulkan shared-library compute dispatch is not yet integrated with the real CUDA runtime.

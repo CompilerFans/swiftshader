@@ -1,3 +1,4 @@
+#include "Backend/BackendFactory.hpp"
 #include "Backend/PresentAdapter.hpp"
 #include "Device.hpp"
 #include "Driver.hpp"

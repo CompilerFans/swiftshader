@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <vulkan/vulkan_core.h>
+#include "Vulkan/VulkanPlatform.hpp"
 
 #include <memory>
 #include <vector>

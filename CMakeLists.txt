@@ -202,6 +202,7 @@ option_if_not_defined(SWIFTSHADER_LESS_DEBUG_INFO "Generate less debug info to r
 # option_if_not_defined(SWIFTSHADER_ENABLE_VULKAN_DEBUGGER "Enable Vulkan debugger support" FALSE)  # TODO(b/251802301)
 option_if_not_defined(SWIFTSHADER_ENABLE_ASTC "Enable ASTC compressed textures support" TRUE)  # TODO(b/150130101)
 option_if_not_defined(SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND "Enable custom GPU backend scaffolding" FALSE)
+option_if_not_defined(SWIFTSHADER_CUSTOM_GPU_USE_CUDA "Enable real CUDA compiler/runtime bootstrap for the custom GPU backend" FALSE)
 option_if_not_defined(SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT "Skip SPIR-V optimizer in pipeline compilation for fast test builds" FALSE)
 
 if(SWIFTSHADER_ENABLE_VULKAN_DEBUGGER)
@@ -834,6 +835,11 @@ if(SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND)
     target_compile_definitions(vk_base INTERFACE "SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=1")
 endif()
 
+if(SWIFTSHADER_CUSTOM_GPU_USE_CUDA)
+    find_package(CUDAToolkit REQUIRED)
+    target_compile_definitions(vk_base INTERFACE "SWIFTSHADER_CUSTOM_GPU_USE_CUDA=1")
+endif()
+
 if(SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT)
     target_compile_definitions(vk_base INTERFACE "SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT=1")
 endif()
@@ -869,6 +875,7 @@ endif()
 add_subdirectory(src/System) # Add vk_system target
 add_subdirectory(src/Backend) # Add vk_backend target
 add_subdirectory(src/Pipeline) # Add vk_pipeline target
+target_link_libraries(vk_backend PUBLIC vk_pipeline)
 add_subdirectory(src/WSI) # Add vk_wsi target
 add_subdirectory(src/Device) # Add vk_device target
 add_subdirectory(src/Vulkan) # Add vk_swiftshader target

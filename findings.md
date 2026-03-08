@@ -33,6 +33,7 @@
 ## Open Questions
 - Whether ABI equivalence should be validated through textual ABI header comparison, structured metadata comparison, or both.
 - Whether quad/helper-lane semantics deserve a dedicated subsection or should extend the existing `KernelIR` section only.
+- How to thread the real CUDA runtime through the Vulkan shared-library compute path without stalling queue submission.
 
 ## Relevant Files
 - `docs/plans/2026-03-07-cuda-vulkan-icd-design.md`
@@ -42,3 +43,16 @@
 - `src/Vulkan/VkCommandBuffer.hpp`
 - `src/WSI/VkSurfaceKHR.hpp`
 - `README.md`
+- `docs/plans/2026-03-08-custom-gpu-cuda-bootstrap-design.md`
+- `docs/plans/2026-03-08-custom-gpu-cuda-bootstrap-implementation.md`
+- `src/Backend/CudaCompilerDriver.hpp`
+- `src/Backend/CudaCompilerDriver.cpp`
+- `src/Backend/CudaRuntimeAPI.hpp`
+- `src/Backend/CudaRuntimeAPI.cpp`
+- `tests/BackendUnitTests/RuntimeAPITests.cpp`
+- `tests/VulkanUnitTests/DrawTests.cpp`
+
+## New Findings
+- The custom GPU backend can now use the host machine's real CUDA toolchain: `nvcc` is available at `/usr/local/cuda/bin/nvcc`, `libcuda.so.1` is visible through the system loader, and a visible GPU is present.
+- Driver API dynamic loading must prefer versioned symbols such as `cuMemAlloc_v2`, `cuMemFree_v2`, `cuMemcpyHtoD_v2`, and `cuMemcpyDtoH_v2`. Using the unversioned names led to `CUDA_ERROR_INVALID_CONTEXT` during the first real runtime tests.
+- Vulkan wrapper tests that rely on the generated SwiftShader ICD must be run from their corresponding build directories. Running them from the repository root produces misleading loader failures and false crash symptoms.

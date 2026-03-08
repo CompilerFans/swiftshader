@@ -38,7 +38,7 @@ void ComputeExecutable::dispatch(RuntimeAPI &runtime, const ComputeDispatchInfo 
 	record.groupCountZ = dispatchInfo.groupCountZ;
 	record.bindingCount = dispatchInfo.bindingCount;
 	record.argumentWords = dispatchInfo.argumentWords;
-	runtime.launch(ensureModule(runtime), record);
+	runtime.launch(ensureModule(runtime), record, {});
 }
 
 }  // namespace backend
