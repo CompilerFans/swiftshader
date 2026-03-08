@@ -56,13 +56,9 @@ std::unique_ptr<PresentAdapter> createFallbackPresentAdapter()
 	return std::make_unique<FallbackPresentAdapter>();
 }
 
-std::unique_ptr<PresentAdapter> createPresentAdapter()
+std::unique_ptr<PresentAdapter> createCustomPresentAdapter()
 {
-#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND
 	return std::make_unique<FakePresentAdapter>();
-#else
-	return createFallbackPresentAdapter();
-#endif
 }
 
 void resetPresentAdapterCapture()

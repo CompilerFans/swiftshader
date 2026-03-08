@@ -24,6 +24,7 @@ swiftshader_source_set("Backend") {
     "GraphicsBackend.cpp",
     "PresentAdapter.cpp",
     "ExecutionBackend.cpp",
+    "ExecutionBackendFactory.cpp",
     "ResourceStateTracker.cpp",
     "RuntimeAPI.cpp",
   ]

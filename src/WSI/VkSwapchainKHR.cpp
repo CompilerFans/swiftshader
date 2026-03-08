@@ -14,6 +14,8 @@
 
 #include "VkSwapchainKHR.hpp"
 
+#include "Backend/BackendFactory.hpp"
+
 #include "Vulkan/VkDeviceMemory.hpp"
 #include "Vulkan/VkFence.hpp"
 #include "Vulkan/VkImage.hpp"

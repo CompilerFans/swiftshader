@@ -13,6 +13,7 @@ set(BACKEND_SRC_FILES
     FakeRuntimeAPI.hpp
     BackendFactory.hpp
     ExecutionBackend.cpp
+    ExecutionBackendFactory.cpp
     ResourceStateTracker.cpp
     ResourceStateTracker.hpp
     RuntimeAPI.cpp

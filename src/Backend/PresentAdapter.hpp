@@ -27,7 +27,7 @@ public:
 };
 
 std::unique_ptr<PresentAdapter> createFallbackPresentAdapter();
-std::unique_ptr<PresentAdapter> createPresentAdapter();
+std::unique_ptr<PresentAdapter> createCustomPresentAdapter();
 
 void resetPresentAdapterCapture();
 const PresentAdapterCapture &lastPresentAdapterCapture();

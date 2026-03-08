@@ -67,4 +67,6 @@
 - Final evidence: default build passed all 15 backend tests; custom build passed focused `BackendFactory`, `GraphicsBootstrapMode`, `RuntimeAPI`, `ComputeDispatchValidation`, and `PresentAdapterFactory` tests; Vulkan-side smoke and selection files compiled successfully.
 - Structural cleanup milestone: centralized execution-backend selection in `BackendFactory`, removing one more backend-selection decision from `VkQueue.cpp`.
 - Validation: `src/Vulkan/VkQueue.cpp` compiled successfully after the factory move.
+- Factory cleanup milestone: `PresentAdapter` selection now also routes through `BackendFactory`, making runtime, execution, and present selection follow one backend decision surface.
+- Validation: default build passed `PresentAdapterFactory.*:GraphicsBootstrapMode.*`, and custom build passed the same filters including custom present capture.
 
