@@ -223,6 +223,14 @@
   - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.FragmentShaderUsesFragCoordQuadrantColors)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFragCoordQuadrantColors:DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles')` passed
+- FragCoord quadrant triangle draw RED/GREEN:
+  - added a second fragment-position test that keeps the same quadrant-color fragment shader but switches geometry to an ordinary triangle
+  - the first version failed because the upper sample points were outside the triangle and because background color is not stable under the current `DrawTester` attachment load op
+  - fixed the test by moving upper sample points into the triangle's actual top-half coverage and dropping the invalid background assertion, while keeping BMP export as `draw-test-artifacts/fragcoord-quadrant-triangle.bmp`
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle:DrawTest.FragmentShaderUsesFragCoordQuadrantColors:DrawTest.SolidColorTriangle')` passed
 - Minimal SPIR-V vertex lowering RED/GREEN:
   - added failing backend tests that require `SemanticIRBuilder` to preserve minimal vertex lowering metadata, lower it into `KernelIR`, and emit a vertex-style CUDA wrapper/body instead of the placeholder `kernel_main`
   - added a minimal `VertexLoweringInfo` model shared by `SemanticIR` and `KernelIR`, plus a lightweight `lowerToKernelIR()` bridge so the new path is not stuck at raw metadata storage
