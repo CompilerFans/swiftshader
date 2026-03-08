@@ -84,6 +84,7 @@ public:
 
 	// Call from doCreateFragmentShader()
 	vk::ShaderModule createShaderModule(const char *glslSource, EShLanguage glslLanguage);
+	vk::ShaderModule createShaderModule(const std::vector<uint32_t> &spirv);
 
 	// Call from doCreateVertexBuffers()
 	template<typename VertexType>

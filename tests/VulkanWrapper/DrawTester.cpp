@@ -541,6 +541,11 @@ vk::ShaderModule DrawTester::createShaderModule(const char *glslSource, EShLangu
 {
 	auto spirv = Util::compileGLSLtoSPIRV(glslSource, glslLanguage);
 
+	return createShaderModule(spirv);
+}
+
+vk::ShaderModule DrawTester::createShaderModule(const std::vector<uint32_t> &spirv)
+{
 	vk::ShaderModuleCreateInfo moduleCreateInfo;
 	moduleCreateInfo.codeSize = spirv.size() * sizeof(uint32_t);
 	moduleCreateInfo.pCode = (uint32_t *)spirv.data();

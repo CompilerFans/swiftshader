@@ -200,6 +200,14 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='SpirvToSemanticIR.PreservesMinimalVertexLoweringInfo:SpirvToSemanticIR.ExtractsMinimalVertexLoweringInfoFromSpirvBinary:SpirvToSemanticIR.ExtractsVec2PositionAttributeComponentCountFromSpirvBinary:KernelIR.LowersMinimalVertexSemanticInfo:CodegenEmitter.EmitsVertexStageCudaLikeSource:CodegenEmitter.EmitsVec2VertexInputFallbackForMissingZ')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+- Vulkan runtime vertex-validation RED/GREEN:
+  - added a GLSL vertex-offset draw test and an explicit SPIR-V module draw test to `DrawTest`, so the VS milestone now includes a small runtime-facing test set instead of stopping at backend-only lowering tests
+  - introduced `DrawTester::createShaderModule(const std::vector<uint32_t>&)` as the minimal helper needed to keep explicit SPIR-V runtime tests on the same draw harness
+  - used a `vec2` position input in the SPIR-V-module test so the runtime-side validation also covers a non-`vec3` vertex attribute layout
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexShaderAppliesOffsetFromGlsl:DrawTest.VertexShaderAppliesOffsetFromSpirvModule')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexShaderNoPositionOutput:DrawTest.VertexShaderAppliesOffsetFromGlsl:DrawTest.VertexShaderAppliesOffsetFromSpirvModule:DrawTest.SolidColorTriangle')` passed
 - Minimal SPIR-V vertex lowering RED/GREEN:
   - added failing backend tests that require `SemanticIRBuilder` to preserve minimal vertex lowering metadata, lower it into `KernelIR`, and emit a vertex-style CUDA wrapper/body instead of the placeholder `kernel_main`
   - added a minimal `VertexLoweringInfo` model shared by `SemanticIR` and `KernelIR`, plus a lightweight `lowerToKernelIR()` bridge so the new path is not stuck at raw metadata storage
