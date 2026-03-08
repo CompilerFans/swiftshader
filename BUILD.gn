@@ -28,6 +28,10 @@ config("swiftshader_config") {
       defines += [ "DEBUGGER_WAIT_DIALOG" ]
     }
   }
+
+  if (swiftshader_enable_custom_gpu_backend) {
+    defines += [ "SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=1" ]
+  }
   if (is_win) {
     # Disable MSVC warnings about std::aligned_storage being broken before
     # VS 2017 15.8

@@ -28,6 +28,9 @@ declare_args() {
 
   # Enable the ASTC codec sources from ARM
   swiftshader_enable_astc = true
+
+  # Enable custom GPU backend scaffolding
+  swiftshader_enable_custom_gpu_backend = false
 }
 
 configs_to_add = []

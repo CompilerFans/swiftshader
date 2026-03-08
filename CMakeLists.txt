@@ -201,6 +201,7 @@ option_if_not_defined(REACTOR_VERIFY_LLVM_IR "Check reactor-generated LLVM IR is
 option_if_not_defined(SWIFTSHADER_LESS_DEBUG_INFO "Generate less debug info to reduce file size" FALSE)
 # option_if_not_defined(SWIFTSHADER_ENABLE_VULKAN_DEBUGGER "Enable Vulkan debugger support" FALSE)  # TODO(b/251802301)
 option_if_not_defined(SWIFTSHADER_ENABLE_ASTC "Enable ASTC compressed textures support" TRUE)  # TODO(b/150130101)
+option_if_not_defined(SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND "Enable custom GPU backend scaffolding" FALSE)
 
 if(SWIFTSHADER_ENABLE_VULKAN_DEBUGGER)
     set(SWIFTSHADER_BUILD_CPPDAP TRUE)
@@ -826,6 +827,10 @@ add_library(vk_base INTERFACE)
 
 if(SWIFTSHADER_ENABLE_VULKAN_DEBUGGER)
     target_compile_definitions(vk_base INTERFACE "ENABLE_VK_DEBUGGER")
+endif()
+
+if(SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND)
+    target_compile_definitions(vk_base INTERFACE "SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=1")
 endif()
 
 if(WIN32)

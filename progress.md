@@ -47,4 +47,9 @@
 - Task 11 RED: added `GraphicsBackendSelectionTests.cpp` and confirmed the graphics backend stub API did not exist yet.
 - Task 11 GREEN: extracted CPU graphics/execute logic from `VkQueue.cpp` into `src/Backend/GraphicsBackend.hpp` and `src/Backend/CpuExecutionBackend.cpp`, preserving CPU behavior as the default path.
 - Validation: `src/Backend/CpuExecutionBackend.cpp`, `src/Vulkan/VkQueue.cpp`, and `tests/VulkanUnitTests/GraphicsBackendSelectionTests.cpp` all compiled successfully with target-equivalent include sets.
+- Task 12 RED: added `PresentAdapterTests.cpp` and confirmed the build failed because `PresentAdapter.hpp` was missing.
+- Task 12 GREEN: added `PresentAdapter`, integrated it into `SwapchainKHR`, and threaded acquire/present transitions through `ResourceStateTracker`.
+- Validation: `tests/VulkanUnitTests/PresentAdapterTests.cpp` and `src/WSI/VkSwapchainKHR.cpp` compiled successfully.
+- Task 13 GREEN: added `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND` CMake/GN configuration, documented bring-up in `docs/BackendBringup.md`, and added a presubmit custom-backend configure smoke check.
+- Validation: `cmake -S . -B build-custom -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON -DSWIFTSHADER_BUILD_TESTS=OFF && cmake --build build-custom --target vk_backend --parallel 1` passed.
 

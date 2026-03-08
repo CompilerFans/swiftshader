@@ -66,6 +66,8 @@ Implementation - Task 1 complete
 - Task 9 complete: compute backend executable bootstrap and fake dispatch validation added.
 - Task 10 complete: logical resource state tracker added and threaded into execution state.
 - Task 11 complete: graphics backend stub extracted with CPU default implementation.
+- Task 12 complete: fallback present adapter integrated into swapchain acquire/present flow.
+- Task 13 complete: custom-backend build flags, presubmit smoke config, and bring-up doc added.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.
