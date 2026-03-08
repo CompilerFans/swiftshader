@@ -45,6 +45,7 @@ struct GraphicsBootstrapBindingConfig
 {
 	uint32_t vertexStride = sizeof(GraphicsBootstrapVertexInput);
 	uint32_t positionOffset = 0;
+	uint32_t positionComponentCount = 3;
 };
 
 std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &config = {});

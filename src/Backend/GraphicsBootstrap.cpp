@@ -14,6 +14,7 @@ struct BootstrapVsParams
 	uint32_t vertexCount = 0;
 	uint32_t vertexStride = 0;
 	uint32_t positionOffset = 0;
+	uint32_t positionComponentCount = 3;
 	uint32_t instanceIndex = 0;
 	float runtimeOffsetX = 0.0f;
 	float runtimeOffsetY = 0.0f;
@@ -75,6 +76,7 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "\tunsigned int vertexCount;\n"
 	          "\tunsigned int vertexStride;\n"
 	          "\tunsigned int positionOffset;\n"
+	          "\tunsigned int positionComponentCount;\n"
 	          "\tunsigned int instanceIndex;\n"
 	          "\tfloat runtimeOffsetX;\n"
 	          "\tfloat runtimeOffsetY;\n"
@@ -96,7 +98,8 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "\t}\n\n"
 	          "\tconst unsigned char *vertexBase = params.vertexData + vertexIndex * params.vertexStride + params.positionOffset;\n"
 	          "\tconst float *position = reinterpret_cast<const float *>(vertexBase);\n"
-	          "\tVertexInput inVertex = { position[0], position[1], position[2] };\n"
+	          "\tfloat z = params.positionComponentCount > 2 ? position[2] : 0.0f;\n"
+	          "\tVertexInput inVertex = { position[0], position[1], z };\n"
 	          "\tVertexOutput outVertex = {};\n"
 	          "\tvs_main(params, vertexIndex, inVertex, outVertex);\n"
 	          "\tparams.outVertices[vertexIndex] = outVertex;\n"
@@ -144,6 +147,10 @@ bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<uint8_t> &rawVe
 	{
 		return false;
 	}
+	if(bindingConfig.positionComponentCount < 2 || bindingConfig.positionComponentCount > 3)
+	{
+		return false;
+	}
 
 	auto inputMemory = runtime.allocateMemory(rawVertexData.size());
 	auto outputMemory = runtime.allocateMemory(sizeof(GraphicsBootstrapVertexOutput) * vertexCount);
@@ -168,6 +175,7 @@ bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<uint8_t> &rawVe
 	params.vertexCount = vertexCount;
 	params.vertexStride = bindingConfig.vertexStride;
 	params.positionOffset = bindingConfig.positionOffset;
+	params.positionComponentCount = bindingConfig.positionComponentCount;
 	params.instanceIndex = runtimeConfig.instanceIndex;
 	params.runtimeOffsetX = runtimeConfig.offsetX;
 	params.runtimeOffsetY = runtimeConfig.offsetY;

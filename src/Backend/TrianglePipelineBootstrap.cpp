@@ -5,10 +5,24 @@
 #include "RasterBootstrap.hpp"
 
 #include <array>
+#include <cstring>
 #include <vector>
 
 namespace backend {
 namespace {
+uint32_t positionComponentCount(VkFormat format)
+{
+	switch(format)
+	{
+	case VK_FORMAT_R32G32_SFLOAT:
+		return 2;
+	case VK_FORMAT_R32G32B32_SFLOAT:
+		return 3;
+	default:
+		return 0;
+	}
+}
+
 std::array<RasterBootstrapVertex, 3> toRasterVertices(const std::vector<GraphicsBootstrapVertexOutput> &outputs, uint32_t width, uint32_t height)
 {
 	std::array<RasterBootstrapVertex, 3> triangle = {};
@@ -25,6 +39,38 @@ std::array<RasterBootstrapVertex, 3> toRasterVertices(const std::vector<Graphics
 }
 
 }  // namespace
+
+bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config)
+{
+	if(config == nullptr || positionStream.buffer == nullptr)
+	{
+		return false;
+	}
+	if(topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST || primitiveCount != 1)
+	{
+		return false;
+	}
+	if(positionStream.inputRate != VK_VERTEX_INPUT_RATE_VERTEX || positionStream.vertexStride == 0)
+	{
+		return false;
+	}
+
+	const uint32_t componentCount = positionComponentCount(positionStream.format);
+	if(componentCount == 0)
+	{
+		return false;
+	}
+
+	config->width = renderArea.extent.width;
+	config->height = renderArea.extent.height;
+	config->vertexCount = 3;
+	config->rawVertexData.resize(positionStream.vertexStride * config->vertexCount);
+	std::memcpy(config->rawVertexData.data(), positionStream.buffer, config->rawVertexData.size());
+	config->binding.vertexStride = positionStream.vertexStride;
+	config->binding.positionOffset = 0;
+	config->binding.positionComponentCount = componentCount;
+	return true;
+}
 
 bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBootstrapConfig &config, std::vector<uint8_t> *colorBuffer)
 {
@@ -63,7 +109,8 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		{
 			const uint8_t *vertexBase = config.rawVertexData.data() + i * config.binding.vertexStride + config.binding.positionOffset;
 			const float *position = reinterpret_cast<const float *>(vertexBase);
-			vsOutputs[i] = { position[0], position[1], position[2], 1.0f };
+			float z = config.binding.positionComponentCount > 2 ? position[2] : 0.0f;
+			vsOutputs[i] = { position[0], position[1], z, 1.0f };
 		}
 	}
 	else
@@ -86,6 +133,17 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	fragmentConfig.colorA = config.colorA;
 
 	return runRasterFragmentBootstrap(runtime, toRasterVertices(vsOutputs, config.width, config.height), rasterConfig, fragmentConfig, colorBuffer);
+}
+
+bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer)
+{
+	TrianglePipelineBootstrapConfig config = {};
+	if(!buildTrianglePipelineBootstrapConfig(positionStream, topology, primitiveCount, renderArea, &config))
+	{
+		return false;
+	}
+
+	return runTrianglePipelineBootstrap(runtime, config, colorBuffer);
 }
 
 bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, std::vector<uint8_t> *colorBuffer)

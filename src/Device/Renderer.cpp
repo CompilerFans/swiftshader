@@ -14,6 +14,7 @@
 
 #include "Renderer.hpp"
 
+#include "Backend/TrianglePipelineBootstrap.hpp"
 #include "Clipper.hpp"
 #include "Polygon.hpp"
 #include "Primitive.hpp"
@@ -336,6 +337,18 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 		data->scissorX1 = clamp<int>(scissor.offset.x + scissor.extent.width, x0, x1);
 		data->scissorY0 = clamp<int>(scissor.offset.y, y0, y1);
 		data->scissorY1 = clamp<int>(scissor.offset.y + scissor.extent.height, y0, y1);
+	}
+
+	if(!customGraphicsBootstrapDone && !hasRasterizerDiscard)
+	{
+		if(auto *runtime = device->getRuntimeAPI())
+		{
+			if(runtime->isHardwareBacked() &&
+			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), draw->topology, count, renderArea, nullptr))
+			{
+				customGraphicsBootstrapDone = true;
+			}
+		}
 	}
 
 	if(!hasRasterizerDiscard)

@@ -240,6 +240,7 @@ private:
 	PixelProcessor::RoutineType pixelRoutine;
 
 	vk::Device *device;
+	bool customGraphicsBootstrapDone = false;
 };
 
 }  // namespace sw

@@ -113,3 +113,4 @@ Complete
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.
+- Current draw-state bridge milestone: `TrianglePipelineBootstrap` now has a narrow real-draw bridge from `sw::Stream` for `triangle list + one primitive`, and `Renderer::draw()` uses it to trigger the first hardware-backed `VS -> Raster -> FS` bootstrap from actual bound vertex bytes instead of a queue-time hard-coded triangle.

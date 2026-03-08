@@ -17,7 +17,6 @@ public:
 
 	void submit(vk::Device *device, vk::SubmitInfo &submitInfo, sw::CountedEvent *events) override
 	{
-		bootstrapGraphicsPath();
 		cpuBackend->submit(device, submitInfo, events);
 	}
 
@@ -31,20 +30,8 @@ public:
 	}
 
 private:
-	void bootstrapGraphicsPath()
-	{
-		if(graphicsBootstrapDone || runtime == nullptr)
-		{
-			return;
-		}
-
-		graphicsBootstrapDone = true;
-		launchTrianglePipelineBootstrap(*runtime);
-	}
-
 	std::unique_ptr<ExecutionBackend> cpuBackend;
 	RuntimeAPI *runtime = nullptr;
-	bool graphicsBootstrapDone = false;
 };
 
 }  // namespace

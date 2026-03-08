@@ -310,3 +310,13 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+- Draw-state triangle bootstrap RED/GREEN:
+  - added failing backend tests requiring `TrianglePipelineBootstrap` to build a config directly from a real `sw::Stream`, preserving raw vertex bytes and distinguishing `vec3` vs `vec2` position formats
+  - extended `GraphicsBootstrapBindingConfig` with `positionComponentCount`, taught the generated CUDA `vs_entry` wrapper to zero-fill `z` for `vec2` positions, and added a narrow `buildTrianglePipelineBootstrapConfig()` bridge for `triangle list + one primitive`
+  - moved the first graphics-side CUDA bootstrap trigger from queue submission into `Renderer::draw()`, so the first supported real draw now feeds its bound vertex stream into `VS -> Raster -> FS` bootstrap instead of launching a hard-coded queue-time triangle
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromVec3PositionStream:TrianglePipelineBootstrap.BuildsConfigFromVec2PositionStream:TrianglePipelineBootstrap.FakeRuntimeLaunchesThreeStages')` passed
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexShaderAppliesOffsetFromGlsl:DrawTest.VertexShaderAppliesOffsetFromSpirvModule:DrawTest.VertexShaderNoPositionOutput')` passed

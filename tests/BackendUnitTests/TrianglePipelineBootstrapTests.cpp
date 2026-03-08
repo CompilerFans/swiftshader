@@ -1,5 +1,6 @@
 #include "Backend/FakeRuntimeAPI.hpp"
 #include "Backend/TrianglePipelineBootstrap.hpp"
+#include "Device/Stream.hpp"
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 #	include "Backend/CudaRuntimeAPI.hpp"
 #endif
@@ -16,6 +17,67 @@ TEST(TrianglePipelineBootstrap, FakeRuntimeLaunchesThreeStages)
 
 	EXPECT_EQ(backend::FakeRuntimeAPI::globalLaunchCount(), 3u);
 	EXPECT_NE(backend::FakeRuntimeAPI::globalLastModuleSource().find("struct FsParams"), std::string::npos);
+}
+
+TEST(TrianglePipelineBootstrap, BuildsConfigFromVec3PositionStream)
+{
+	struct Vertex
+	{
+		float position[3];
+		float padding;
+	};
+
+	const std::array<Vertex, 3> vertices = {{
+		{ { -0.5f, -0.25f, 0.0f }, 10.0f },
+		{ { 0.0f, 0.75f, 0.0f }, 20.0f },
+		{ { 0.5f, -0.25f, 0.0f }, 30.0f },
+	}};
+
+	sw::Stream positionStream = {};
+	positionStream.buffer = vertices.data();
+	positionStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	positionStream.vertexStride = sizeof(Vertex);
+	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 1u, { { 0, 0 }, { 96, 48 } }, &config));
+	EXPECT_EQ(config.width, 96u);
+	EXPECT_EQ(config.height, 48u);
+	EXPECT_EQ(config.vertexCount, 3u);
+	EXPECT_EQ(config.binding.vertexStride, sizeof(Vertex));
+	EXPECT_EQ(config.binding.positionOffset, 0u);
+	EXPECT_EQ(config.binding.positionComponentCount, 3u);
+	ASSERT_EQ(config.rawVertexData.size(), sizeof(Vertex) * vertices.size());
+	EXPECT_EQ(std::memcmp(config.rawVertexData.data(), vertices.data(), config.rawVertexData.size()), 0);
+}
+
+TEST(TrianglePipelineBootstrap, BuildsConfigFromVec2PositionStream)
+{
+	struct Vertex
+	{
+		uint32_t tag;
+		float position[2];
+		uint32_t tail;
+	};
+
+	const std::array<Vertex, 3> vertices = {{
+		{ 1u, { -0.5f, -0.25f }, 11u },
+		{ 2u, { 0.0f, 0.75f }, 22u },
+		{ 3u, { 0.5f, -0.25f }, 33u },
+	}};
+
+	sw::Stream positionStream = {};
+	positionStream.buffer = vertices.data();
+	positionStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	positionStream.vertexStride = sizeof(Vertex);
+	positionStream.format = VK_FORMAT_R32G32_SFLOAT;
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 1u, { { 0, 0 }, { 64, 64 } }, &config));
+	EXPECT_EQ(config.vertexCount, 3u);
+	EXPECT_EQ(config.binding.positionComponentCount, 2u);
+	ASSERT_EQ(config.rawVertexData.size(), sizeof(Vertex) * vertices.size());
+	EXPECT_EQ(std::memcmp(config.rawVertexData.data(), vertices.data(), config.rawVertexData.size()), 0);
 }
 
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
