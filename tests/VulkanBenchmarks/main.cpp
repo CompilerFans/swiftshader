@@ -12,6 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "BenchmarkEnvironment.hpp"
 #include "benchmark/benchmark.h"
 
-BENCHMARK_MAIN();
+int main(int argc, char **argv)
+{
+	benchmarkutil::configureRuntimeEnvironment();
+
+	benchmark::Initialize(&argc, argv);
+	if(benchmark::ReportUnrecognizedArguments(argc, argv))
+	{
+		return 1;
+	}
+
+	benchmark::RunSpecifiedBenchmarks();
+	benchmark::Shutdown();
+	return 0;
+}

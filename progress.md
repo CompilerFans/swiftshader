@@ -185,6 +185,14 @@
   - `(cd build-cuda-bootstrap && ./VulkanBenchmarks --benchmark_filter='ManySolidTriangles' --benchmark_min_time=0.01s)` passed and printed `fps`, `triangle_count`, and `case=ManySolidTriangles,backend=cpu,mode=headless`
   - `cmake --build build-cuda-bootstrap --target draw-fps-observer --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./draw-fps-observer --case=solid --seconds=2)` passed and printed a live `window_fps` line
+- FPS observer/benchmark output cleanup:
+  - reproduced the unwanted CUDA source dump in both `draw-fps-observer` and `VulkanBenchmarks`, then traced it to a macro-propagation gap: the standalone benchmark executables did not compile with `SWIFTSHADER_CUSTOM_GPU_USE_CUDA`, so their local `setenv()` suppression path was compiled out
+  - fixed the root cause by adding a shared benchmark-runtime environment helper and invoking it unconditionally from both benchmark entrypoints before any Vulkan setup
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target VulkanBenchmarks draw-fps-observer --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./VulkanBenchmarks --benchmark_filter='ManySolidTriangles' --benchmark_min_time=0.01s | tail -n 8)` passed without CUDA source dumps and printed `fps` / `triangle_count`
+  - `(cd build-cuda-bootstrap && ./draw-fps-observer --case=solid --seconds=2 | tail -n 4)` passed without CUDA source dumps
+  - `(cd build-cuda-bootstrap && ./draw-fps-observer --case=many --triangles=1024 --seconds=2 | tail -n 4)` passed and printed `window_fps ... case=ManySolidTriangles`
 - Minimal SPIR-V vertex lowering RED/GREEN:
   - added failing backend tests that require `SemanticIRBuilder` to preserve minimal vertex lowering metadata, lower it into `KernelIR`, and emit a vertex-style CUDA wrapper/body instead of the placeholder `kernel_main`
   - added a minimal `VertexLoweringInfo` model shared by `SemanticIR` and `KernelIR`, plus a lightweight `lowerToKernelIR()` bridge so the new path is not stuck at raw metadata storage

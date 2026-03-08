@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "BenchmarkEnvironment.hpp"
 #include "DrawTester.hpp"
 
 #include <algorithm>
@@ -189,10 +190,7 @@ int main(int argc, char **argv)
 		}
 	}
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
-	::setenv("SWIFTSHADER_CUDA_DUMP_SOURCE", "0", 1);
-	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
-#endif
+	benchmarkutil::configureRuntimeEnvironment();
 
 	DrawTester tester;
 	if(whichCase == ObserverCase::Many)
