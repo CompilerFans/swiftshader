@@ -153,3 +153,10 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*:RuntimeAPI.CudaRuntimeLaunchesCustomEntrypoint)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+- Bootstrap execution RED/GREEN:
+  - added a failing backend unit test that requires `GraphicsBootstrap` to execute three vertices on the real CUDA runtime and read back the outputs
+  - added `runGraphicsBootstrap()` plus public bootstrap input/output structs so the helper can launch a real `vs_entry` kernel and copy results back
+  - changed `launchGraphicsBootstrap()` from a zero-vertex launch to a real three-vertex bootstrap triangle while still discarding the outputs in the draw path
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed

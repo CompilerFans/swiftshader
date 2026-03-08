@@ -4,21 +4,10 @@
 
 namespace backend {
 namespace {
-
-struct BootstrapVertexInput
-{
-	float position[3];
-};
-
-struct BootstrapVertexOutput
-{
-	float position[4];
-};
-
 struct BootstrapVsParams
 {
-	const BootstrapVertexInput *inVertices = nullptr;
-	BootstrapVertexOutput *outVertices = nullptr;
+	const GraphicsBootstrapVertexInput *inVertices = nullptr;
+	GraphicsBootstrapVertexOutput *outVertices = nullptr;
 	uint32_t vertexCount = 0;
 };
 
@@ -77,16 +66,22 @@ extern "C" __global__ void vs_entry(VsParams params)
 )";
 }
 
-void launchGraphicsBootstrap(RuntimeAPI &runtime)
+bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstrapVertexInput> &inputs, std::vector<GraphicsBootstrapVertexOutput> *outputs)
 {
 	auto module = runtime.createModule(graphicsBootstrapCudaSource(), "vs_entry");
 	if(!module.valid())
 	{
-		return;
+		return false;
 	}
 
-	auto inputMemory = runtime.allocateMemory(sizeof(BootstrapVertexInput));
-	auto outputMemory = runtime.allocateMemory(sizeof(BootstrapVertexOutput));
+	size_t vertexCount = inputs.size();
+	if(vertexCount == 0)
+	{
+		return false;
+	}
+
+	auto inputMemory = runtime.allocateMemory(sizeof(GraphicsBootstrapVertexInput) * vertexCount);
+	auto outputMemory = runtime.allocateMemory(sizeof(GraphicsBootstrapVertexOutput) * vertexCount);
 	if(!inputMemory.valid() || !outputMemory.valid())
 	{
 		if(outputMemory.valid())
@@ -97,29 +92,48 @@ void launchGraphicsBootstrap(RuntimeAPI &runtime)
 		{
 			runtime.freeMemory(inputMemory);
 		}
-		return;
+		return false;
 	}
 
-	BootstrapVertexInput input = {};
-	runtime.copyHostToMemory(inputMemory, &input, sizeof(input));
+	runtime.copyHostToMemory(inputMemory, inputs.data(), sizeof(GraphicsBootstrapVertexInput) * vertexCount);
 
 	BootstrapVsParams params = {};
-	params.inVertices = reinterpret_cast<const BootstrapVertexInput *>(static_cast<uintptr_t>(runtime.memoryAddress(inputMemory)));
-	params.outVertices = reinterpret_cast<BootstrapVertexOutput *>(static_cast<uintptr_t>(runtime.memoryAddress(outputMemory)));
+	params.inVertices = reinterpret_cast<const GraphicsBootstrapVertexInput *>(static_cast<uintptr_t>(runtime.memoryAddress(inputMemory)));
+	params.outVertices = reinterpret_cast<GraphicsBootstrapVertexOutput *>(static_cast<uintptr_t>(runtime.memoryAddress(outputMemory)));
+	params.vertexCount = static_cast<uint32_t>(vertexCount);
 	std::vector<void *> arguments = { &params };
 
 	LaunchRecord record = {};
 	record.groupCountX = 1;
 	record.groupCountY = 1;
 	record.groupCountZ = 1;
-	record.blockCountX = 1;
+	record.blockCountX = static_cast<uint32_t>(vertexCount);
 	record.blockCountY = 1;
 	record.blockCountZ = 1;
 	record.argumentCount = arguments.size();
 	runtime.launch(module, record, arguments);
+	runtime.synchronize();
+
+	if(outputs)
+	{
+		outputs->resize(vertexCount);
+		runtime.copyMemoryToHost(outputs->data(), outputMemory, sizeof(GraphicsBootstrapVertexOutput) * vertexCount);
+	}
 
 	runtime.freeMemory(outputMemory);
 	runtime.freeMemory(inputMemory);
+	return true;
+}
+
+void launchGraphicsBootstrap(RuntimeAPI &runtime)
+{
+	static const std::vector<GraphicsBootstrapVertexInput> kBootstrapTriangle = {
+		{ -0.5f, -0.25f, 0.0f },
+		{ 0.0f, 0.75f, 0.0f },
+		{ 0.5f, -0.25f, 0.0f },
+	};
+
+	runGraphicsBootstrap(runtime, kBootstrapTriangle, nullptr);
 }
 
 }  // namespace backend
