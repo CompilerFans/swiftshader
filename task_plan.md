@@ -96,6 +96,7 @@ Complete
 - Current instance-builtin milestone: generated `vs_main` now supports a minimal `gl_InstanceIndex`-style term on `y`, proving a second wrapper-supplied builtin can flow through emitted CUDA source and runtime execution.
 - Current minimal SPIR-V vertex-lowering milestone: `SemanticIRBuilder` can now extract `Location 0`, `BuiltIn VertexIndex`, and `BuiltIn InstanceIndex` from a real `SpirvBinary`, `lowerToKernelIR()` carries that metadata forward, and `emitCudaLikeSource()` can emit a vertex-style CUDA wrapper/body from the lowered result.
 - Accepted VS completion gate: before starting raster/fragment follow-up work, vertex bring-up must finish minimal builtin support, minimal attribute/binding lowering, minimal `SPIR-V -> CUDA-like source` vertex lowering, and a small set of Vulkan-runtime vertex tests sourced from GLSL or SPIR-V.
+- Accepted performance observation gate: after the VS gate, establish CPU-only draw-performance baselines for `SolidColorTriangle` and `ManySolidTriangles`, plus a window-visible FPS observer, and require the future GPU draw path to reuse the same scenes for CPU/GPU comparison before broader feature expansion continues.
 - Current limitation: Vulkan shared-library compute dispatch in the real CUDA build is not yet wired end-to-end and is explicitly skipped in `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp`.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.

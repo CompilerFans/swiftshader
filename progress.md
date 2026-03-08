@@ -162,6 +162,20 @@
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
 - Minimal SPIR-V vertex lowering RED/GREEN:
   - added failing backend tests that require `SemanticIRBuilder` to preserve minimal vertex lowering metadata, lower it into `KernelIR`, and emit a vertex-style CUDA wrapper/body instead of the placeholder `kernel_main`
+  - added a shared `VertexLoweringInfo` model across `SemanticIR` and `KernelIR`, plus a lightweight `lowerToKernelIR()` bridge
+  - added a direct `SpirvBinary -> SemanticIR` path that scans just enough SPIR-V to detect `Location 0`, `BuiltIn VertexIndex`, and `BuiltIn InstanceIndex` for the current VS milestone
+  - split the `SpirvShader` overload of `SemanticIRBuilder` into its own translation unit so backend unit tests can use the lightweight binary path without pulling the full `SpirvShader` link surface into `backend-unittests`
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=SpirvToSemanticIR.*:KernelIR.LowersMinimalVertexSemanticInfo:CodegenEmitter.EmitsVertexStageCudaLikeSource)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*:SpirvToSemanticIR.*:KernelIR.*:CodegenEmitter.*)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+- Performance-gate planning decision:
+  - accepted a new draw-performance observation gate that sits after the VS gate and before broader graphics expansion
+  - decided to establish CPU-only baselines first, using automated benchmark output plus a window-visible FPS observer
+  - selected `SolidColorTriangle` as the sanity case and `ManySolidTriangles` as the primary simple-but-real throughput case for future CPU/GPU comparison
+  - explicitly kept full SPIR-V compilation out of this gate so GLSL, SPIR-V text, and simple lowering remain acceptable during bring-up
+- Minimal SPIR-V vertex lowering RED/GREEN:
+  - added failing backend tests that require `SemanticIRBuilder` to preserve minimal vertex lowering metadata, lower it into `KernelIR`, and emit a vertex-style CUDA wrapper/body instead of the placeholder `kernel_main`
   - added a minimal `VertexLoweringInfo` model shared by `SemanticIR` and `KernelIR`, plus a lightweight `lowerToKernelIR()` bridge so the new path is not stuck at raw metadata storage
   - added a direct `SpirvBinary -> SemanticIR` path that scans just `OpEntryPoint`, `OpDecorate`, `OpTypeVector`, `OpTypePointer`, and `OpVariable`, which is enough to detect `Location 0`, `BuiltIn VertexIndex`, and `BuiltIn InstanceIndex` for the current VS milestone
   - split `build(const SpirvShader &)` into its own translation unit so backend unit tests can use the lightweight binary parser without dragging the full `SpirvShader.cpp` link surface into `backend-unittests`
