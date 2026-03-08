@@ -15,6 +15,13 @@ struct BootstrapVertexOutput
 	float position[4];
 };
 
+struct BootstrapVsParams
+{
+	const BootstrapVertexInput *inVertices = nullptr;
+	BootstrapVertexOutput *outVertices = nullptr;
+	uint32_t vertexCount = 0;
+};
+
 }  // namespace
 
 std::string graphicsBootstrapCudaSource()
@@ -34,20 +41,43 @@ struct VertexOutput
 	float w;
 };
 
-extern "C" __global__ void kernel_main(const VertexInput *inVertices, VertexOutput *outVertices, unsigned int vertexCount)
+struct VsParams
+{
+	const VertexInput *inVertices;
+	VertexOutput *outVertices;
+	unsigned int vertexCount;
+};
+
+static __device__ void vs_main(VsParams params, unsigned int vertexIndex, const VertexInput &inVertex, VertexOutput &outVertex)
+{
+	outVertex.x = inVertex.x;
+	outVertex.y = inVertex.y;
+	outVertex.z = inVertex.z;
+	outVertex.w = 1.0f;
+}
+
+static __device__ void run_vs_entry(VsParams params)
 {
 	unsigned int vertexIndex = blockIdx.x * blockDim.x + threadIdx.x;
-	// vertex bootstrap
-	if(vertexIndex >= vertexCount)
+	if(vertexIndex >= params.vertexCount)
 	{
 		return;
 	}
 
-	VertexInput inPos = inVertices[vertexIndex];
-	outVertices[vertexIndex].x = inPos.x;
-	outVertices[vertexIndex].y = inPos.y;
-	outVertices[vertexIndex].z = inPos.z;
-	outVertices[vertexIndex].w = 1.0f;
+	VertexInput inVertex = params.inVertices[vertexIndex];
+	VertexOutput outVertex = {};
+	vs_main(params, vertexIndex, inVertex, outVertex);
+	params.outVertices[vertexIndex] = outVertex;
+}
+
+extern "C" __global__ void vs_entry(VsParams params)
+{
+	run_vs_entry(params);
+}
+
+extern "C" __global__ void kernel_main(VsParams params)
+{
+	run_vs_entry(params);
 }
 )";
 }
@@ -78,10 +108,10 @@ void launchGraphicsBootstrap(RuntimeAPI &runtime)
 	BootstrapVertexInput input = {};
 	runtime.copyHostToMemory(inputMemory, &input, sizeof(input));
 
-	uint64_t inputPointer = runtime.memoryAddress(inputMemory);
-	uint64_t outputPointer = runtime.memoryAddress(outputMemory);
-	uint32_t vertexCount = 0;
-	std::vector<void *> arguments = { &inputPointer, &outputPointer, &vertexCount };
+	BootstrapVsParams params = {};
+	params.inVertices = reinterpret_cast<const BootstrapVertexInput *>(static_cast<uintptr_t>(runtime.memoryAddress(inputMemory)));
+	params.outVertices = reinterpret_cast<BootstrapVertexOutput *>(static_cast<uintptr_t>(runtime.memoryAddress(outputMemory)));
+	std::vector<void *> arguments = { &params };
 
 	LaunchRecord record = {};
 	record.groupCountX = 1;

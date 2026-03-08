@@ -131,3 +131,11 @@
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*:RuntimeAPI.CudaRuntimePrintsKernelSourceByDefault:RuntimeAPI.CudaRuntimeSuppressesKernelSourceWhenDisabled:RuntimeAPI.CudaRuntimeCompilesLaunchesAndReadsBackDeviceMemory)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed, and the screen dump now shows the vertex-style kernel source
   - `(cd build-draw-custom-subzero && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed
+- Vertex wrapper/body bootstrap RED/GREEN:
+  - added failing `GraphicsBootstrap` tests that require a `VsParams` ABI plus `vs_entry` / `vs_main` source shape
+  - changed the bootstrap launch ABI from three raw arguments to one `VsParams` struct argument
+  - reshaped the emitted CUDA source into `vs_main`, `run_vs_entry`, `vs_entry`, and a temporary `kernel_main` compatibility wrapper for the current runtime loader
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*:RuntimeAPI.CudaRuntimePrintsKernelSourceByDefault:RuntimeAPI.CudaRuntimeSuppressesKernelSourceWhenDisabled)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed, and the screen dump now shows `VsParams`, `vs_main`, and `vs_entry`
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.MultipleSolidColorTriangles)` passed
