@@ -11,6 +11,9 @@ struct BootstrapVsParams
 	const GraphicsBootstrapVertexInput *inVertices = nullptr;
 	GraphicsBootstrapVertexOutput *outVertices = nullptr;
 	uint32_t vertexCount = 0;
+	float runtimeOffsetX = 0.0f;
+	float runtimeOffsetY = 0.0f;
+	float runtimeOffsetZ = 0.0f;
 };
 
 }  // namespace
@@ -61,12 +64,15 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "\tconst VertexInput *inVertices;\n"
 	          "\tVertexOutput *outVertices;\n"
 	          "\tunsigned int vertexCount;\n"
+	          "\tfloat runtimeOffsetX;\n"
+	          "\tfloat runtimeOffsetY;\n"
+	          "\tfloat runtimeOffsetZ;\n"
 	          "};\n\n"
 	          "static __device__ void vs_main(VsParams params, unsigned int vertexIndex, const VertexInput &inVertex, VertexOutput &outVertex)\n"
 	          "{\n"
-	       << "\toutVertex.x = " << xExpression << ";\n"
-	       << "\toutVertex.y = inVertex.y + " << literalFloat(config.offsetY) << ";\n"
-	       << "\toutVertex.z = inVertex.z + " << literalFloat(config.offsetZ) << ";\n"
+	       << "\toutVertex.x = " << xExpression << " + params.runtimeOffsetX;\n"
+	       << "\toutVertex.y = inVertex.y + " << literalFloat(config.offsetY) << " + params.runtimeOffsetY;\n"
+	       << "\toutVertex.z = inVertex.z + " << literalFloat(config.offsetZ) << " + params.runtimeOffsetZ;\n"
 	          "\toutVertex.w = 1.0f;\n"
 	          "}\n\n"
 	          "static __device__ void run_vs_entry(VsParams params)\n"
@@ -90,10 +96,15 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 
 bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstrapVertexInput> &inputs, std::vector<GraphicsBootstrapVertexOutput> *outputs)
 {
-	return runGraphicsBootstrap(runtime, inputs, GraphicsBootstrapShaderConfig{}, outputs);
+	return runGraphicsBootstrap(runtime, inputs, GraphicsBootstrapShaderConfig{}, GraphicsBootstrapRuntimeConfig{}, outputs);
 }
 
 bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstrapVertexInput> &inputs, const GraphicsBootstrapShaderConfig &config, std::vector<GraphicsBootstrapVertexOutput> *outputs)
+{
+	return runGraphicsBootstrap(runtime, inputs, config, GraphicsBootstrapRuntimeConfig{}, outputs);
+}
+
+bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstrapVertexInput> &inputs, const GraphicsBootstrapShaderConfig &config, const GraphicsBootstrapRuntimeConfig &runtimeConfig, std::vector<GraphicsBootstrapVertexOutput> *outputs)
 {
 	auto module = runtime.createModule(graphicsBootstrapCudaSource(config), "vs_entry");
 	if(!module.valid())
@@ -128,6 +139,9 @@ bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstr
 	params.inVertices = reinterpret_cast<const GraphicsBootstrapVertexInput *>(static_cast<uintptr_t>(runtime.memoryAddress(inputMemory)));
 	params.outVertices = reinterpret_cast<GraphicsBootstrapVertexOutput *>(static_cast<uintptr_t>(runtime.memoryAddress(outputMemory)));
 	params.vertexCount = static_cast<uint32_t>(vertexCount);
+	params.runtimeOffsetX = runtimeConfig.offsetX;
+	params.runtimeOffsetY = runtimeConfig.offsetY;
+	params.runtimeOffsetZ = runtimeConfig.offsetZ;
 	std::vector<void *> arguments = { &params };
 
 	LaunchRecord record = {};

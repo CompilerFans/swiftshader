@@ -160,6 +160,13 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+- Runtime offset params RED/GREEN:
+  - added failing backend tests that require `VsParams` to carry runtime offsets and `vs_main` to consume them in emitted CUDA source
+  - introduced `GraphicsBootstrapRuntimeConfig` and a new bootstrap overload so runtime-configured offsets flow through the launch ABI instead of being baked into source
+  - kept the default draw path unchanged by routing existing callers through zero-initialized runtime offsets
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
 - Generated vertex-index RED/GREEN:
   - added failing backend tests that require the generated `vs_main` to reference `vertexIndex` in emitted CUDA source and to produce shifted `x` outputs at runtime
   - extended `GraphicsBootstrapShaderConfig` with a minimal `vertexIndexScaleX` builtin-lowering knob

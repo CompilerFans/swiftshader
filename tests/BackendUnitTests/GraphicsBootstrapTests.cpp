@@ -28,9 +28,9 @@ TEST(GraphicsBootstrap, EmitsOffsetShaderBody)
 
 	std::string source = backend::graphicsBootstrapCudaSource(config);
 
-	EXPECT_NE(source.find("outVertex.x = inVertex.x + 0.25f;"), std::string::npos);
-	EXPECT_NE(source.find("outVertex.y = inVertex.y + -0.5f;"), std::string::npos);
-	EXPECT_NE(source.find("outVertex.z = inVertex.z + 0.0f;"), std::string::npos);
+	EXPECT_NE(source.find("outVertex.x = inVertex.x + 0.25f + params.runtimeOffsetX;"), std::string::npos);
+	EXPECT_NE(source.find("outVertex.y = inVertex.y + -0.5f + params.runtimeOffsetY;"), std::string::npos);
+	EXPECT_NE(source.find("outVertex.z = inVertex.z + 0.0f + params.runtimeOffsetZ;"), std::string::npos);
 }
 
 TEST(GraphicsBootstrap, EmitsVertexIndexShaderBody)
@@ -41,6 +41,16 @@ TEST(GraphicsBootstrap, EmitsVertexIndexShaderBody)
 	std::string source = backend::graphicsBootstrapCudaSource(config);
 
 	EXPECT_NE(source.find("static_cast<float>(vertexIndex) * 0.5f"), std::string::npos);
+}
+
+TEST(GraphicsBootstrap, EmitsRuntimeOffsetParams)
+{
+	std::string source = backend::graphicsBootstrapCudaSource();
+
+	EXPECT_NE(source.find("float runtimeOffsetX;"), std::string::npos);
+	EXPECT_NE(source.find("float runtimeOffsetY;"), std::string::npos);
+	EXPECT_NE(source.find("float runtimeOffsetZ;"), std::string::npos);
+	EXPECT_NE(source.find("outVertex.x = inVertex.x + 0.0f + params.runtimeOffsetX;"), std::string::npos);
 }
 
 TEST(GraphicsBootstrap, LaunchUsesSingleVsParamsArgument)
@@ -131,6 +141,35 @@ TEST(GraphicsBootstrap, CudaRuntimeExecutesVertexIndexShift)
 		EXPECT_FLOAT_EQ(outputs[i].x, inputs[i].x + static_cast<float>(i) * config.vertexIndexScaleX);
 		EXPECT_FLOAT_EQ(outputs[i].y, inputs[i].y);
 		EXPECT_FLOAT_EQ(outputs[i].z, inputs[i].z);
+		EXPECT_FLOAT_EQ(outputs[i].w, 1.0f);
+	}
+}
+
+TEST(GraphicsBootstrap, CudaRuntimeExecutesRuntimeOffset)
+{
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	std::vector<backend::GraphicsBootstrapVertexInput> inputs = {
+		{ -0.5f, -0.25f, 0.0f },
+		{ 0.0f, 0.75f, 0.0f },
+		{ 0.5f, -0.25f, 0.0f },
+	};
+	std::vector<backend::GraphicsBootstrapVertexOutput> outputs;
+
+	backend::GraphicsBootstrapRuntimeConfig runtimeConfig = {};
+	runtimeConfig.offsetX = 0.125f;
+	runtimeConfig.offsetY = -0.25f;
+	runtimeConfig.offsetZ = 0.375f;
+
+	ASSERT_TRUE(backend::runGraphicsBootstrap(runtime, inputs, backend::GraphicsBootstrapShaderConfig{}, runtimeConfig, &outputs));
+	ASSERT_EQ(outputs.size(), inputs.size());
+
+	for(size_t i = 0; i < inputs.size(); i++)
+	{
+		EXPECT_FLOAT_EQ(outputs[i].x, inputs[i].x + runtimeConfig.offsetX);
+		EXPECT_FLOAT_EQ(outputs[i].y, inputs[i].y + runtimeConfig.offsetY);
+		EXPECT_FLOAT_EQ(outputs[i].z, inputs[i].z + runtimeConfig.offsetZ);
 		EXPECT_FLOAT_EQ(outputs[i].w, 1.0f);
 	}
 }
