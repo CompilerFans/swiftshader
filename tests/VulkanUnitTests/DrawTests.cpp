@@ -15,6 +15,7 @@
 #include "DrawTester.hpp"
 #include <filesystem>
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#	include "Backend/CudaRuntimeAPI.hpp"
 #	include <cstdlib>
 #	include <fstream>
 #	include <unistd.h>
@@ -122,7 +123,9 @@ TEST_F(DrawTest, SolidColorTriangle)
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("draw");
 	std::filesystem::remove(stampPath);
+	backend::CudaRuntimeAPI::resetGlobalCapture();
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
 #endif
 	DrawTester tester;
 	tester.onCreateVertexBuffers([](DrawTester &tester) {
@@ -181,6 +184,7 @@ TEST_F(DrawTest, SolidColorTriangle)
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
 #endif
 }
 

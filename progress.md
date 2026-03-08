@@ -111,3 +111,13 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=RuntimeAPI.CudaRuntimePrintsKernelSourceByDefault:RuntimeAPI.CudaRuntimeSuppressesKernelSourceWhenDisabled:RuntimeAPI.CudaRuntimeCompilesLaunchesAndReadsBackDeviceMemory)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed, and the CUDA kernel source was printed to the terminal by default
+- Graphics bootstrap RED/GREEN:
+  - disabled CUDA warmup in `DrawTest.SolidColorTriangle` to isolate draw-path dumps
+  - confirmed the draw test then produced no CUDA launch, proving the previous screen dump came only from runtime warmup
+  - added a first-submit graphics bootstrap in `CustomExecutionBackend`, which compiles and launches a minimal `vertex bootstrap` kernel before delegating real rendering to the CPU fallback
+- Root-cause note:
+  - `draw-unittests` cannot reliably assert `CudaRuntimeAPI::globalLastModuleSource()` against the shared-library runtime path, because the test binary and `libvk_swiftshader.so` do not share the same static capture instance
+- Validation:
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed
+  - simple triangle screen output now shows the expected `vertex bootstrap` kernel instead of the previous warmup-only empty kernel
+  - `(cd build-draw-custom-subzero && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed
