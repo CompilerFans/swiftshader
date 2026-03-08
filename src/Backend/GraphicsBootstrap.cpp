@@ -74,11 +74,6 @@ extern "C" __global__ void vs_entry(VsParams params)
 {
 	run_vs_entry(params);
 }
-
-extern "C" __global__ void kernel_main(VsParams params)
-{
-	run_vs_entry(params);
-}
 )";
 }
 

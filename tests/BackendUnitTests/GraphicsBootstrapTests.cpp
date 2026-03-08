@@ -14,6 +14,7 @@ TEST(GraphicsBootstrap, EmitsVertexStageWrapperAndShaderBody)
 	EXPECT_NE(source.find("extern \"C\" __global__ void vs_entry"), std::string::npos);
 	EXPECT_NE(source.find("vs_main(params, vertexIndex, inVertex, outVertex);"), std::string::npos);
 	EXPECT_NE(source.find("params.outVertices[vertexIndex] = outVertex;"), std::string::npos);
+	EXPECT_EQ(source.find("extern \"C\" __global__ void kernel_main"), std::string::npos);
 }
 
 TEST(GraphicsBootstrap, LaunchUsesSingleVsParamsArgument)

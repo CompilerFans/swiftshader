@@ -146,3 +146,10 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=RuntimeAPI.FakeRuntimeCreatesModuleHandleWithCustomEntrypoint:RuntimeAPI.CudaRuntimeLaunchesCustomEntrypoint:GraphicsBootstrap.*)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed
+- Bootstrap entrypoint cleanup RED/GREEN:
+  - added a failing source-shape assertion that forbids `kernel_main` in the graphics bootstrap kernel
+  - removed the temporary `kernel_main` compatibility wrapper from `GraphicsBootstrap`
+  - verified the screen dump for `DrawTest.SolidColorTriangle` now shows only the intended `vs_entry` path
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*:RuntimeAPI.CudaRuntimeLaunchesCustomEntrypoint)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
