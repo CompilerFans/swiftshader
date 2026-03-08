@@ -29,6 +29,20 @@ TEST(FragmentBootstrap, EmitsFragCoordQuadrantShaderWhenRequested)
 	EXPECT_NE(source.find("outR = left && top ? 255u :"), std::string::npos);
 }
 
+TEST(FragmentBootstrap, EmitsInterpolatedColorShaderFromBarycentrics)
+{
+	backend::FragmentBootstrapConfig config = {};
+	config.shaderKind = backend::FragmentBootstrapShaderKind::InterpolatedColor;
+
+	std::string source = backend::fragmentBootstrapCudaSource(config);
+
+	EXPECT_NE(source.find("invocation.barycentric0"), std::string::npos);
+	EXPECT_NE(source.find("params.vertexColor0R"), std::string::npos);
+	EXPECT_NE(source.find("params.vertexColor1G"), std::string::npos);
+	EXPECT_NE(source.find("params.vertexColor2B"), std::string::npos);
+	EXPECT_EQ(source.find("outR = packColor(invocation.colorR);"), std::string::npos);
+}
+
 TEST(FragmentBootstrap, LaunchUsesSingleFsParamsArgument)
 {
 	backend::FakeRuntimeAPI runtime;

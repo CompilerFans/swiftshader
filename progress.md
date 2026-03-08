@@ -404,3 +404,11 @@
   - `cmake --build build-cuda-bootstrap --target draw-unittests backend-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromIndexedPositionStream')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.IndexedVertexColorTriangleInterpolation')` passed
+- First-class barycentric RED/GREEN:
+  - added failing backend tests that require `RasterBootstrap` to emit barycentric payload fields and `FragmentBootstrap::InterpolatedColor` to reconstruct color from barycentrics instead of reading `invocation.color*`
+  - replaced the old interpolated-color shortcut with `barycentric0/1/2` in `FragmentBootstrapInvocation`, widened `FragmentBootstrapConfig` with per-triangle vertex colors, and updated the per-triangle `TrianglePipelineBootstrap` loop to populate those colors before launching the fragment stage
+  - updated the existing draw/backend assertions for color-varying triangles so they now require the generated CUDA source to contain barycentric payload and vertex-color parameter usage
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='RasterBootstrap.EmitsBarycentricPayload:FragmentBootstrap.EmitsInterpolatedColorShaderFromBarycentrics:TrianglePipelineBootstrap.CudaRuntimeInterpolatesVertexColorFromRawVertexData')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexColorTriangleInterpolation:DrawTest.IndexedVertexColorTriangleInterpolation')` passed

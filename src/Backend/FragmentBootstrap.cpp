@@ -17,6 +17,18 @@ struct BootstrapFsParams
 	uint32_t invocationCount = 0;
 	uint32_t width = 0;
 	uint32_t height = 0;
+	float vertexColor0R = 1.0f;
+	float vertexColor0G = 1.0f;
+	float vertexColor0B = 1.0f;
+	float vertexColor0A = 1.0f;
+	float vertexColor1R = 1.0f;
+	float vertexColor1G = 1.0f;
+	float vertexColor1B = 1.0f;
+	float vertexColor1A = 1.0f;
+	float vertexColor2R = 1.0f;
+	float vertexColor2G = 1.0f;
+	float vertexColor2B = 1.0f;
+	float vertexColor2A = 1.0f;
 };
 
 std::string literalFloat(float value)
@@ -45,10 +57,9 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tunsigned int y;\n"
 	          "\tunsigned int exportMask;\n"
 	          "\tunsigned int helperInvocation;\n"
-	          "\tfloat colorR;\n"
-	          "\tfloat colorG;\n"
-	          "\tfloat colorB;\n"
-	          "\tfloat colorA;\n"
+	          "\tfloat barycentric0;\n"
+	          "\tfloat barycentric1;\n"
+	          "\tfloat barycentric2;\n"
 	          "};\n\n"
 	          "struct FsParams\n"
 	          "{\n"
@@ -57,6 +68,18 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tunsigned int invocationCount;\n"
 	          "\tunsigned int width;\n"
 	          "\tunsigned int height;\n"
+	          "\tfloat vertexColor0R;\n"
+	          "\tfloat vertexColor0G;\n"
+	          "\tfloat vertexColor0B;\n"
+	          "\tfloat vertexColor0A;\n"
+	          "\tfloat vertexColor1R;\n"
+	          "\tfloat vertexColor1G;\n"
+	          "\tfloat vertexColor1B;\n"
+	          "\tfloat vertexColor1A;\n"
+	          "\tfloat vertexColor2R;\n"
+	          "\tfloat vertexColor2G;\n"
+	          "\tfloat vertexColor2B;\n"
+	          "\tfloat vertexColor2A;\n"
 	          "};\n\n"
 	          "static __device__ unsigned char packColor(float value)\n"
 	          "{\n"
@@ -78,11 +101,14 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	}
 	else if(config.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor)
 	{
-		source << "\t(void)params;\n"
-		          "\toutR = packColor(invocation.colorR);\n"
-		          "\toutG = packColor(invocation.colorG);\n"
-		          "\toutB = packColor(invocation.colorB);\n"
-		          "\toutA = packColor(invocation.colorA);\n";
+		source << "\tfloat colorR = params.vertexColor0R * invocation.barycentric0 + params.vertexColor1R * invocation.barycentric1 + params.vertexColor2R * invocation.barycentric2;\n"
+		          "\tfloat colorG = params.vertexColor0G * invocation.barycentric0 + params.vertexColor1G * invocation.barycentric1 + params.vertexColor2G * invocation.barycentric2;\n"
+		          "\tfloat colorB = params.vertexColor0B * invocation.barycentric0 + params.vertexColor1B * invocation.barycentric1 + params.vertexColor2B * invocation.barycentric2;\n"
+		          "\tfloat colorA = params.vertexColor0A * invocation.barycentric0 + params.vertexColor1A * invocation.barycentric1 + params.vertexColor2A * invocation.barycentric2;\n"
+		          "\toutR = packColor(colorR);\n"
+		          "\toutG = packColor(colorG);\n"
+		          "\toutB = packColor(colorB);\n"
+		          "\toutA = packColor(colorA);\n";
 	}
 	else
 	{
@@ -164,6 +190,18 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	params.invocationCount = static_cast<uint32_t>(invocations.size());
 	params.width = width;
 	params.height = height;
+	params.vertexColor0R = config.vertexColor0R;
+	params.vertexColor0G = config.vertexColor0G;
+	params.vertexColor0B = config.vertexColor0B;
+	params.vertexColor0A = config.vertexColor0A;
+	params.vertexColor1R = config.vertexColor1R;
+	params.vertexColor1G = config.vertexColor1G;
+	params.vertexColor1B = config.vertexColor1B;
+	params.vertexColor1A = config.vertexColor1A;
+	params.vertexColor2R = config.vertexColor2R;
+	params.vertexColor2G = config.vertexColor2G;
+	params.vertexColor2B = config.vertexColor2B;
+	params.vertexColor2A = config.vertexColor2A;
 	std::vector<void *> arguments = { &params };
 
 	LaunchRecord record = {};

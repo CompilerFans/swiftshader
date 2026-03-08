@@ -418,6 +418,6 @@ TEST(TrianglePipelineBootstrap, CudaRuntimeInterpolatesVertexColorFromRawVertexD
 	EXPECT_TRUE(std::any_of(colorBuffer.begin(), colorBuffer.end(), [](uint8_t value) {
 		return value != 0u;
 	}));
-	EXPECT_NE(backend::CudaRuntimeAPI::globalLastModuleSource().find("outR = packColor(invocation.colorR);"), std::string::npos);
+	EXPECT_NE(backend::CudaRuntimeAPI::globalLastModuleSource().find("invocation.barycentric0"), std::string::npos);
 }
 #endif

@@ -258,6 +258,21 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	for(size_t triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++)
 	{
 		const auto triangle = toRasterVertices(vsOutputs.data() + triangleIndex * 3, config.width, config.height);
+		if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor)
+		{
+			fragmentConfig.vertexColor0R = triangle[0].colorR;
+			fragmentConfig.vertexColor0G = triangle[0].colorG;
+			fragmentConfig.vertexColor0B = triangle[0].colorB;
+			fragmentConfig.vertexColor0A = triangle[0].colorA;
+			fragmentConfig.vertexColor1R = triangle[1].colorR;
+			fragmentConfig.vertexColor1G = triangle[1].colorG;
+			fragmentConfig.vertexColor1B = triangle[1].colorB;
+			fragmentConfig.vertexColor1A = triangle[1].colorA;
+			fragmentConfig.vertexColor2R = triangle[2].colorR;
+			fragmentConfig.vertexColor2G = triangle[2].colorG;
+			fragmentConfig.vertexColor2B = triangle[2].colorB;
+			fragmentConfig.vertexColor2A = triangle[2].colorA;
+		}
 		std::vector<uint8_t> triangleColorBuffer;
 		if(!runRasterFragmentBootstrap(runtime, triangle, rasterConfig, fragmentConfig, colorBuffer ? &triangleColorBuffer : nullptr))
 		{

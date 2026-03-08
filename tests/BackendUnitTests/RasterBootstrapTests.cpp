@@ -17,6 +17,16 @@ TEST(RasterBootstrap, EmitsRasterStageWrapperAndShaderBody)
 	EXPECT_NE(source.find("extern \"C\" __global__ void raster_entry"), std::string::npos);
 }
 
+TEST(RasterBootstrap, EmitsBarycentricPayload)
+{
+	std::string source = backend::rasterBootstrapCudaSource();
+
+	EXPECT_NE(source.find("float barycentric0;"), std::string::npos);
+	EXPECT_NE(source.find("float barycentric1;"), std::string::npos);
+	EXPECT_NE(source.find("float barycentric2;"), std::string::npos);
+	EXPECT_NE(source.find("interpolateBarycentrics"), std::string::npos);
+}
+
 TEST(RasterBootstrap, CpuReferenceProducesBoundingBoxAndCoverage)
 {
 	std::array<backend::RasterBootstrapVertex, 3> triangle = {{
@@ -44,6 +54,7 @@ TEST(RasterBootstrap, CpuReferenceProducesBoundingBoxAndCoverage)
 	{
 		coversNearOrigin = coversNearOrigin || (invocation.x == 1u && invocation.y == 1u);
 		coversOutside = coversOutside || (invocation.x == 6u || invocation.y == 6u);
+		EXPECT_NEAR(invocation.barycentric0 + invocation.barycentric1 + invocation.barycentric2, 1.0f, 0.0001f);
 	}
 
 	EXPECT_TRUE(coversNearOrigin);

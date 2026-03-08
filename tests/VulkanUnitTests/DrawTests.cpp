@@ -737,9 +737,9 @@ TEST_F(DrawTest, VertexColorTriangleInterpolation)
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
-	EXPECT_NE(sourceDump.find("outR = packColor(invocation.colorR);"), std::string::npos);
-	EXPECT_NE(sourceDump.find("outG = packColor(invocation.colorG);"), std::string::npos);
-	EXPECT_NE(sourceDump.find("outB = packColor(invocation.colorB);"), std::string::npos);
+	EXPECT_NE(sourceDump.find("invocation.barycentric0"), std::string::npos);
+	EXPECT_NE(sourceDump.find("params.vertexColor0R"), std::string::npos);
+	EXPECT_NE(sourceDump.find("params.vertexColor1G"), std::string::npos);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -898,7 +898,8 @@ TEST_F(DrawTest, IndexedVertexColorTriangleInterpolation)
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
-	EXPECT_NE(sourceDump.find("outR = packColor(invocation.colorR);"), std::string::npos);
+	EXPECT_NE(sourceDump.find("invocation.barycentric0"), std::string::npos);
+	EXPECT_NE(sourceDump.find("params.vertexColor0R"), std::string::npos);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
