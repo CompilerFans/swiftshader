@@ -78,6 +78,13 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, VkPr
 	if(fragmentConfig)
 	{
 		config->fragmentConfig = *fragmentConfig;
+		if(fragmentConfig->shaderKind == FragmentBootstrapShaderKind::ConstantColor)
+		{
+			config->colorR = fragmentConfig->colorR;
+			config->colorG = fragmentConfig->colorG;
+			config->colorB = fragmentConfig->colorB;
+			config->colorA = fragmentConfig->colorA;
+		}
 	}
 	return true;
 }

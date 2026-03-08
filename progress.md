@@ -347,3 +347,13 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='RuntimeAPI.CudaRuntimeWritesKernelSourceToFile:FragmentBootstrap.EmitsFragCoordQuadrantShaderWhenRequested:FragmentBootstrap.CudaRuntimeWritesFragCoordQuadrantColors:TrianglePipelineBootstrap.CudaRuntimeAppliesFragCoordQuadrantFragmentMode')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle:DrawTest.FragmentShaderUsesFragCoordQuadrantColors:DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles')` passed
+- Fragment constant-color bridge RED/GREEN:
+  - turned `DrawTest.SolidColorTriangle` into a failing integration check that requires the real draw-triggered CUDA `fs_entry` dump to contain the fragment shader's red constant output, not the bootstrap fallback green
+  - added a minimal SPIR-V-side bridge in `Renderer::draw()`: if the fragment shader either reads `gl_FragCoord` or directly stores a constant `vec4` to `Location 0`, the draw-triggered bootstrap now derives a matching `FragmentBootstrapConfig` and passes it into `TrianglePipelineBootstrap`
+  - debugged the first attempt and found the stall came from iterating raw `shader.insns` including the 5-word SPIR-V header; switching to range-based iteration over `SpirvShader` fixed the parser and kept the implementation minimal
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle')` passed
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.CudaRuntimeAppliesRequestedFragmentColor:TrianglePipelineBootstrap.CudaRuntimeAppliesFragCoordQuadrantFragmentMode:FragmentBootstrap.CudaRuntimeWritesConstantColor:FragmentBootstrap.CudaRuntimeWritesFragCoordQuadrantColors')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed

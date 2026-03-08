@@ -497,9 +497,12 @@ TEST_F(DrawTest, SolidColorTriangle)
 	std::filesystem::remove(artifactPath);
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("draw");
+	auto sourceDumpPath = makeCudaLaunchStampPath("draw-source");
 	std::filesystem::remove(stampPath);
+	std::filesystem::remove(sourceDumpPath);
 	backend::CudaRuntimeAPI::resetGlobalCapture();
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+	::setenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH", sourceDumpPath.c_str(), 1);
 	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
 #endif
 	DrawTester tester;
@@ -558,7 +561,12 @@ TEST_F(DrawTest, SolidColorTriangle)
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	auto sourceDump = readTextFile(sourceDumpPath);
+	EXPECT_NE(sourceDump.find("outR = packColor(1.0f);"), std::string::npos);
+	EXPECT_NE(sourceDump.find("outG = packColor(0.0f);"), std::string::npos);
+	EXPECT_NE(sourceDump.find("outB = packColor(0.0f);"), std::string::npos);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
 #endif
 }

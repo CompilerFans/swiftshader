@@ -47,6 +47,108 @@ unsigned int maxPrimitives = 1 << 21;
 #endif
 
 namespace sw {
+namespace {
+
+bool tryGetBootstrapFragmentConstantColor(const SpirvShader &shader, backend::FragmentBootstrapConfig *config)
+{
+	uint32_t locationZeroOutputId = 0;
+	for(auto insn : shader)
+	{
+		if(insn.opcode() == spv::OpVariable &&
+		   static_cast<spv::StorageClass>(insn.word(3)) == spv::StorageClassOutput)
+		{
+			auto objectId = Spirv::Object::ID(insn.word(2));
+			auto decorationsIt = shader.decorations.find(objectId);
+			if(decorationsIt != shader.decorations.end() &&
+			   decorationsIt->second.HasLocation &&
+			   !decorationsIt->second.HasBuiltIn &&
+			   decorationsIt->second.Location == 0)
+			{
+				if(locationZeroOutputId != 0)
+				{
+					return false;
+				}
+				locationZeroOutputId = objectId.value();
+			}
+		}
+	}
+
+	if(locationZeroOutputId == 0)
+	{
+		return false;
+	}
+
+	bool sawConstantStore = false;
+	float color[4] = {};
+	for(auto insn : shader)
+	{
+		if(insn.opcode() == spv::OpStore && insn.word(1) == locationZeroOutputId)
+		{
+			auto valueId = Spirv::Object::ID(insn.word(2));
+			const auto &valueObject = shader.getObject(valueId);
+			if(valueObject.kind != Spirv::Object::Kind::Constant)
+			{
+				return false;
+			}
+
+			const auto &valueType = shader.getType(valueObject);
+			if(valueType.componentCount != 4 || valueObject.constantValue.size() < 4)
+			{
+				return false;
+			}
+
+			float storedColor[4] = {
+				bit_cast<float>(valueObject.constantValue[0]),
+				bit_cast<float>(valueObject.constantValue[1]),
+				bit_cast<float>(valueObject.constantValue[2]),
+				bit_cast<float>(valueObject.constantValue[3]),
+			};
+			if(sawConstantStore)
+			{
+				for(int component = 0; component < 4; component++)
+				{
+					if(color[component] != storedColor[component])
+					{
+						return false;
+					}
+				}
+			}
+			else
+			{
+				for(int component = 0; component < 4; component++)
+				{
+					color[component] = storedColor[component];
+				}
+				sawConstantStore = true;
+			}
+		}
+	}
+
+	if(!sawConstantStore)
+	{
+		return false;
+	}
+
+	config->shaderKind = backend::FragmentBootstrapShaderKind::ConstantColor;
+	config->colorR = color[0];
+	config->colorG = color[1];
+	config->colorB = color[2];
+	config->colorA = color[3];
+	return true;
+}
+
+bool tryBuildBootstrapFragmentConfig(const SpirvShader &shader, backend::FragmentBootstrapConfig *config)
+{
+	if(shader.hasBuiltinInput(spv::BuiltInFragCoord))
+	{
+		config->shaderKind = backend::FragmentBootstrapShaderKind::FragCoordQuadrants;
+		return true;
+	}
+
+	return tryGetBootstrapFragmentConstantColor(shader, config);
+}
+
+}  // namespace
 
 template<typename T>
 inline bool setBatchIndices(unsigned int batch[128][3], VkPrimitiveTopology topology, VkProvokingVertexModeEXT provokingVertexMode, T indices, unsigned int start, unsigned int triangleCount)
@@ -344,16 +446,17 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 		if(auto *runtime = device->getRuntimeAPI())
 		{
 			backend::FragmentBootstrapConfig fragmentBootstrapConfig = {};
+			const backend::FragmentBootstrapConfig *fragmentBootstrapConfigPtr = nullptr;
 			if(const sw::SpirvShader *bootstrapFragmentShader = pipeline->getShader(VK_SHADER_STAGE_FRAGMENT_BIT).get())
 			{
-				if(bootstrapFragmentShader->hasBuiltinInput(spv::BuiltInFragCoord))
+				if(tryBuildBootstrapFragmentConfig(*bootstrapFragmentShader, &fragmentBootstrapConfig))
 				{
-					fragmentBootstrapConfig.shaderKind = backend::FragmentBootstrapShaderKind::FragCoordQuadrants;
+					fragmentBootstrapConfigPtr = &fragmentBootstrapConfig;
 				}
 			}
 
 			if(runtime->isHardwareBacked() &&
-			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), draw->topology, count, renderArea, nullptr, &fragmentBootstrapConfig))
+			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr))
 			{
 				customGraphicsBootstrapDone = true;
 			}
