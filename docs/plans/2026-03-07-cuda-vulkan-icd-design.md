@@ -111,6 +111,16 @@ A new core area, likely `src/Backend/` or `src/CustomGPU/`, should own:
 采用 **tile-based + quad-aware** 的图形执行模型。  
 Use a **tile-based + quad-aware** graphics execution model.
 
+### 近期落地策略 / Near-Term Raster Bring-up Strategy
+在长期目标保持 **tile-based + quad-aware** 不变的前提下，近期 bring-up 不直接移植 `src/Device/SetupProcessor.cpp`、`src/Device/QuadRasterizer.cpp`、`src/Device/PixelProcessor.cpp` 的 CPU 实现，也不采用 `nvdiffrast` 一类外部 raster 作为主路径。  
+While the long-term target remains **tile-based + quad-aware**, the near-term bring-up should not directly transplant the CPU implementation in `src/Device/SetupProcessor.cpp`, `src/Device/QuadRasterizer.cpp`, and `src/Device/PixelProcessor.cpp`, nor should it adopt an external raster such as `nvdiffrast` as the main path.
+
+近期应采用 **简单自研 CUDA raster**：先以单三角形、单 render target、`bbox + edge function` 覆盖测试打通最小链路，再在这个基础上逐步演进到 tile/binning、quad-aware fragment feed 和更完整的 attachment 语义。  
+The near-term implementation should use a **simple in-house CUDA raster**: first bring up the minimal path with a single triangle, one render target, and `bbox + edge function` coverage testing, then evolve it toward tile/binning, quad-aware fragment feed, and richer attachment semantics.
+
+CPU 路径应继续作为 correctness oracle，通过专门的 CPU 参考测试与 GPU 专有测试逐步对齐功能与精度；早期允许为未来字段预留 `stub` / `dummy` 接口，但每步都必须通过失败测试和对齐验证推进。  
+The CPU path should remain the correctness oracle, with functionality and precision aligned incrementally through dedicated CPU reference tests and GPU-specific tests; early bring-up may leave `stub` / `dummy` interfaces for future fields, but every step must advance through failing tests and alignment checks.
+
 ### 选择原因 / Why This Model
 - 比当前 CPU renderer 更符合 GPU 风格并行。  
   It matches GPU-style parallelism better than the current CPU renderer.

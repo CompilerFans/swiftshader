@@ -263,6 +263,10 @@
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
 - Planning decision:
   - accepted a VS completion gate: finish minimal builtin support, minimal attribute/binding lowering, minimal `SPIR-V -> CUDA-like source` vertex lowering, and a small Vulkan-runtime test set based on GLSL or SPIR-V before starting raster/fragment follow-up development
+- Raster planning decision:
+  - accepted the near-term raster route as a simple in-house CUDA implementation rather than a direct transplant of SwiftShader's CPU raster or adoption of `nvdiffrast`
+  - committed to keeping CPU raster behavior as a reference oracle, with dedicated CPU-reference tests and GPU-specific alignment tests
+  - explicitly allowed stub/dummy fields in early raster bootstrap interfaces as long as each increment remains TDD-driven
 - Generated vertex-index RED/GREEN:
   - added failing backend tests that require the generated `vs_main` to reference `vertexIndex` in emitted CUDA source and to produce shifted `x` outputs at runtime
   - extended `GraphicsBootstrapShaderConfig` with a minimal `vertexIndexScaleX` builtin-lowering knob

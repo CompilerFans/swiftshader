@@ -12,6 +12,8 @@
 
 **Performance Observation Gate / 性能观察门槛：** 在 VS gate 完成后、进入更复杂图形阶段之前，必须建立一套简单但真实的 draw 性能观察基线。当前阶段先覆盖 CPU 通路，至少提供 `SolidColorTriangle` 与 `ManySolidTriangles` 两类场景的自动 benchmark 输出，以及一个 windowed FPS 观察模式。GPU 路径真正接管最终像素输出后，必须在完全相同的场景上做 CPU/GPU 对比；若 GPU 没有明显优势或反而更慢，则优先分析设计与实现，而不是继续盲目扩展功能。 / After the VS gate and before moving into more complex graphics stages, establish a simple but real draw-performance observation baseline. In the current phase this should cover the CPU path first, with at least automated benchmark output for `SolidColorTriangle` and `ManySolidTriangles`, plus a windowed FPS observation mode. Once the GPU path truly owns final pixel generation, the same scenes must be reused for CPU/GPU comparison; if the GPU path shows no clear advantage or is slower, prioritize design and implementation analysis rather than blindly expanding features.
 
+**Raster Bring-up Rule / Raster 阶段推进规则：** 进入 raster 阶段后，默认采用“简单自研 CUDA raster + CPU 参考测试 + GPU 专有对齐测试”的路线。现有 SwiftShader CPU raster 只作为语义和精度参考，不直接移植实现；`nvdiffrast` 等外部 raster 不作为主代码路径。第一阶段允许预留 `stub` / `dummy` 字段，但每次推进都必须先写失败测试，再通过 CPU/GPU 对齐验证。 / Once the project enters raster work, the default route is “simple in-house CUDA raster + CPU reference tests + GPU-specific alignment tests.” The existing SwiftShader CPU raster serves only as a semantic and precision reference, not as a direct implementation to transplant; external raster libraries such as `nvdiffrast` are not part of the primary code path. Phase 1 may leave `stub` / `dummy` fields for future work, but every increment must begin with a failing test and then pass CPU/GPU alignment validation.
+
 ---
 
 ### Task 1: Add backend build skeleton and feature switch / 添加后端构建骨架与特性开关
