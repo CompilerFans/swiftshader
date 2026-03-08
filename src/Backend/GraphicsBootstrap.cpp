@@ -36,6 +36,12 @@ std::string literalFloat(float value)
 
 std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &config)
 {
+	std::string xExpression = "inVertex.x + " + literalFloat(config.offsetX);
+	if(config.vertexIndexScaleX != 0.0f)
+	{
+		xExpression += " + static_cast<float>(vertexIndex) * " + literalFloat(config.vertexIndexScaleX);
+	}
+
 	std::ostringstream source;
 	source << "struct VertexInput\n"
 	          "{\n"
@@ -58,7 +64,7 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "};\n\n"
 	          "static __device__ void vs_main(VsParams params, unsigned int vertexIndex, const VertexInput &inVertex, VertexOutput &outVertex)\n"
 	          "{\n"
-	       << "\toutVertex.x = inVertex.x + " << literalFloat(config.offsetX) << ";\n"
+	       << "\toutVertex.x = " << xExpression << ";\n"
 	       << "\toutVertex.y = inVertex.y + " << literalFloat(config.offsetY) << ";\n"
 	       << "\toutVertex.z = inVertex.z + " << literalFloat(config.offsetZ) << ";\n"
 	          "\toutVertex.w = 1.0f;\n"

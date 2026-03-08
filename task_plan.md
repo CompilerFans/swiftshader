@@ -90,6 +90,7 @@ Complete
 - Current runtime entrypoint milestone: `RuntimeAPI` now supports per-module entrypoint names, `CudaRuntimeAPI` can launch `vs_entry` directly, and default callers still fall back to `kernel_main` until each stage is migrated.
 - Current bootstrap execution milestone: `GraphicsBootstrap` now launches a real three-vertex `vs_entry` invocation on the CUDA runtime, and backend tests verify the written-back `x/y/z/w` outputs.
 - Current generated-VS milestone: `GraphicsBootstrap` now supports a minimal compile-time `GraphicsBootstrapShaderConfig`, letting generated `vs_main` apply constant position offsets and proving a first step beyond pure passthrough lowering.
+- Current builtin-lowering milestone: generated `vs_main` now supports a minimal `gl_VertexIndex`-style term on `x`, proving the wrapper-supplied builtin can flow into emitted CUDA source and real runtime execution.
 - Current limitation: Vulkan shared-library compute dispatch in the real CUDA build is not yet wired end-to-end and is explicitly skipped in `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp`.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.

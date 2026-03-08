@@ -28,6 +28,7 @@ struct GraphicsBootstrapShaderConfig
 	float offsetX = 0.0f;
 	float offsetY = 0.0f;
 	float offsetZ = 0.0f;
+	float vertexIndexScaleX = 0.0f;
 };
 
 std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &config = {});

@@ -160,6 +160,13 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+- Generated vertex-index RED/GREEN:
+  - added failing backend tests that require the generated `vs_main` to reference `vertexIndex` in emitted CUDA source and to produce shifted `x` outputs at runtime
+  - extended `GraphicsBootstrapShaderConfig` with a minimal `vertexIndexScaleX` builtin-lowering knob
+  - updated code generation so `vs_main` can emit an optional `static_cast<float>(vertexIndex)` term without affecting the default passthrough draw path
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
 - Generated VS offset RED/GREEN:
   - added failing backend tests that require `graphicsBootstrapCudaSource()` to emit compile-time offset literals and `runGraphicsBootstrap()` to execute the shifted outputs correctly
   - introduced `GraphicsBootstrapShaderConfig` and overloaded bootstrap helpers so a minimal generated `vs_main` can model shader-lowered constant offsets without adding a new draw-level test
