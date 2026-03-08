@@ -318,3 +318,8 @@ The project should proceed in the order of abstraction first, then compute, then
 
 
 ## 待补充章节 / Pending Sections
+
+
+## 实施状态 / Implementation Status
+当前仓库中的 bootstrap 已落地以下基础设施：backend 构建骨架、队列执行缝、独立 backend 单测目标、`SemanticIR` / `KernelIR` / `KernelABI`、`SemanticIRBuilder`、双路径文本 emitter、runtime/fake runtime、compute backend executable、resource state tracker、graphics backend stub、fallback present adapter，以及 bring-up 文档与 smoke tests。  
+The current repository bootstrap now includes the following infrastructure: backend build skeleton, queue execution seam, a dedicated backend unit-test target, `SemanticIR` / `KernelIR` / `KernelABI`, `SemanticIRBuilder`, dual-path text emitters, runtime/fake runtime, compute backend executable, resource state tracker, graphics backend stub, fallback present adapter, and bring-up documentation plus smoke tests.

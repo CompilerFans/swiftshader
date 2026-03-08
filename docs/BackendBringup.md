@@ -38,3 +38,14 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 
 - 当前阶段，生成的 CUDA 风格源码和 LLVM IR 仍主要以内存字符串形式存在。
 - 目前还没有自动写盘的 dump 路径；后续若增加导出能力，应先在本文档记录，再考虑扩展到更公开的项目文档。
+
+## Bring-up Checklist / Bring-up 清单
+- Configure with the backend flag: `cmake -S . -B build-custom -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON`
+- Build backend tests: `cmake --build build --target backend-unittests --parallel 1`
+- Run backend filters: `./build/backend-unittests --gtest_filter=SemanticIR.*:KernelABI.*:CodegenEmitter.*:AbiParity.*:RuntimeAPI.*:ComputeDispatchValidation.*:ResourceStateTracker.*`
+- Build or compile-check Vulkan smoke tests for backend selection, present adapter, and compute pipeline integration.
+- Compare behavior with the default CPU path if a regression appears.
+
+## Smoke Tests / 烟测
+- `BackendSmoke.ComputePathCanCompile` checks that compute backend bootstrap can produce a backend executable from parsed shader information.
+- `BackendSmoke.GraphicsPathStillFallsBackToCpu` checks that the default non-flagged build still selects the CPU backend path.

@@ -52,4 +52,6 @@
 - Validation: `tests/VulkanUnitTests/PresentAdapterTests.cpp` and `src/WSI/VkSwapchainKHR.cpp` compiled successfully.
 - Task 13 GREEN: added `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND` CMake/GN configuration, documented bring-up in `docs/BackendBringup.md`, and added a presubmit custom-backend configure smoke check.
 - Validation: `cmake -S . -B build-custom -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON -DSWIFTSHADER_BUILD_TESTS=OFF && cmake --build build-custom --target vk_backend --parallel 1` passed.
+- Task 14 GREEN: added Vulkan smoke tests, updated the bring-up checklist, and recorded bootstrap status back into the design document.
+- Validation: `tests/VulkanUnitTests/BackendSmokeTests.cpp` compiled successfully.
 
