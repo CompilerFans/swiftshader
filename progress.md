@@ -396,3 +396,11 @@
 - Artifacts:
   - `docs/plans/2026-03-09-cpu-stage-feature-audit-design.md`
   - `docs/plans/2026-03-09-next-phase-stage-roadmap.md`
+- Indexed triangle-list RED/GREEN:
+  - added a failing backend test requiring `TrianglePipelineBootstrap` to build a deindexed config from a `uint16` index buffer, and a failing Vulkan draw test requiring an indexed color triangle to render through the CUDA bootstrap path
+  - extended `TrianglePipelineBootstrap` with optional `indexData/indexType/baseVertex` inputs and implemented the narrowest correct path by expanding indices on the host side before launching the existing `VS -> Raster -> FS` chain
+  - extended `DrawTester` with minimal index-buffer upload/bind helpers so draw tests can record `drawIndexed()` without widening the harness further
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromIndexedPositionStream')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.IndexedVertexColorTriangleInterpolation')` passed

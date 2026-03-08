@@ -144,6 +144,51 @@ TEST(TrianglePipelineBootstrap, BuildsConfigFromPositionAndColorStreams)
 	EXPECT_EQ(config.binding.colorComponentCount, 3u);
 }
 
+TEST(TrianglePipelineBootstrap, BuildsConfigFromIndexedPositionStream)
+{
+	struct Vertex
+	{
+		float position[3];
+		float color[3];
+	};
+
+	const std::array<Vertex, 4> vertices = {{
+		{ { -0.8f, -0.8f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+		{ { -0.8f, 0.8f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+		{ { 0.8f, 0.8f, 0.0f }, { 0.0f, 0.0f, 1.0f } },
+		{ { 0.8f, -0.8f, 0.0f }, { 1.0f, 1.0f, 0.0f } },
+	}};
+
+	const std::array<uint16_t, 3> indices = {{ 0u, 2u, 3u }};
+
+	sw::Stream positionStream = {};
+	positionStream.buffer = &vertices[0].position[0];
+	positionStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	positionStream.vertexStride = sizeof(Vertex);
+	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+	positionStream.binding = 0;
+
+	sw::Stream colorStream = {};
+	colorStream.buffer = &vertices[0].color[0];
+	colorStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	colorStream.vertexStride = sizeof(Vertex);
+	colorStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+	colorStream.binding = 0;
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, &colorStream, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 1u,
+	                                                         { { 0, 0 }, { 64, 64 } }, &config, nullptr,
+	                                                         indices.data(), VK_INDEX_TYPE_UINT16, 0));
+
+	ASSERT_EQ(config.vertexCount, 3u);
+	ASSERT_EQ(config.rawVertexData.size(), sizeof(Vertex) * 3u);
+
+	const auto *expanded = reinterpret_cast<const Vertex *>(config.rawVertexData.data());
+	EXPECT_EQ(std::memcmp(&expanded[0], &vertices[0], sizeof(Vertex)), 0);
+	EXPECT_EQ(std::memcmp(&expanded[1], &vertices[2], sizeof(Vertex)), 0);
+	EXPECT_EQ(std::memcmp(&expanded[2], &vertices[3], sizeof(Vertex)), 0);
+}
+
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 TEST(TrianglePipelineBootstrap, CudaRuntimeProducesGreenTriangleColorBuffer)
 {

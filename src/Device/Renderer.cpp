@@ -472,7 +472,7 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 			}
 
 			if(runtime->isHardwareBacked() &&
-			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr))
+			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex))
 			{
 				customGraphicsBootstrapDone = true;
 			}

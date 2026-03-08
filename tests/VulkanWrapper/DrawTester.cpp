@@ -50,6 +50,15 @@ DrawTester::~DrawTester()
 	device.destroyPipelineLayout(pipelineLayout, nullptr);
 	device.destroyDescriptorSetLayout(descriptorSetLayout);
 
+	if(indices.memory)
+	{
+		device.freeMemory(indices.memory, nullptr);
+	}
+	if(indices.buffer)
+	{
+		device.destroyBuffer(indices.buffer, nullptr);
+	}
+
 	device.freeMemory(vertices.memory, nullptr);
 	device.destroyBuffer(vertices.buffer, nullptr);
 
@@ -217,6 +226,12 @@ void DrawTester::pumpWindowEvents()
 void DrawTester::setWindowTitle(const std::string &title)
 {
 	window->setTitle(title);
+}
+
+void DrawTester::bindIndexBuffer(vk::CommandBuffer &commandBuffer)
+{
+	assert(indices.buffer);
+	commandBuffer.bindIndexBuffer(indices.buffer, 0, indices.type);
 }
 
 vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
@@ -559,6 +574,29 @@ void DrawTester::addVertexBuffer(void *vertexBufferData, size_t vertexBufferData
 
 	// Note that we assume data is tightly packed
 	vertices.numVertices = static_cast<uint32_t>(vertexBufferDataSize / vertexSize);
+}
+
+void DrawTester::addIndexBuffer(void *indexBufferData, size_t indexBufferDataSize, vk::IndexType indexType)
+{
+	assert(!indices.buffer);
+
+	vk::BufferCreateInfo indexBufferInfo;
+	indexBufferInfo.size = indexBufferDataSize;
+	indexBufferInfo.usage = vk::BufferUsageFlagBits::eIndexBuffer;
+	indices.buffer = device.createBuffer(indexBufferInfo);
+	indices.size = indexBufferDataSize;
+	indices.type = indexType;
+
+	vk::MemoryAllocateInfo memoryAllocateInfo;
+	vk::MemoryRequirements memoryRequirements = device.getBufferMemoryRequirements(indices.buffer);
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = Util::getMemoryTypeIndex(physicalDevice, memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+	indices.memory = device.allocateMemory(memoryAllocateInfo);
+
+	void *data = device.mapMemory(indices.memory, 0, VK_WHOLE_SIZE);
+	memcpy(data, indexBufferData, indexBufferDataSize);
+	device.unmapMemory(indices.memory);
+	device.bindBufferMemory(indices.buffer, indices.memory, 0);
 }
 
 vk::ShaderModule DrawTester::createShaderModule(const char *glslSource, EShLanguage glslLanguage)

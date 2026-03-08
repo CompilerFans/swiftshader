@@ -50,6 +50,7 @@ public:
 	void show();
 	void pumpWindowEvents();
 	void setWindowTitle(const std::string &title);
+	void bindIndexBuffer(vk::CommandBuffer &commandBuffer);
 
 	/////////////////////////
 	// Hooks
@@ -97,6 +98,12 @@ public:
 		addVertexBuffer(vertexBufferData, vertexBufferDataSize, sizeof(VertexType), std::move(inputAttributes));
 	}
 
+	template<typename IndexType>
+	void addIndexBuffer(IndexType *indexBufferData, size_t indexBufferDataSize, vk::IndexType indexType)
+	{
+		addIndexBuffer(static_cast<void *>(indexBufferData), indexBufferDataSize, indexType);
+	}
+
 	template<typename T>
 	struct Resource
 	{
@@ -136,6 +143,7 @@ private:
 	vk::RenderPass createRenderPass(vk::Format colorFormat);
 	vk::Pipeline createGraphicsPipeline(vk::RenderPass renderPass);
 	void addVertexBuffer(void *vertexBufferData, size_t vertexBufferDataSize, size_t vertexSize, std::vector<vk::VertexInputAttributeDescription> inputAttributes);
+	void addIndexBuffer(void *indexBufferData, size_t indexBufferDataSize, vk::IndexType indexType);
 
 	struct Hook
 	{
@@ -169,6 +177,14 @@ private:
 
 		uint32_t numVertices = 0;
 	} vertices;
+
+	struct IndexBuffer
+	{
+		vk::Buffer buffer;
+		vk::DeviceMemory memory;
+		size_t size = 0;
+		vk::IndexType type = vk::IndexType::eUint16;
+	} indices;
 
 	vk::DescriptorSetLayout descriptorSetLayout;  // Owning handle
 	vk::PipelineLayout pipelineLayout;            // Owning handle

@@ -31,9 +31,9 @@ struct TrianglePipelineBootstrapConfig
 	}};
 };
 
-bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig = nullptr);
+bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig = nullptr, const void *indexData = nullptr, VkIndexType indexType = VK_INDEX_TYPE_UINT16, int32_t baseVertex = 0);
 bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBootstrapConfig &config, std::vector<uint8_t> *colorBuffer);
-bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig = nullptr);
+bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig = nullptr, const void *indexData = nullptr, VkIndexType indexType = VK_INDEX_TYPE_UINT16, int32_t baseVertex = 0);
 bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, std::vector<uint8_t> *colorBuffer);
 void launchTrianglePipelineBootstrap(RuntimeAPI &runtime);
 

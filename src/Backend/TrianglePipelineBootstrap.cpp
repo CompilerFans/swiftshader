@@ -10,6 +10,33 @@
 
 namespace backend {
 namespace {
+template<typename IndexType>
+bool expandIndexedVertices(const sw::Stream &positionStream, uint32_t vertexCount, const IndexType *indices, int32_t baseVertex, std::vector<uint8_t> *rawVertexData)
+{
+	if(positionStream.buffer == nullptr || rawVertexData == nullptr)
+	{
+		return false;
+	}
+
+	rawVertexData->resize(static_cast<size_t>(positionStream.vertexStride) * vertexCount);
+	auto *destination = rawVertexData->data();
+	auto *sourceBase = static_cast<const uint8_t *>(positionStream.buffer);
+	for(uint32_t vertexIndex = 0; vertexIndex < vertexCount; vertexIndex++)
+	{
+		int64_t sourceIndex = static_cast<int64_t>(indices[vertexIndex]) + baseVertex;
+		if(sourceIndex < 0)
+		{
+			return false;
+		}
+
+		std::memcpy(destination + static_cast<size_t>(vertexIndex) * positionStream.vertexStride,
+		            sourceBase + static_cast<size_t>(sourceIndex) * positionStream.vertexStride,
+		            positionStream.vertexStride);
+	}
+
+	return true;
+}
+
 uint32_t positionComponentCount(VkFormat format)
 {
 	switch(format)
@@ -52,7 +79,7 @@ std::array<RasterBootstrapVertex, 3> toRasterVertices(const GraphicsBootstrapVer
 
 }  // namespace
 
-bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig)
+bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex)
 {
 	if(config == nullptr || positionStream.buffer == nullptr)
 	{
@@ -76,8 +103,37 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 	config->width = renderArea.extent.width;
 	config->height = renderArea.extent.height;
 	config->vertexCount = primitiveCount * 3;
-	config->rawVertexData.resize(positionStream.vertexStride * config->vertexCount);
-	std::memcpy(config->rawVertexData.data(), positionStream.buffer, config->rawVertexData.size());
+	if(indexData != nullptr)
+	{
+		switch(indexType)
+		{
+		case VK_INDEX_TYPE_UINT16:
+			if(!expandIndexedVertices(positionStream, config->vertexCount, static_cast<const uint16_t *>(indexData), baseVertex, &config->rawVertexData))
+			{
+				return false;
+			}
+			break;
+		case VK_INDEX_TYPE_UINT32:
+			if(!expandIndexedVertices(positionStream, config->vertexCount, static_cast<const uint32_t *>(indexData), baseVertex, &config->rawVertexData))
+			{
+				return false;
+			}
+			break;
+		case VK_INDEX_TYPE_UINT8_EXT:
+			if(!expandIndexedVertices(positionStream, config->vertexCount, static_cast<const uint8_t *>(indexData), baseVertex, &config->rawVertexData))
+			{
+				return false;
+			}
+			break;
+		default:
+			return false;
+		}
+	}
+	else
+	{
+		config->rawVertexData.resize(positionStream.vertexStride * config->vertexCount);
+		std::memcpy(config->rawVertexData.data(), positionStream.buffer, config->rawVertexData.size());
+	}
 	config->binding.vertexStride = positionStream.vertexStride;
 	config->binding.positionOffset = 0;
 	config->binding.positionComponentCount = componentCount;
@@ -231,10 +287,10 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	return true;
 }
 
-bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig)
+bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex)
 {
 	TrianglePipelineBootstrapConfig config = {};
-	if(!buildTrianglePipelineBootstrapConfig(positionStream, colorStream, topology, primitiveCount, renderArea, &config, fragmentConfig))
+	if(!buildTrianglePipelineBootstrapConfig(positionStream, colorStream, topology, primitiveCount, renderArea, &config, fragmentConfig, indexData, indexType, baseVertex))
 	{
 		return false;
 	}
