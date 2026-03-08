@@ -64,6 +64,7 @@ Implementation - Task 1 complete
 - Task 7 complete: codegen text emitters and ABI parity checks added.
 - Task 8 complete: runtime adapter and fake runtime bootstrap added.
 - Task 9 complete: compute backend executable bootstrap and fake dispatch validation added.
+- Task 10 complete: logical resource state tracker added and threaded into execution state.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.

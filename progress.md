@@ -41,4 +41,7 @@
 - Task 9 RED: added compute backend tests and confirmed the build failed because `ComputeExecutable` / runtime-launch pieces were missing.
 - Task 9 GREEN: added `ComputeExecutable`, extended `FakeRuntimeAPI` with launch capture, and created a side-by-side backend executable path inside `vk::ComputePipeline::compileShaders`.
 - Validation: `./build/backend-unittests --gtest_filter=ComputeDispatchValidation.*` passed, `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp` compiled, and `src/Vulkan/VkPipeline.cpp` compiled with the target-equivalent compile flags.
+- Task 10 RED: added `ResourceStateTrackerTests.cpp` and confirmed the build failed because `ResourceStateTracker.hpp` was missing.
+- Task 10 GREEN: added a minimal logical-layout `ResourceStateTracker` and threaded it into `CommandBuffer::ExecutionState`.
+- Validation: `./build/backend-unittests --gtest_filter=ResourceStateTracker.*` passed.
 

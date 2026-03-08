@@ -15,6 +15,7 @@
 #ifndef VK_COMMAND_BUFFER_HPP_
 #define VK_COMMAND_BUFFER_HPP_
 
+#include "Backend/ResourceStateTracker.hpp"
 #include "VkConfig.hpp"
 #include "VkDescriptorSet.hpp"
 #include "VkPipeline.hpp"
@@ -215,6 +216,8 @@ public:
 		VkIndexType indexType;
 
 		uint32_t subpassIndex = 0;
+
+		backend::ResourceStateTracker resourceStateTracker;
 
 		void bindAttachments(Attachments *attachments);
 
