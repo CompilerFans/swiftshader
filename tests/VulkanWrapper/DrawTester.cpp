@@ -14,6 +14,9 @@
 
 #include "DrawTester.hpp"
 
+#include <array>
+#include <cstdint>
+
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
 DrawTester::DrawTester(Multisample multisample)
@@ -99,6 +102,24 @@ void DrawTester::renderFrame()
 	queue.submit(1, &submitInfo, waitFences[currentFrameBuffer]);
 
 	swapchain->queuePresent(queue, currentFrameBuffer, renderCompleteSemaphore);
+}
+
+std::array<uint8_t, 4> DrawTester::readbackPixel(uint32_t x, uint32_t y)
+{
+	queue.waitIdle();
+
+	vk::Image image = swapchain->getImage(currentFrameBuffer);
+	Buffer readback(physicalDevice, device, windowSize.width * windowSize.height * 4, vk::BufferUsageFlagBits::eTransferDst);
+
+	Util::transitionImageLayout(device, commandPool, queue, image, swapchain->colorFormat, vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferSrcOptimal);
+	Util::copyImageToBuffer(device, commandPool, queue, image, readback.getBuffer(), windowSize.width, windowSize.height);
+	Util::transitionImageLayout(device, commandPool, queue, image, swapchain->colorFormat, vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::ePresentSrcKHR);
+
+	auto *pixels = reinterpret_cast<const uint8_t *>(readback.mapMemory());
+	size_t offset = (static_cast<size_t>(y) * windowSize.width + x) * 4;
+	std::array<uint8_t, 4> rgba = { pixels[offset + 2], pixels[offset + 1], pixels[offset + 0], pixels[offset + 3] };
+	readback.unmapMemory();
+	return rgba;
 }
 
 void DrawTester::show()

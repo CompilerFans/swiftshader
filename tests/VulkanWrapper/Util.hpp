@@ -31,6 +31,7 @@ void endSingleTimeCommands(vk::Device device, vk::CommandPool commandPool, vk::Q
 void transitionImageLayout(vk::Device device, vk::CommandPool commandPool, vk::Queue queue, vk::Image image, vk::Format format, vk::ImageLayout oldLayout, vk::ImageLayout newLayout);
 
 void copyBufferToImage(vk::Device device, vk::CommandPool commandPool, vk::Queue queue, vk::Buffer buffer, vk::Image image, uint32_t width, uint32_t height);
+void copyImageToBuffer(vk::Device device, vk::CommandPool commandPool, vk::Queue queue, vk::Image image, vk::Buffer buffer, uint32_t width, uint32_t height);
 
 std::vector<uint32_t> compileGLSLtoSPIRV(const char *glslSource, EShLanguage glslLanguage);
 

@@ -1,7 +1,7 @@
 #ifndef SWIFTSHADER_SEMANTIC_IR_HPP_
 #define SWIFTSHADER_SEMANTIC_IR_HPP_
 
-#include <vulkan/vulkan_core.h>
+#include "Vulkan/VulkanPlatform.hpp"
 
 #include <string>
 

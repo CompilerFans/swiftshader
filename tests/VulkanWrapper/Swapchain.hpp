@@ -39,6 +39,11 @@ public:
 		return imageViews[i];
 	}
 
+	vk::Image getImage(size_t i) const
+	{
+		return images[i];
+	}
+
 	vk::Extent2D getExtent() const
 	{
 		return extent;

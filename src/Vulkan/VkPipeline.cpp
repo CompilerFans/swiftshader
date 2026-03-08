@@ -28,7 +28,9 @@
 
 #include "marl/trace.h"
 
+#if !SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT
 #include "spirv-tools/optimizer.hpp"
+#endif
 
 #include <iostream>
 
@@ -41,6 +43,18 @@ sw::SpirvBinary optimizeSpirv(const vk::PipelineCache::SpirvBinaryKey &key)
 	const VkSpecializationInfo *specializationInfo = key.getSpecializationInfo();
 	bool optimize = key.getOptimization();
 
+#if SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT
+	(void)optimize;
+	if(!specializationInfo)
+	{
+		sw::SpirvBinary passthrough = code;
+		passthrough.mapOptimizedIdentifier(code);
+		return passthrough;
+	}
+
+	UNSUPPORTED("Specialization constants require SPIR-V optimizer when SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT is enabled");
+	return sw::SpirvBinary(code.data(), code.size());
+#else
 	spvtools::Optimizer opt{ vk::SPIRV_VERSION };
 
 	opt.SetMessageConsumer([](spv_message_level_t level, const char *source, const spv_position_t &position, const char *message) {
@@ -112,6 +126,7 @@ sw::SpirvBinary optimizeSpirv(const vk::PipelineCache::SpirvBinaryKey &key)
 	}
 
 	return optimized;
+#endif
 }
 
 std::shared_ptr<sw::ComputeProgram> createProgram(vk::Device *device, std::shared_ptr<sw::SpirvShader> shader, const vk::PipelineLayout *layout)

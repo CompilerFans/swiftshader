@@ -1,3 +1,4 @@
+#include "Util.hpp"
 // Copyright 2021 The SwiftShader Authors. All Rights Reserved.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -14,8 +15,9 @@
 
 #include "Buffer.hpp"
 
-Buffer::Buffer(vk::Device device, vk::DeviceSize size, vk::BufferUsageFlags usage)
-    : device(device)
+Buffer::Buffer(vk::PhysicalDevice physicalDevice, vk::Device device, vk::DeviceSize size, vk::BufferUsageFlags usage)
+    : physicalDevice(physicalDevice)
+    , device(device)
     , size(size)
 {
 	vk::BufferCreateInfo bufferInfo{};
@@ -29,7 +31,7 @@ Buffer::Buffer(vk::Device device, vk::DeviceSize size, vk::BufferUsageFlags usag
 
 	vk::MemoryAllocateInfo allocInfo{};
 	allocInfo.allocationSize = memRequirements.size;
-	allocInfo.memoryTypeIndex = 0;  // TODO: getMemoryTypeIndex(memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+	allocInfo.memoryTypeIndex = Util::getMemoryTypeIndex(physicalDevice, memRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
 
 	bufferMemory = device.allocateMemory(allocInfo);
 	device.bindBufferMemory(buffer, bufferMemory, 0);

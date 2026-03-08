@@ -74,3 +74,60 @@ TEST_F(DrawTest, VertexShaderNoPositionOutput)
 	tester.initialize();
 	tester.renderFrame();
 }
+
+
+TEST_F(DrawTest, SolidColorTriangle)
+{
+	DrawTester tester;
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex
+		{
+			float position[3];
+		};
+
+		Vertex vertexBufferData[] = {
+			{ { 1.0f, 1.0f, 0.5f } },
+			{ { -1.0f, 1.0f, 0.5f } },
+			{ { 0.0f, -1.0f, 0.5f } }
+		};
+
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 310 es
+			layout(location = 0) in vec3 inPos;
+
+			void main()
+			{
+				gl_Position = vec4(inPos.xyz, 1.0);
+			})";
+
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 310 es
+			precision highp float;
+
+			layout(location = 0) out vec4 outColor;
+
+			void main()
+			{
+				outColor = vec4(1.0, 0.0, 0.0, 1.0);
+			})";
+
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.initialize();
+	tester.renderFrame();
+	auto pixel = tester.readbackPixel(640, 240);
+	EXPECT_GT(pixel[0], 200);
+	EXPECT_LT(pixel[1], 80);
+	EXPECT_LT(pixel[2], 80);
+	EXPECT_GT(pixel[3], 200);
+}

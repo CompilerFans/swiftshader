@@ -15,6 +15,7 @@
 #ifndef DRAW_TESTER_HPP_
 #define DRAW_TESTER_HPP_
 
+#include "Buffer.hpp"
 #include "Framebuffer.hpp"
 #include "Image.hpp"
 #include "Swapchain.hpp"
@@ -41,6 +42,7 @@ public:
 
 	void initialize();
 	void renderFrame();
+	std::array<uint8_t, 4> readbackPixel(uint32_t x, uint32_t y);
 	void show();
 
 	/////////////////////////

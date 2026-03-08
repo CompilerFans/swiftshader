@@ -20,7 +20,7 @@
 class Buffer
 {
 public:
-	Buffer(vk::Device device, vk::DeviceSize size, vk::BufferUsageFlags usage);
+	Buffer(vk::PhysicalDevice physicalDevice, vk::Device device, vk::DeviceSize size, vk::BufferUsageFlags usage);
 	~Buffer();
 
 	vk::Buffer getBuffer()
@@ -39,6 +39,7 @@ public:
 	}
 
 private:
+	const vk::PhysicalDevice physicalDevice;
 	const vk::Device device;
 	vk::DeviceSize size;
 	vk::Buffer buffer;              // Owning handle

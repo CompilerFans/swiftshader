@@ -106,6 +106,22 @@ void transitionImageLayout(vk::Device device, vk::CommandPool commandPool, vk::Q
 		sourceStage = vk::PipelineStageFlagBits::eTransfer;
 		destinationStage = vk::PipelineStageFlagBits::eFragmentShader;
 	}
+	else if(oldLayout == vk::ImageLayout::ePresentSrcKHR && newLayout == vk::ImageLayout::eTransferSrcOptimal)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
+		barrier.dstAccessMask = vk::AccessFlagBits::eTransferRead;
+
+		sourceStage = vk::PipelineStageFlagBits::eBottomOfPipe;
+		destinationStage = vk::PipelineStageFlagBits::eTransfer;
+	}
+	else if(oldLayout == vk::ImageLayout::eTransferSrcOptimal && newLayout == vk::ImageLayout::ePresentSrcKHR)
+	{
+		barrier.srcAccessMask = vk::AccessFlagBits::eTransferRead;
+		barrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+
+		sourceStage = vk::PipelineStageFlagBits::eTransfer;
+		destinationStage = vk::PipelineStageFlagBits::eBottomOfPipe;
+	}
 	else
 	{
 		assert(false && "unsupported layout transition!");
@@ -171,6 +187,26 @@ std::vector<uint32_t> compileGLSLtoSPIRV(const char *glslSource, EShLanguage gls
 	assert(spirv.size() != 0);
 
 	return spirv;
+}
+
+void copyImageToBuffer(vk::Device device, vk::CommandPool commandPool, vk::Queue queue, vk::Image image, vk::Buffer buffer, uint32_t width, uint32_t height)
+{
+	vk::CommandBuffer commandBuffer = beginSingleTimeCommands(device, commandPool);
+
+	vk::BufferImageCopy region{};
+	region.bufferOffset = 0;
+	region.bufferRowLength = 0;
+	region.bufferImageHeight = 0;
+	region.imageSubresource.aspectMask = vk::ImageAspectFlagBits::eColor;
+	region.imageSubresource.mipLevel = 0;
+	region.imageSubresource.baseArrayLayer = 0;
+	region.imageSubresource.layerCount = 1;
+	region.imageOffset = vk::Offset3D{ 0, 0, 0 };
+	region.imageExtent = vk::Extent3D{ width, height, 1 };
+
+	commandBuffer.copyImageToBuffer(image, vk::ImageLayout::eTransferSrcOptimal, buffer, 1, &region);
+
+	endSingleTimeCommands(device, commandPool, queue, commandBuffer);
 }
 
 }  // namespace Util

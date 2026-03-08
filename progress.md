@@ -73,4 +73,6 @@
 - Validation: default and custom builds both passed `GraphicsBootstrapMode.*:ExecutionBackendFactory.*`.
 - Build policy update: keep `build/` and `build-custom/` between iterations to maximize incremental rebuild benefit from ccache and existing object files.
 - Began a full custom `vk-unittests` build and intentionally preserved the partially built `build-custom/` tree to maximize incremental progress on the next pass.
+- SolidColorTriangle milestone: added swapchain readback support, introduced a dedicated `draw-unittests` target, and verified `DrawTest.SolidColorTriangle` passes in both `build-draw-subzero` and `build-draw-custom-subzero`.
+- Fast draw build path: `REACTOR_BACKEND=Subzero` plus `SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT=ON` was sufficient to get the pure-color triangle test running quickly while reusing ccache.
 

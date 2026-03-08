@@ -118,5 +118,5 @@ target_link_libraries(vk_pipeline
         marl
         Reactor
         SPIRV-Tools
-        SPIRV-Tools-opt
+        $<$<NOT:$<BOOL:${SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT}>>:SPIRV-Tools-opt>
 )

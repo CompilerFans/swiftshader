@@ -31,6 +31,9 @@ declare_args() {
 
   # Enable custom GPU backend scaffolding
   swiftshader_enable_custom_gpu_backend = false
+
+  # Skip SPIR-V optimizer in fast test builds
+  swiftshader_skip_pipeline_spirv_opt = false
 }
 
 configs_to_add = []

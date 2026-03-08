@@ -32,6 +32,10 @@ config("swiftshader_config") {
   if (swiftshader_enable_custom_gpu_backend) {
     defines += [ "SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=1" ]
   }
+
+  if (swiftshader_skip_pipeline_spirv_opt) {
+    defines += [ "SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT=1" ]
+  }
   if (is_win) {
     # Disable MSVC warnings about std::aligned_storage being broken before
     # VS 2017 15.8

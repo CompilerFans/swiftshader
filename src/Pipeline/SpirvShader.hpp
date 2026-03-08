@@ -823,6 +823,7 @@ public:
 		std::unordered_map<Object::ID, uint32_t> offsets;  // in bytes
 	};
 
+	std::string entryPointNameString;
 	std::vector<InterfaceComponent> inputs;
 	std::vector<InterfaceComponent> outputs;
 
@@ -836,7 +837,6 @@ public:
 	WorkgroupMemory workgroupMemory;
 
 	Function::ID entryPoint;
-	std::string entryPointNameString;
 	spv::ExecutionModel executionModel = spv::ExecutionModelMax;  // Invalid prior to OpEntryPoint parsing.
 	ExecutionModes executionModes = {};
 	Capabilities capabilities = {};

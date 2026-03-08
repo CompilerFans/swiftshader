@@ -202,6 +202,7 @@ option_if_not_defined(SWIFTSHADER_LESS_DEBUG_INFO "Generate less debug info to r
 # option_if_not_defined(SWIFTSHADER_ENABLE_VULKAN_DEBUGGER "Enable Vulkan debugger support" FALSE)  # TODO(b/251802301)
 option_if_not_defined(SWIFTSHADER_ENABLE_ASTC "Enable ASTC compressed textures support" TRUE)  # TODO(b/150130101)
 option_if_not_defined(SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND "Enable custom GPU backend scaffolding" FALSE)
+option_if_not_defined(SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT "Skip SPIR-V optimizer in pipeline compilation for fast test builds" FALSE)
 
 if(SWIFTSHADER_ENABLE_VULKAN_DEBUGGER)
     set(SWIFTSHADER_BUILD_CPPDAP TRUE)
@@ -833,6 +834,10 @@ if(SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND)
     target_compile_definitions(vk_base INTERFACE "SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=1")
 endif()
 
+if(SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT)
+    target_compile_definitions(vk_base INTERFACE "SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT=1")
+endif()
+
 if(WIN32)
     target_compile_definitions(vk_base INTERFACE "VK_USE_PLATFORM_WIN32_KHR")
 elseif(LINUX)
@@ -995,4 +1000,5 @@ endif()
 
 if(SWIFTSHADER_BUILD_TESTS)
     add_subdirectory(${TESTS_DIR}/VulkanUnitTests) # Add VulkanUnitTests target
+    add_subdirectory(${TESTS_DIR}/DrawUnitTests ${CMAKE_BINARY_DIR}/tests/DrawUnitTests) # Add draw-unittests target
 endif()
