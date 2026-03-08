@@ -69,4 +69,6 @@
 - Validation: `src/Vulkan/VkQueue.cpp` compiled successfully after the factory move.
 - Factory cleanup milestone: `PresentAdapter` selection now also routes through `BackendFactory`, making runtime, execution, and present selection follow one backend decision surface.
 - Validation: default build passed `PresentAdapterFactory.*:GraphicsBootstrapMode.*`, and custom build passed the same filters including custom present capture.
+- Execution backend testability milestone: CPU execution backend now lazily creates its renderer, allowing backend-selection tests to stay lightweight while still verifying bootstrap mode contracts in both default and custom builds.
+- Validation: default and custom builds both passed `GraphicsBootstrapMode.*:ExecutionBackendFactory.*`.
 

@@ -21,6 +21,12 @@ enum class GraphicsBootstrapMode
 	CustomWithCpuGraphicsFallback,
 };
 
+struct ExecutionBackendCapture
+{
+	bool usedCpuFactory = false;
+	bool usedCustomFactory = false;
+};
+
 class GraphicsBackend
 {
 public:
@@ -31,6 +37,8 @@ public:
 };
 
 GraphicsBootstrapMode defaultGraphicsBootstrapMode();
+void resetExecutionBackendCapture();
+const ExecutionBackendCapture &lastExecutionBackendCapture();
 std::unique_ptr<ExecutionBackend> createCpuExecutionBackend(vk::Device *device);
 std::unique_ptr<ExecutionBackend> createCustomExecutionBackend(vk::Device *device);
 

@@ -14,13 +14,33 @@ class CpuGraphicsBackend : public GraphicsBackend
 {
 public:
 	explicit CpuGraphicsBackend(vk::Device *device)
-	    : rendererImpl(new sw::Renderer(device))
+	    : device(device)
 	{}
 
-	sw::Renderer *renderer() override { return rendererImpl.get(); }
-	void synchronize() override { rendererImpl->synchronize(); }
+	sw::Renderer *renderer() override
+	{
+		ensureRenderer();
+		return rendererImpl.get();
+	}
+
+	void synchronize() override
+	{
+		if(rendererImpl)
+		{
+			rendererImpl->synchronize();
+		}
+	}
 
 private:
+	void ensureRenderer()
+	{
+		if(!rendererImpl && device)
+		{
+			rendererImpl.reset(new sw::Renderer(device));
+		}
+	}
+
+	vk::Device *device = nullptr;
 	std::unique_ptr<sw::Renderer> rendererImpl;
 };
 
@@ -56,6 +76,9 @@ private:
 
 std::unique_ptr<ExecutionBackend> createCpuExecutionBackend(vk::Device *device)
 {
+	auto capture = lastExecutionBackendCapture();
+	(void)capture;
+	const_cast<ExecutionBackendCapture &>(lastExecutionBackendCapture()).usedCpuFactory = true;
 	return std::make_unique<CpuExecutionBackend>(device);
 }
 

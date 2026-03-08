@@ -3,6 +3,11 @@
 #include "Backend/BackendConfig.hpp"
 
 namespace backend {
+namespace {
+
+ExecutionBackendCapture gCapture = {};
+
+}  // namespace
 
 GraphicsBootstrapMode defaultGraphicsBootstrapMode()
 {
@@ -11,6 +16,16 @@ GraphicsBootstrapMode defaultGraphicsBootstrapMode()
 #else
 	return GraphicsBootstrapMode::CpuOnly;
 #endif
+}
+
+void resetExecutionBackendCapture()
+{
+	gCapture = {};
+}
+
+const ExecutionBackendCapture &lastExecutionBackendCapture()
+{
+	return gCapture;
 }
 
 }  // namespace backend
