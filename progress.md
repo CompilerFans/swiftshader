@@ -208,6 +208,13 @@
   - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexShaderAppliesOffsetFromGlsl:DrawTest.VertexShaderAppliesOffsetFromSpirvModule')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexShaderNoPositionOutput:DrawTest.VertexShaderAppliesOffsetFromGlsl:DrawTest.VertexShaderAppliesOffsetFromSpirvModule:DrawTest.SolidColorTriangle')` passed
+- Fragment standalone bootstrap RED/GREEN:
+  - added a new `FragmentBootstrap` backend unit-test surface with source-emission checks, fake-runtime launch capture, and real CUDA execution tests
+  - implemented a minimal `fs_entry/fs_main` kernel that consumes an explicit fragment invocation list and writes constant RGBA8 output into a linear color buffer
+  - modeled helper-lane and export suppression as per-invocation flags so the fragment bootstrap can validate basic fragment-side write semantics before raster is integrated
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.*')` passed
 - Minimal SPIR-V vertex lowering RED/GREEN:
   - added failing backend tests that require `SemanticIRBuilder` to preserve minimal vertex lowering metadata, lower it into `KernelIR`, and emit a vertex-style CUDA wrapper/body instead of the placeholder `kernel_main`
   - added a minimal `VertexLoweringInfo` model shared by `SemanticIR` and `KernelIR`, plus a lightweight `lowerToKernelIR()` bridge so the new path is not stuck at raw metadata storage
