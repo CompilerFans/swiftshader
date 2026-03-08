@@ -7,11 +7,13 @@ set(BACKEND_SRC_FILES
     FragmentBootstrap.cpp
     GraphicsBootstrap.cpp
     RasterBootstrap.cpp
+    TrianglePipelineBootstrap.cpp
     ComputeExecutable.hpp
     FragmentBootstrap.hpp
     GraphicsBackend.cpp
     GraphicsBootstrap.hpp
     RasterBootstrap.hpp
+    TrianglePipelineBootstrap.hpp
     PresentAdapter.cpp
     PresentAdapter.hpp
     GraphicsBackend.hpp

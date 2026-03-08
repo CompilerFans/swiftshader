@@ -9,6 +9,9 @@
 namespace backend {
 namespace {
 
+constexpr uint32_t kRasterBlockWidth = 8u;
+constexpr uint32_t kRasterBlockHeight = 8u;
+
 struct RasterParams
 {
 	const RasterBootstrapVertex *vertices = nullptr;
@@ -211,11 +214,11 @@ bool runRasterBootstrap(RuntimeAPI &runtime, const std::array<RasterBootstrapVer
 	std::vector<void *> arguments = { &params };
 
 	LaunchRecord record = {};
-	record.groupCountX = 1;
-	record.groupCountY = 1;
+	record.groupCountX = (config.width + kRasterBlockWidth - 1) / kRasterBlockWidth;
+	record.groupCountY = (config.height + kRasterBlockHeight - 1) / kRasterBlockHeight;
 	record.groupCountZ = 1;
-	record.blockCountX = config.width;
-	record.blockCountY = config.height;
+	record.blockCountX = std::min(config.width, kRasterBlockWidth);
+	record.blockCountY = std::min(config.height, kRasterBlockHeight);
 	record.blockCountZ = 1;
 	record.argumentCount = arguments.size();
 	runtime.launch(module, record, arguments);

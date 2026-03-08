@@ -1,5 +1,6 @@
 #include "Backend/RuntimeAPI.hpp"
 #include "GraphicsBootstrap.hpp"
+#include "TrianglePipelineBootstrap.hpp"
 #include "Vulkan/VkDevice.hpp"
 #include "GraphicsBackend.hpp"
 
@@ -38,7 +39,7 @@ private:
 		}
 
 		graphicsBootstrapDone = true;
-		launchGraphicsBootstrap(*runtime);
+		launchTrianglePipelineBootstrap(*runtime);
 	}
 
 	std::unique_ptr<ExecutionBackend> cpuBackend;

@@ -275,6 +275,14 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='RasterBootstrap.*:GraphicsBootstrap.*:FragmentBootstrap.*')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed
+- Triangle pipeline bootstrap RED/GREEN:
+  - added failing backend tests for a new `TrianglePipelineBootstrap` helper, requiring a fake runtime to launch all three stages and a real CUDA runtime to produce a green triangle color buffer
+  - found the first failure was not a bad sample point but an oversized raster block (`64x64`) that exceeded practical CUDA block limits, so only the vertex launch completed and the later stages never ran
+  - fixed the root cause by changing raster launch geometry from one framebuffer-sized block to a small-block multi-grid launch, then added a three-stage bootstrap helper and routed `CustomExecutionBackend` through it
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.*:RasterBootstrap.CudaRuntimeMatchesCpuReference')` passed
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle')` passed, and the terminal dump now shows `vs_entry`, `raster_entry`, and `fs_entry`
 - Generated vertex-index RED/GREEN:
   - added failing backend tests that require the generated `vs_main` to reference `vertexIndex` in emitted CUDA source and to produce shifted `x` outputs at runtime
   - extended `GraphicsBootstrapShaderConfig` with a minimal `vertexIndexScaleX` builtin-lowering knob
