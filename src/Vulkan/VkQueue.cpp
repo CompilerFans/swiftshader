@@ -32,24 +32,6 @@
 
 #include <cstring>
 
-namespace {
-
-std::unique_ptr<backend::ExecutionBackend> createExecutionBackend(vk::Device *device)
-{
-	switch(backend::defaultBackendKind())
-	{
-	case backend::BackendKind::CPU:
-		return backend::createCpuExecutionBackend(device);
-	case backend::BackendKind::CUSTOM_GPU:
-		return backend::createCustomExecutionBackend(device);
-	default:
-		UNREACHABLE("Unknown backend kind");
-		return backend::createCpuExecutionBackend(device);
-	}
-}
-
-}  // anonymous namespace
-
 namespace vk {
 
 Queue::Queue(Device *device, marl::Scheduler *scheduler)
@@ -92,7 +74,7 @@ void Queue::submitQueue(const Task &task)
 {
 	if(executionBackend == nullptr)
 	{
-		executionBackend = createExecutionBackend(device);
+		executionBackend = backend::createExecutionBackend(device);
 	}
 
 	for(uint32_t i = 0; i < task.submitCount; i++)

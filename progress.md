@@ -65,4 +65,6 @@
 - Validation: default and custom builds both passed `GraphicsBootstrapMode.*`, and `src/Vulkan/VkQueue.cpp` compiled after the execution-backend split.
 - Post-bootstrap graphics/present factory milestone: present selection now flows through a backend factory, custom builds capture acquire/present, and custom execution selection uses an explicit bootstrap mode instead of an `UNSUPPORTED` fallback branch.
 - Final evidence: default build passed all 15 backend tests; custom build passed focused `BackendFactory`, `GraphicsBootstrapMode`, `RuntimeAPI`, `ComputeDispatchValidation`, and `PresentAdapterFactory` tests; Vulkan-side smoke and selection files compiled successfully.
+- Structural cleanup milestone: centralized execution-backend selection in `BackendFactory`, removing one more backend-selection decision from `VkQueue.cpp`.
+- Validation: `src/Vulkan/VkQueue.cpp` compiled successfully after the factory move.
 
