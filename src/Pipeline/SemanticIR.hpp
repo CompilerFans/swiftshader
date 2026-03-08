@@ -1,6 +1,7 @@
 #ifndef SWIFTSHADER_SEMANTIC_IR_HPP_
 #define SWIFTSHADER_SEMANTIC_IR_HPP_
 
+#include "VertexLoweringInfo.hpp"
 #include "Vulkan/VulkanPlatform.hpp"
 
 #include <string>
@@ -19,9 +20,10 @@ enum class ResourceAccessKind
 class SemanticIRModule
 {
 public:
-	SemanticIRModule(VkShaderStageFlagBits stage, std::string entryPoint)
+	SemanticIRModule(VkShaderStageFlagBits stage, std::string entryPoint, VertexLoweringInfo vertexLowering = {})
 	    : shaderStage(stage)
 	    , mainEntryPoint(std::move(entryPoint))
+	    , vertex(std::move(vertexLowering))
 	{}
 
 	VkShaderStageFlagBits stage() const
@@ -34,9 +36,15 @@ public:
 		return mainEntryPoint;
 	}
 
+	const VertexLoweringInfo &vertexLowering() const
+	{
+		return vertex;
+	}
+
 private:
 	VkShaderStageFlagBits shaderStage;
 	std::string mainEntryPoint;
+	VertexLoweringInfo vertex;
 };
 
 }  // namespace sw

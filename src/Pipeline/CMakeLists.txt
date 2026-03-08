@@ -31,6 +31,7 @@ set(PIPELINE_SRC_FILES
     KernelABI.hpp
     KernelIR.cpp
     KernelIR.hpp
+    KernelIRLowering.hpp
     PixelProgram.cpp
     PixelProgram.hpp
     PixelRoutine.cpp
@@ -40,6 +41,7 @@ set(PIPELINE_SRC_FILES
     SemanticIR.hpp
     SemanticIRBuilder.cpp
     SemanticIRBuilder.hpp
+    SemanticIRBuilderSpirvShader.cpp
     SamplerCore.hpp
     SetupRoutine.cpp
     SetupRoutine.hpp

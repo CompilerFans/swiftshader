@@ -1,5 +1,7 @@
 #include "Pipeline/KernelABI.hpp"
 #include "Pipeline/KernelIR.hpp"
+#include "Pipeline/KernelIRLowering.hpp"
+#include "Pipeline/SemanticIR.hpp"
 
 #include <gtest/gtest.h>
 
@@ -26,4 +28,26 @@ TEST(KernelIR, PreservesQuadAndHelperLaneMetadata)
     EXPECT_EQ(module.fragmentExecutionInfo().quadHeight, 2u);
     EXPECT_EQ(module.fragmentExecutionInfo().helperLaneMask, 0xAu);
     EXPECT_EQ(module.fragmentExecutionInfo().exportMask, 0x5u);
+}
+
+TEST(KernelIR, LowersMinimalVertexSemanticInfo)
+{
+    sw::VertexLoweringInfo vertexInfo{};
+    vertexInfo.usesPositionAttribute = true;
+    vertexInfo.positionAttributeLocation = 0;
+    vertexInfo.positionBinding = 0;
+    vertexInfo.vertexStride = 12;
+    vertexInfo.positionOffset = 4;
+    vertexInfo.usesVertexIndex = true;
+
+    sw::SemanticIRModule semantic(VK_SHADER_STAGE_VERTEX_BIT, "main", vertexInfo);
+    sw::KernelIRModule kernel = sw::lowerToKernelIR(semantic);
+
+    EXPECT_TRUE(kernel.hasVertexLoweringInfo());
+    EXPECT_TRUE(kernel.vertexLoweringInfo().usesPositionAttribute);
+    EXPECT_EQ(kernel.vertexLoweringInfo().positionAttributeLocation, 0u);
+    EXPECT_EQ(kernel.vertexLoweringInfo().positionBinding, 0u);
+    EXPECT_EQ(kernel.vertexLoweringInfo().vertexStride, 12u);
+    EXPECT_EQ(kernel.vertexLoweringInfo().positionOffset, 4u);
+    EXPECT_TRUE(kernel.vertexLoweringInfo().usesVertexIndex);
 }

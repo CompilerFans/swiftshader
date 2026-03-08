@@ -1,6 +1,8 @@
 #ifndef SWIFTSHADER_KERNEL_IR_HPP_
 #define SWIFTSHADER_KERNEL_IR_HPP_
 
+#include "VertexLoweringInfo.hpp"
+
 #include <cstdint>
 
 namespace sw {
@@ -28,8 +30,26 @@ public:
 		return fragment;
 	}
 
+	void setVertexLoweringInfo(const VertexLoweringInfo &value)
+	{
+		vertex = value;
+		hasVertexLowering = true;
+	}
+
+	bool hasVertexLoweringInfo() const
+	{
+		return hasVertexLowering;
+	}
+
+	const VertexLoweringInfo &vertexLoweringInfo() const
+	{
+		return vertex;
+	}
+
 private:
 	FragmentExecutionInfo fragment = {};
+	VertexLoweringInfo vertex = {};
+	bool hasVertexLowering = false;
 };
 
 }  // namespace sw
