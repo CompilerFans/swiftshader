@@ -215,6 +215,14 @@
 - Validation:
   - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.*')` passed
+- FragCoord quadrant draw test RED/GREEN:
+  - added a fullscreen-triangle draw test whose fragment shader colors the four screen quadrants differently from `gl_FragCoord`
+  - reused the existing BMP export path so the result is saved as `draw-test-artifacts/fragcoord-quadrant-colors.bmp`
+  - the new test passed immediately on the current draw path, so no production rendering changes were needed for this feature
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.FragmentShaderUsesFragCoordQuadrantColors)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFragCoordQuadrantColors:DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles')` passed
 - Minimal SPIR-V vertex lowering RED/GREEN:
   - added failing backend tests that require `SemanticIRBuilder` to preserve minimal vertex lowering metadata, lower it into `KernelIR`, and emit a vertex-style CUDA wrapper/body instead of the placeholder `kernel_main`
   - added a minimal `VertexLoweringInfo` model shared by `SemanticIR` and `KernelIR`, plus a lightweight `lowerToKernelIR()` bridge so the new path is not stuck at raw metadata storage
