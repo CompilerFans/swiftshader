@@ -24,6 +24,7 @@ TEST(CodegenEmitter, EmitsVertexStageCudaLikeSource)
     vertexInfo.usesPositionAttribute = true;
     vertexInfo.positionAttributeLocation = 0;
     vertexInfo.positionBinding = 0;
+    vertexInfo.positionInputComponentCount = 3;
     vertexInfo.vertexStride = 12;
     vertexInfo.positionOffset = 0;
     vertexInfo.usesVertexIndex = true;
@@ -38,4 +39,21 @@ TEST(CodegenEmitter, EmitsVertexStageCudaLikeSource)
     EXPECT_NE(text.find("static_cast<float>(vertexIndex)"), std::string::npos);
     EXPECT_NE(text.find("static_cast<float>(params.instanceIndex)"), std::string::npos);
     EXPECT_NE(text.find("outVertex.x += 0.25f;"), std::string::npos);
+}
+
+TEST(CodegenEmitter, EmitsVec2VertexInputFallbackForMissingZ)
+{
+    sw::KernelIRModule module;
+    sw::VertexLoweringInfo vertexInfo{};
+    vertexInfo.usesPositionAttribute = true;
+    vertexInfo.positionAttributeLocation = 0;
+    vertexInfo.positionBinding = 0;
+    vertexInfo.positionInputComponentCount = 2;
+    vertexInfo.vertexStride = 8;
+    vertexInfo.positionOffset = 0;
+    module.setVertexLoweringInfo(vertexInfo);
+
+    std::string text = sw::emitCudaLikeSource(module);
+    EXPECT_NE(text.find("VertexInput inVertex = { position[0], position[1], 0.0f };"), std::string::npos);
+    EXPECT_EQ(text.find("position[2]"), std::string::npos);
 }

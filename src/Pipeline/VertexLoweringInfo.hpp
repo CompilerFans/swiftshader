@@ -10,6 +10,7 @@ struct VertexLoweringInfo
 	bool usesPositionAttribute = false;
 	uint32_t positionAttributeLocation = 0;
 	uint32_t positionBinding = 0;
+	uint32_t positionInputComponentCount = 0;
 	uint32_t vertexStride = 0;
 	uint32_t positionOffset = 0;
 	bool usesVertexIndex = false;

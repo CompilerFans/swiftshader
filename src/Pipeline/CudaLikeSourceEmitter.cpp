@@ -75,9 +75,21 @@ std::string emitVertexCudaLikeSource(const VertexLoweringInfo &vertex)
 	source << "\t}\n";
 	if(vertex.usesPositionAttribute)
 	{
+		uint32_t componentCount = (vertex.positionInputComponentCount == 0) ? 3u : vertex.positionInputComponentCount;
 		source << "\tconst unsigned char *vertexBase = params.vertexData + vertexIndex * params.vertexStride + params.positionOffset;\n";
 		source << "\tconst float *position = reinterpret_cast<const float *>(vertexBase);\n";
-		source << "\tVertexInput inVertex = { position[0], position[1], position[2] };\n";
+		switch(componentCount)
+		{
+		case 1:
+			source << "\tVertexInput inVertex = { position[0], 0.0f, 0.0f };\n";
+			break;
+		case 2:
+			source << "\tVertexInput inVertex = { position[0], position[1], 0.0f };\n";
+			break;
+		default:
+			source << "\tVertexInput inVertex = { position[0], position[1], position[2] };\n";
+			break;
+		}
 	}
 	else
 	{

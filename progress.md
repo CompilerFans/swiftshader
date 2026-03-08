@@ -193,6 +193,13 @@
   - `(cd build-cuda-bootstrap && ./VulkanBenchmarks --benchmark_filter='ManySolidTriangles' --benchmark_min_time=0.01s | tail -n 8)` passed without CUDA source dumps and printed `fps` / `triangle_count`
   - `(cd build-cuda-bootstrap && ./draw-fps-observer --case=solid --seconds=2 | tail -n 4)` passed without CUDA source dumps
   - `(cd build-cuda-bootstrap && ./draw-fps-observer --case=many --triangles=1024 --seconds=2 | tail -n 4)` passed and printed `window_fps ... case=ManySolidTriangles`
+- Vertex input-width lowering RED/GREEN:
+  - added failing backend tests that require the minimal SPIR-V path to preserve the input vector width for `Location 0`, and require the CUDA-like emitter to stop blindly reading `position[2]` for `vec2` vertex inputs
+  - extended `VertexLoweringInfo` with `positionInputComponentCount`, extracted that count from the lightweight SPIR-V parser, and taught the CUDA-like emitter to synthesize a zero `z` component for `vec2` inputs
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='SpirvToSemanticIR.PreservesMinimalVertexLoweringInfo:SpirvToSemanticIR.ExtractsMinimalVertexLoweringInfoFromSpirvBinary:SpirvToSemanticIR.ExtractsVec2PositionAttributeComponentCountFromSpirvBinary:KernelIR.LowersMinimalVertexSemanticInfo:CodegenEmitter.EmitsVertexStageCudaLikeSource:CodegenEmitter.EmitsVec2VertexInputFallbackForMissingZ')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
 - Minimal SPIR-V vertex lowering RED/GREEN:
   - added failing backend tests that require `SemanticIRBuilder` to preserve minimal vertex lowering metadata, lower it into `KernelIR`, and emit a vertex-style CUDA wrapper/body instead of the placeholder `kernel_main`
   - added a minimal `VertexLoweringInfo` model shared by `SemanticIR` and `KernelIR`, plus a lightweight `lowerToKernelIR()` bridge so the new path is not stuck at raw metadata storage

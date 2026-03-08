@@ -36,6 +36,7 @@ TEST(KernelIR, LowersMinimalVertexSemanticInfo)
     vertexInfo.usesPositionAttribute = true;
     vertexInfo.positionAttributeLocation = 0;
     vertexInfo.positionBinding = 0;
+    vertexInfo.positionInputComponentCount = 3;
     vertexInfo.vertexStride = 12;
     vertexInfo.positionOffset = 4;
     vertexInfo.usesVertexIndex = true;
@@ -47,6 +48,7 @@ TEST(KernelIR, LowersMinimalVertexSemanticInfo)
     EXPECT_TRUE(kernel.vertexLoweringInfo().usesPositionAttribute);
     EXPECT_EQ(kernel.vertexLoweringInfo().positionAttributeLocation, 0u);
     EXPECT_EQ(kernel.vertexLoweringInfo().positionBinding, 0u);
+    EXPECT_EQ(kernel.vertexLoweringInfo().positionInputComponentCount, 3u);
     EXPECT_EQ(kernel.vertexLoweringInfo().vertexStride, 12u);
     EXPECT_EQ(kernel.vertexLoweringInfo().positionOffset, 4u);
     EXPECT_TRUE(kernel.vertexLoweringInfo().usesVertexIndex);

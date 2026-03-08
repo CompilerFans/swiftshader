@@ -215,10 +215,11 @@ ParsedSpirvInfo parseMinimalVertexLowering(VkShaderStageFlagBits stage, const st
 		}
 
 		const auto &valueType = valueTypeIt->second;
-		if(valueType.opcode == spv::OpTypeVector && valueType.componentCount >= 3 && decorationIt->second.location == 0)
+		if(valueType.opcode == spv::OpTypeVector && valueType.componentCount >= 2 && decorationIt->second.location == 0)
 		{
 			parsed.vertexLowering.usesPositionAttribute = true;
 			parsed.vertexLowering.positionAttributeLocation = decorationIt->second.location;
+			parsed.vertexLowering.positionInputComponentCount = valueType.componentCount;
 		}
 	}
 
