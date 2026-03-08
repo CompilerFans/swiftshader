@@ -87,6 +87,7 @@ Complete
 - Current graphics-bootstrap milestone: the custom execution backend now performs one minimal `vertex bootstrap` CUDA compile+launch on the first graphics submit, while still delegating actual triangle rendering to the CPU fallback path.
 - Current vertex-style bootstrap milestone: the graphics bootstrap kernel now carries an explicit vertex input/output contract and a `w = 1.0f` writeback, instead of the earlier comment-only placeholder.
 - Current vertex wrapper/body milestone: the graphics bootstrap kernel now uses a `VsParams` launch contract, an explicit `vs_entry` wrapper, and a generated-style `vs_main` body while keeping a temporary `kernel_main` compatibility entry for the current runtime loader.
+- Current runtime entrypoint milestone: `RuntimeAPI` now supports per-module entrypoint names, `CudaRuntimeAPI` can launch `vs_entry` directly, and default callers still fall back to `kernel_main` until each stage is migrated.
 - Current limitation: Vulkan shared-library compute dispatch in the real CUDA build is not yet wired end-to-end and is explicitly skipped in `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp`.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.

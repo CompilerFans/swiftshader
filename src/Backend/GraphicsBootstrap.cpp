@@ -84,7 +84,7 @@ extern "C" __global__ void kernel_main(VsParams params)
 
 void launchGraphicsBootstrap(RuntimeAPI &runtime)
 {
-	auto module = runtime.createModule(graphicsBootstrapCudaSource());
+	auto module = runtime.createModule(graphicsBootstrapCudaSource(), "vs_entry");
 	if(!module.valid())
 	{
 		return;

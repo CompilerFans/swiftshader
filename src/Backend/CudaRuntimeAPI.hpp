@@ -23,7 +23,7 @@ public:
 	const std::string &initializationError() const;
 
 	bool isHardwareBacked() const override;
-	ModuleHandle createModule(const std::string &sourceOrIR) override;
+	ModuleHandle createModule(const std::string &sourceOrIR, const std::string &entryPoint = "kernel_main") override;
 	DeviceMemoryHandle allocateMemory(size_t numBytes) override;
 	void freeMemory(DeviceMemoryHandle memory) override;
 	void copyHostToMemory(DeviceMemoryHandle memory, const void *source, size_t numBytes) override;

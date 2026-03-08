@@ -51,7 +51,7 @@ public:
 	virtual ~RuntimeAPI() = default;
 
 	virtual bool isHardwareBacked() const = 0;
-	virtual ModuleHandle createModule(const std::string &sourceOrIR) = 0;
+	virtual ModuleHandle createModule(const std::string &sourceOrIR, const std::string &entryPoint = "kernel_main") = 0;
 	virtual DeviceMemoryHandle allocateMemory(size_t numBytes) = 0;
 	virtual void freeMemory(DeviceMemoryHandle memory) = 0;
 	virtual void copyHostToMemory(DeviceMemoryHandle memory, const void *source, size_t numBytes) = 0;

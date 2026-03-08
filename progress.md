@@ -139,3 +139,10 @@
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*:RuntimeAPI.CudaRuntimePrintsKernelSourceByDefault:RuntimeAPI.CudaRuntimeSuppressesKernelSourceWhenDisabled)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed, and the screen dump now shows `VsParams`, `vs_main`, and `vs_entry`
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.MultipleSolidColorTriangles)` passed
+- Runtime entrypoint RED/GREEN:
+  - added failing runtime tests that require `createModule()` to accept a per-module entrypoint name
+  - extended `RuntimeAPI`, `FakeRuntimeAPI`, and `CudaRuntimeAPI` so each module records its own entrypoint instead of always assuming `kernel_main`
+  - switched the graphics bootstrap launch path to request `vs_entry` explicitly while preserving legacy callers through the default `kernel_main` entrypoint
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=RuntimeAPI.FakeRuntimeCreatesModuleHandleWithCustomEntrypoint:RuntimeAPI.CudaRuntimeLaunchesCustomEntrypoint:GraphicsBootstrap.*)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed

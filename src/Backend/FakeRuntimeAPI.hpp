@@ -17,7 +17,7 @@ public:
 	static uint32_t globalLaunchCount();
 
 	bool isHardwareBacked() const override { return false; }
-	ModuleHandle createModule(const std::string &sourceOrIR) override;
+	ModuleHandle createModule(const std::string &sourceOrIR, const std::string &entryPoint = "kernel_main") override;
 	DeviceMemoryHandle allocateMemory(size_t numBytes) override;
 	void freeMemory(DeviceMemoryHandle memory) override;
 	void copyHostToMemory(DeviceMemoryHandle memory, const void *source, size_t numBytes) override;
@@ -34,6 +34,7 @@ private:
 	uint64_t nextMemoryId = 1;
 	std::string moduleSource;
 	LaunchRecord launchRecord = {};
+	std::unordered_map<uint64_t, std::string> moduleEntrypoints;
 	std::unordered_map<uint64_t, std::vector<uint8_t>> allocations;
 };
 

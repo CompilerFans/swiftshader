@@ -34,11 +34,13 @@ uint32_t FakeRuntimeAPI::globalLaunchCount()
 	return gLaunchCount;
 }
 
-ModuleHandle FakeRuntimeAPI::createModule(const std::string &sourceOrIR)
+ModuleHandle FakeRuntimeAPI::createModule(const std::string &sourceOrIR, const std::string &entryPoint)
 {
 	moduleSource = sourceOrIR;
 	gLastModuleSource = sourceOrIR;
-	return ModuleHandle{ nextId++ };
+	auto handle = ModuleHandle{ nextId++ };
+	moduleEntrypoints.emplace(handle.id, entryPoint);
+	return handle;
 }
 
 DeviceMemoryHandle FakeRuntimeAPI::allocateMemory(size_t numBytes)

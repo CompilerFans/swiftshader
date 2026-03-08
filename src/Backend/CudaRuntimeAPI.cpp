@@ -28,7 +28,7 @@ const char *kCudaLibraries[] = {
 	"libcuda.so",
 };
 
-const char *kKernelName = "kernel_main";
+const char *kDefaultKernelName = "kernel_main";
 
 void recordLaunchStamp()
 {
@@ -134,6 +134,7 @@ struct CudaRuntimeAPI::Impl
 	uint64_t nextModuleId = 1;
 	uint64_t nextMemoryId = 1;
 	std::unordered_map<uint64_t, CUmodule> modules;
+	std::unordered_map<uint64_t, std::string> moduleEntrypoints;
 	std::unordered_map<uint64_t, CUdeviceptr> allocations;
 	mutable std::mutex mutex;
 
@@ -352,7 +353,7 @@ bool CudaRuntimeAPI::isHardwareBacked() const
 	return impl->available;
 }
 
-ModuleHandle CudaRuntimeAPI::createModule(const std::string &sourceOrIR)
+ModuleHandle CudaRuntimeAPI::createModule(const std::string &sourceOrIR, const std::string &entryPoint)
 {
 	std::lock_guard<std::mutex> lock(impl->mutex);
 	if(!impl->available || !impl->makeCurrent())
@@ -386,6 +387,7 @@ ModuleHandle CudaRuntimeAPI::createModule(const std::string &sourceOrIR)
 
 	auto handle = ModuleHandle{ impl->nextModuleId++ };
 	impl->modules.emplace(handle.id, module);
+	impl->moduleEntrypoints.emplace(handle.id, entryPoint);
 	gLastModuleSource = sourceOrIR;
 	return handle;
 }
@@ -471,9 +473,11 @@ void CudaRuntimeAPI::launch(ModuleHandle moduleHandle, const LaunchRecord &recor
 	{
 		return;
 	}
+	auto entryPointIt = impl->moduleEntrypoints.find(moduleHandle.id);
+	const char *entryPoint = (entryPointIt != impl->moduleEntrypoints.end()) ? entryPointIt->second.c_str() : kDefaultKernelName;
 
 	CUfunction function = nullptr;
-	if(!impl->check(impl->driver.cuModuleGetFunction(&function, moduleIt->second, kKernelName), "cuModuleGetFunction"))
+	if(!impl->check(impl->driver.cuModuleGetFunction(&function, moduleIt->second, entryPoint), "cuModuleGetFunction"))
 	{
 		return;
 	}
