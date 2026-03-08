@@ -8,6 +8,10 @@ namespace backend {
 class FakeRuntimeAPI : public RuntimeAPI
 {
 public:
+	static void resetGlobalCapture();
+	static const std::string &globalLastModuleSource();
+	static const LaunchRecord &globalLastLaunch();
+
 	ModuleHandle createModule(const std::string &sourceOrIR) override;
 	void launch(ModuleHandle module, const LaunchRecord &record) override;
 

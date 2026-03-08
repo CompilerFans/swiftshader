@@ -57,4 +57,6 @@
 - Task 12/13/14 completed: fallback present adapter, custom-backend flag/docs, and Vulkan smoke tests are now in place.
 - Final verification: full `backend-unittests` passed (12 tests), custom-backend configure plus `vk_backend` build passed, and all newly added Vulkan-side test files compiled successfully.
 - Cleaned generated `build-custom` and `.cache` directories after verification.
+- Post-bootstrap milestone: routed custom-backend compute dispatch through a device-owned runtime and added fake-runtime global capture for verification.
+- Validation: default `backend-unittests` stayed green, and `build-custom` with `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON` built and ran the focused `BackendFactory`, `RuntimeAPI`, and `ComputeDispatchValidation` tests successfully.
 

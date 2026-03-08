@@ -15,6 +15,7 @@
 #ifndef VK_DEVICE_HPP_
 #define VK_DEVICE_HPP_
 
+#include "Backend/RuntimeAPI.hpp"
 #include "VkImageView.hpp"
 #include "VkSampler.hpp"
 #include "Device/Blitter.hpp"
@@ -63,6 +64,7 @@ public:
 	void getRequirements(VkMemoryDedicatedRequirements *requirements) const;
 	const VkPhysicalDeviceFeatures &getEnabledFeatures() const { return enabledFeatures; }
 	sw::Blitter *getBlitter() const { return blitter.get(); }
+	backend::RuntimeAPI *getRuntimeAPI() const { return runtimeAPI.get(); }
 
 	void registerImageView(ImageView *imageView);
 	void unregisterImageView(ImageView *imageView);
@@ -173,6 +175,7 @@ private:
 	Queue *const queues = nullptr;
 	uint32_t queueCount = 0;
 	std::unique_ptr<sw::Blitter> blitter;
+	std::unique_ptr<backend::RuntimeAPI> runtimeAPI;
 	uint32_t enabledExtensionCount = 0;
 	typedef char ExtensionName[VK_MAX_EXTENSION_NAME_SIZE];
 	ExtensionName *extensions = nullptr;

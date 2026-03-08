@@ -722,6 +722,21 @@ void ComputePipeline::run(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t bas
                           const vk::DescriptorSet::DynamicOffsets &descriptorDynamicOffsets,
                           const vk::Pipeline::PushConstantStorage &pushConstants)
 {
+	if(backendExecutable && device->getRuntimeAPI())
+	{
+		backend::ComputeDispatchInfo dispatch = {};
+		dispatch.baseGroupX = baseGroupX;
+		dispatch.baseGroupY = baseGroupY;
+		dispatch.baseGroupZ = baseGroupZ;
+		dispatch.groupCountX = groupCountX;
+		dispatch.groupCountY = groupCountY;
+		dispatch.groupCountZ = groupCountZ;
+		dispatch.bindingCount = std::count_if(descriptorSets.begin(), descriptorSets.end(), [](auto *binding) { return binding != nullptr; });
+		dispatch.argumentWords = sizeof(pushConstants.data) / sizeof(uint32_t);
+		backendExecutable->dispatch(*device->getRuntimeAPI(), dispatch);
+		return;
+	}
+
 	ASSERT_OR_RETURN(program != nullptr);
 	program->run(
 	    descriptorSetObjects, descriptorSets, descriptorDynamicOffsets, pushConstants,

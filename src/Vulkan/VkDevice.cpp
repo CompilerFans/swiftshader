@@ -14,6 +14,7 @@
 
 #include "VkDevice.hpp"
 
+#include "Backend/BackendFactory.hpp"
 #include "VkConfig.hpp"
 #include "VkDescriptorSetLayout.hpp"
 #include "VkFence.hpp"
@@ -153,6 +154,7 @@ Device::Device(const VkDeviceCreateInfo *pCreateInfo, void *mem, PhysicalDevice 
 	}
 
 	// TODO(b/119409619): use an allocator here so we can control all memory allocations
+	runtimeAPI = backend::createRuntimeAPI();
 	blitter.reset(new sw::Blitter());
 	samplingRoutineCache.reset(new SamplingRoutineCache());
 	samplerIndexer.reset(new SamplerIndexer());
