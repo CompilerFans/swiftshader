@@ -71,4 +71,6 @@
 - Validation: default build passed `PresentAdapterFactory.*:GraphicsBootstrapMode.*`, and custom build passed the same filters including custom present capture.
 - Execution backend testability milestone: CPU execution backend now lazily creates its renderer, allowing backend-selection tests to stay lightweight while still verifying bootstrap mode contracts in both default and custom builds.
 - Validation: default and custom builds both passed `GraphicsBootstrapMode.*:ExecutionBackendFactory.*`.
+- Build policy update: keep `build/` and `build-custom/` between iterations to maximize incremental rebuild benefit from ccache and existing object files.
+- Began a full custom `vk-unittests` build and intentionally preserved the partially built `build-custom/` tree to maximize incremental progress on the next pass.
 
