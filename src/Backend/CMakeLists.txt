@@ -2,7 +2,10 @@ set(BACKEND_SRC_FILES
     BackendConfig.hpp
     BackendFactory.cpp
     ComputeExecutable.cpp
+    CpuExecutionBackend.cpp
     ComputeExecutable.hpp
+    GraphicsBackend.cpp
+    GraphicsBackend.hpp
     FakeRuntimeAPI.cpp
     FakeRuntimeAPI.hpp
     BackendFactory.hpp

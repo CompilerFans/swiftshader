@@ -65,6 +65,7 @@ Implementation - Task 1 complete
 - Task 8 complete: runtime adapter and fake runtime bootstrap added.
 - Task 9 complete: compute backend executable bootstrap and fake dispatch validation added.
 - Task 10 complete: logical resource state tracker added and threaded into execution state.
+- Task 11 complete: graphics backend stub extracted with CPU default implementation.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.

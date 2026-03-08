@@ -44,4 +44,7 @@
 - Task 10 RED: added `ResourceStateTrackerTests.cpp` and confirmed the build failed because `ResourceStateTracker.hpp` was missing.
 - Task 10 GREEN: added a minimal logical-layout `ResourceStateTracker` and threaded it into `CommandBuffer::ExecutionState`.
 - Validation: `./build/backend-unittests --gtest_filter=ResourceStateTracker.*` passed.
+- Task 11 RED: added `GraphicsBackendSelectionTests.cpp` and confirmed the graphics backend stub API did not exist yet.
+- Task 11 GREEN: extracted CPU graphics/execute logic from `VkQueue.cpp` into `src/Backend/GraphicsBackend.hpp` and `src/Backend/CpuExecutionBackend.cpp`, preserving CPU behavior as the default path.
+- Validation: `src/Backend/CpuExecutionBackend.cpp`, `src/Vulkan/VkQueue.cpp`, and `tests/VulkanUnitTests/GraphicsBackendSelectionTests.cpp` all compiled successfully with target-equivalent include sets.
 

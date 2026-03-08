@@ -28,6 +28,7 @@ set(VULKAN_UNIT_TESTS_SRC_FILES
     Device.cpp
     Device.hpp
     DrawTests.cpp
+    GraphicsBackendSelectionTests.cpp
     Driver.cpp
     Driver.hpp
     main.cpp

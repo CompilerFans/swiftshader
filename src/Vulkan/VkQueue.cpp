@@ -21,6 +21,7 @@
 #include "VkStructConversion.hpp"
 #include "VkTimelineSemaphore.hpp"
 #include "Backend/BackendFactory.hpp"
+#include "Backend/GraphicsBackend.hpp"
 #include "Device/Renderer.hpp"
 #include "WSI/VkSwapchainKHR.hpp"
 
@@ -33,46 +34,18 @@
 
 namespace {
 
-class CpuExecutionBackend : public backend::ExecutionBackend
-{
-public:
-	explicit CpuExecutionBackend(vk::Device *device)
-	    : renderer(new sw::Renderer(device))
-	{}
-
-	void submit(vk::Device *device, vk::SubmitInfo &submitInfo, sw::CountedEvent *events) override
-	{
-		vk::CommandBuffer::ExecutionState executionState;
-		executionState.renderer = renderer.get();
-		executionState.executionBackend = this;
-		executionState.events = events;
-		for(uint32_t j = 0; j < submitInfo.commandBufferCount; j++)
-		{
-			vk::Cast(submitInfo.pCommandBuffers[j])->submit(executionState);
-		}
-	}
-
-	void synchronize() override
-	{
-		renderer->synchronize();
-	}
-
-private:
-	std::unique_ptr<sw::Renderer> renderer;
-};
-
 std::unique_ptr<backend::ExecutionBackend> createExecutionBackend(vk::Device *device)
 {
 	switch(backend::defaultBackendKind())
 	{
 	case backend::BackendKind::CPU:
-		return std::make_unique<CpuExecutionBackend>(device);
+		return backend::createCpuExecutionBackend(device);
 	case backend::BackendKind::CUSTOM_GPU:
 		UNSUPPORTED("Custom GPU backend is not implemented yet");
-		return std::make_unique<CpuExecutionBackend>(device);
+		return backend::createCpuExecutionBackend(device);
 	default:
 		UNREACHABLE("Unknown backend kind");
-		return std::make_unique<CpuExecutionBackend>(device);
+		return backend::createCpuExecutionBackend(device);
 	}
 }
 
