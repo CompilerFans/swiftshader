@@ -6,10 +6,12 @@ set(BACKEND_SRC_FILES
     CpuExecutionBackend.cpp
     FragmentBootstrap.cpp
     GraphicsBootstrap.cpp
+    RasterBootstrap.cpp
     ComputeExecutable.hpp
     FragmentBootstrap.hpp
     GraphicsBackend.cpp
     GraphicsBootstrap.hpp
+    RasterBootstrap.hpp
     PresentAdapter.cpp
     PresentAdapter.hpp
     GraphicsBackend.hpp

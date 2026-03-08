@@ -267,6 +267,14 @@
   - accepted the near-term raster route as a simple in-house CUDA implementation rather than a direct transplant of SwiftShader's CPU raster or adoption of `nvdiffrast`
   - committed to keeping CPU raster behavior as a reference oracle, with dedicated CPU-reference tests and GPU-specific alignment tests
   - explicitly allowed stub/dummy fields in early raster bootstrap interfaces as long as each increment remains TDD-driven
+- Raster bootstrap RED/GREEN:
+  - added failing backend tests for a new `RasterBootstrap` contract, including emitted CUDA source shape, CPU reference bbox/coverage, fake launch ABI, CUDA-vs-CPU alignment, and raster-to-fragment integration
+  - introduced `RasterBootstrap` with a minimal CPU reference oracle, a real CUDA `raster_entry` kernel that runs one thread per pixel over a bounded framebuffer, and a host-side compaction step into `FragmentBootstrapInvocation`
+  - added a narrow `runRasterFragmentBootstrap()` helper so the new raster output can feed the existing fragment bootstrap without exposing broader draw-path coupling yet
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='RasterBootstrap.*:GraphicsBootstrap.*:FragmentBootstrap.*')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed
 - Generated vertex-index RED/GREEN:
   - added failing backend tests that require the generated `vs_main` to reference `vertexIndex` in emitted CUDA source and to produce shifted `x` outputs at runtime
   - extended `GraphicsBootstrapShaderConfig` with a minimal `vertexIndexScaleX` builtin-lowering knob

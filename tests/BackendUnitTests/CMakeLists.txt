@@ -13,6 +13,7 @@ set(BACKEND_UNIT_TESTS_SRC_FILES
     PresentAdapterFactoryTests.cpp
     GraphicsBootstrapTests.cpp
     FragmentBootstrapTests.cpp
+    RasterBootstrapTests.cpp
     ResourceStateTrackerTests.cpp
     ComputeDispatchValidationTests.cpp
     RuntimeAPITests.cpp
