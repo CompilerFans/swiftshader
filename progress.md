@@ -289,6 +289,13 @@
   - verified that the real CUDA bootstrap path now produces both the old green triangle and a requested red triangle, which narrows the gap between hard-coded bootstrap behavior and future draw-state-driven execution
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.*')` passed
+- Triangle pipeline vertex-input RED/GREEN:
+  - added failing backend tests requiring `TrianglePipelineBootstrap` to honor both explicitly supplied vertex positions and raw interleaved vertex bytes with binding metadata
+  - extended `TrianglePipelineBootstrapConfig` with a minimal vertex-input contract: either three typed vertices or `rawVertexData + vertexCount + binding`
+  - reused the existing raw-vertex `GraphicsBootstrap` overload so the three-stage bootstrap now exercises the same minimal attribute-fetch path needed for later Vulkan draw integration
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.*')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle')` passed
 - Generated vertex-index RED/GREEN:
   - added failing backend tests that require the generated `vs_main` to reference `vertexIndex` in emitted CUDA source and to produce shifted `x` outputs at runtime
   - extended `GraphicsBootstrapShaderConfig` with a minimal `vertexIndexScaleX` builtin-lowering knob

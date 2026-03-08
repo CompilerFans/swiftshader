@@ -108,6 +108,7 @@ Complete
 - Current raster-bootstrap milestone: the backend now has a standalone `RasterBootstrap` path with a CPU reference oracle, a real CUDA `raster_entry` kernel that emits dense coverage and compacts it into `FragmentBootstrapInvocation` records, and a narrow helper that feeds those invocations directly into `FragmentBootstrap`.
 - Current triangle-pipeline bootstrap milestone: the backend now has a standalone `TrianglePipelineBootstrap` path that chains `GraphicsBootstrap`, `RasterBootstrap`, and `FragmentBootstrap`; the custom execution backend now uses that three-stage bootstrap on first graphics submit instead of launching only the vertex stage.
 - Current triangle-pipeline config milestone: `TrianglePipelineBootstrap` now accepts an explicit config for framebuffer size and fragment output color, so the bootstrap chain is no longer hard-coded to one green triangle and is one step closer to consuming real draw-state inputs.
+- Current triangle-pipeline vertex-input milestone: `TrianglePipelineBootstrap` now accepts both explicit vertex triples and raw vertex bytes plus stride/offset binding metadata, so the bootstrap chain can already consume the same minimal position-fetch contract used by `GraphicsBootstrap`.
 - Current limitation: Vulkan shared-library compute dispatch in the real CUDA build is not yet wired end-to-end and is explicitly skipped in `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp`.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.

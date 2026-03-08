@@ -9,16 +9,6 @@
 
 namespace backend {
 namespace {
-
-std::vector<GraphicsBootstrapVertexInput> bootstrapTriangleInputs()
-{
-	return {
-		{ -0.5f, -0.25f, 0.0f },
-		{ 0.0f, 0.75f, 0.0f },
-		{ 0.5f, -0.25f, 0.0f },
-	};
-}
-
 std::array<RasterBootstrapVertex, 3> toRasterVertices(const std::vector<GraphicsBootstrapVertexOutput> &outputs, uint32_t width, uint32_t height)
 {
 	std::array<RasterBootstrapVertex, 3> triangle = {};
@@ -46,18 +36,43 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	std::vector<GraphicsBootstrapVertexOutput> vsOutputs;
 	if(runtime.isHardwareBacked())
 	{
-		if(!runGraphicsBootstrap(runtime, bootstrapTriangleInputs(), &vsOutputs))
+		if(!config.rawVertexData.empty() && config.vertexCount != 0)
+		{
+			if(!runGraphicsBootstrap(runtime, config.rawVertexData, config.vertexCount, config.binding, GraphicsBootstrapShaderConfig{}, GraphicsBootstrapRuntimeConfig{}, &vsOutputs))
+			{
+				return false;
+			}
+		}
+		else
+		{
+			std::vector<GraphicsBootstrapVertexInput> vertexInputs(config.vertices.begin(), config.vertices.end());
+			if(!runGraphicsBootstrap(runtime, vertexInputs, &vsOutputs))
+			{
+				return false;
+			}
+		}
+	}
+	else if(!config.rawVertexData.empty() && config.vertexCount != 0)
+	{
+		if(config.vertexCount != 3)
 		{
 			return false;
+		}
+		vsOutputs.resize(config.vertexCount);
+		for(uint32_t i = 0; i < config.vertexCount; i++)
+		{
+			const uint8_t *vertexBase = config.rawVertexData.data() + i * config.binding.vertexStride + config.binding.positionOffset;
+			const float *position = reinterpret_cast<const float *>(vertexBase);
+			vsOutputs[i] = { position[0], position[1], position[2], 1.0f };
 		}
 	}
 	else
 	{
-		vsOutputs = {
-			{ -0.5f, -0.25f, 0.0f, 1.0f },
-			{ 0.0f, 0.75f, 0.0f, 1.0f },
-			{ 0.5f, -0.25f, 0.0f, 1.0f },
-		};
+		vsOutputs.resize(config.vertices.size());
+		for(size_t i = 0; i < config.vertices.size(); i++)
+		{
+			vsOutputs[i] = { config.vertices[i].x, config.vertices[i].y, config.vertices[i].z, 1.0f };
+		}
 	}
 
 	RasterBootstrapConfig rasterConfig = {};
