@@ -87,3 +87,20 @@
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
   - `(cd build-draw-custom-subzero && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` still passed after the CUDA bootstrap changes
 - Deferred path: `(cd build-cuda-bootstrap && ./vk-unittests --gtest_filter=ComputeBackendPipelineTest.DispatchUsesFakeRuntimeWhenCustomBackendEnabled)` is currently skipped in the CUDA build because Vulkan shared-library compute dispatch is not yet integrated with the real CUDA runtime.
+- Multi-solid-triangle RED: added `DrawTest.MultipleSolidColorTriangles` and confirmed it failed first because `DrawTester` had no multi-draw recording hook.
+- Root cause investigation for multi-triangle validation:
+  - the new test sampled `y` coordinates as if positive clip-space `y` mapped upward; current Vulkan viewport mapping in the harness maps positive clip-space `y` downward on screen, so the original sample points missed the triangles
+  - untouched background pixels cannot be asserted in the current single-sampled harness because `DrawTester::createRenderPass()` uses `vk::AttachmentLoadOp::eDontCare`
+- Multi-solid-triangle GREEN:
+  - added `DrawTester::onRecordDrawCommands()` so tests can record multiple `draw()` calls while preserving the existing default single-draw path
+  - updated the multi-triangle test to sample three interior pixels only
+- Validation:
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed
+  - `(cd build-draw-custom-subzero && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed
+- Draw image artifact RED: extended the solid- and multi-triangle tests to call `DrawTester::saveFrame()` and confirmed the build failed first because the API did not exist yet.
+- Draw image artifact GREEN:
+  - added `DrawTester::saveFrame(const std::filesystem::path &)` as a test-side BMP export path
+  - both triangle tests now write stable artifacts under `draw-test-artifacts/` inside the build directory
+- Validation:
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles && ls -l draw-test-artifacts)` passed and produced `solid-color-triangle.bmp` plus `multiple-solid-color-triangles.bmp`
+  - `(cd build-draw-custom-subzero && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles && ls -l draw-test-artifacts)` passed and produced the same two BMP files

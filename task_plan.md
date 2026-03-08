@@ -81,6 +81,8 @@ Complete
 - Real CUDA bootstrap milestone in progress: the repository now has a dedicated `SWIFTSHADER_CUSTOM_GPU_USE_CUDA` build mode, `CudaCompilerDriver`, `CudaRuntimeAPI`, and an extended `RuntimeAPI` with real module/memory/launch primitives.
 - Current verified CUDA milestone: direct backend unit tests can compile CUDA-like source with `nvcc`, launch `kernel_main` through the CUDA Driver API, and read back a 32-bit device-memory result.
 - Current graphics milestone: `DrawTest.SolidColorTriangle` passes in `build-cuda-bootstrap/` when run from the build directory, and the test's stamp-file assertion confirms that the custom CUDA build performed at least one real CUDA launch during initialization.
+- Current multi-draw milestone: `DrawTest.MultipleSolidColorTriangles` passes in both `build-cuda-bootstrap/` and `build-draw-custom-subzero/`, using a test-only multi-draw recording hook in `DrawTester` while preserving the default single-draw path.
+- Current artifact milestone: both triangle draw tests now save `BMP` snapshots under `draw-test-artifacts/` in the build directory via the test-only `DrawTester::saveFrame()` helper.
 - Current limitation: Vulkan shared-library compute dispatch in the real CUDA build is not yet wired end-to-end and is explicitly skipped in `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp`.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.

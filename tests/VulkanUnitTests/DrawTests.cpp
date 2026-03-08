@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "DrawTester.hpp"
+#include <filesystem>
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 #	include <cstdlib>
-#	include <filesystem>
 #	include <fstream>
 #	include <unistd.h>
 #endif
@@ -27,9 +27,16 @@ class DrawTest : public testing::Test
 {
 };
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 namespace {
 
+std::filesystem::path makeDrawArtifactPath(const char *name)
+{
+	auto dir = std::filesystem::current_path() / "draw-test-artifacts";
+	std::filesystem::create_directories(dir);
+	return dir / name;
+}
+
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 std::filesystem::path makeCudaLaunchStampPath(const char *suffix)
 {
 	return std::filesystem::temp_directory_path() / (std::string("swiftshader-cuda-launch-") + suffix + "-" + std::to_string(::getpid()) + ".log");
@@ -50,8 +57,8 @@ uint32_t countStampedLaunches(const std::filesystem::path &path)
 	return count;
 }
 
-}  // namespace
 #endif
+}  // namespace
 
 // Test that a vertex shader with no gl_Position works.
 // This was fixed in swiftshader-cl/51808
@@ -110,6 +117,8 @@ TEST_F(DrawTest, VertexShaderNoPositionOutput)
 
 TEST_F(DrawTest, SolidColorTriangle)
 {
+	auto artifactPath = makeDrawArtifactPath("solid-color-triangle.bmp");
+	std::filesystem::remove(artifactPath);
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("draw");
 	std::filesystem::remove(stampPath);
@@ -162,11 +171,101 @@ TEST_F(DrawTest, SolidColorTriangle)
 
 	tester.initialize();
 	tester.renderFrame();
+	tester.saveFrame(artifactPath);
 	auto pixel = tester.readbackPixel(640, 240);
 	EXPECT_GT(pixel[0], 200);
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_GT(pixel[3], 200);
+	EXPECT_TRUE(std::filesystem::exists(artifactPath));
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+#endif
+}
+
+TEST_F(DrawTest, MultipleSolidColorTriangles)
+{
+	auto artifactPath = makeDrawArtifactPath("multiple-solid-color-triangles.bmp");
+	std::filesystem::remove(artifactPath);
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	auto stampPath = makeCudaLaunchStampPath("multi-draw");
+	std::filesystem::remove(stampPath);
+	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+#endif
+
+	DrawTester tester;
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex
+		{
+			float position[3];
+		};
+
+		Vertex vertexBufferData[] = {
+			{ { -0.90f, 0.80f, 0.50f } }, { { -0.50f, 0.80f, 0.50f } }, { { -0.70f, 0.40f, 0.50f } },
+			{ { -0.20f, 0.70f, 0.50f } }, { { 0.20f, 0.70f, 0.50f } }, { { 0.00f, 0.30f, 0.50f } },
+			{ { 0.50f, 0.75f, 0.50f } }, { { 0.90f, 0.75f, 0.50f } }, { { 0.70f, 0.35f, 0.50f } },
+		};
+
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 310 es
+			layout(location = 0) in vec3 inPos;
+
+			void main()
+			{
+				gl_Position = vec4(inPos.xyz, 1.0);
+			})";
+
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 310 es
+			precision highp float;
+
+			layout(location = 0) out vec4 outColor;
+
+			void main()
+			{
+				outColor = vec4(1.0, 0.0, 0.0, 1.0);
+			})";
+
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.onRecordDrawCommands([](DrawTester &tester, vk::CommandBuffer &commandBuffer) {
+		commandBuffer.draw(3, 1, 0, 0);
+		commandBuffer.draw(3, 1, 3, 0);
+		commandBuffer.draw(3, 1, 6, 0);
+	});
+
+	tester.initialize();
+	tester.renderFrame();
+	tester.saveFrame(artifactPath);
+
+	auto leftPixel = tester.readbackPixel(192, 576);
+	auto centerPixel = tester.readbackPixel(640, 540);
+	auto rightPixel = tester.readbackPixel(1088, 558);
+
+	EXPECT_GT(leftPixel[0], 200);
+	EXPECT_LT(leftPixel[1], 80);
+	EXPECT_LT(leftPixel[2], 80);
+
+	EXPECT_GT(centerPixel[0], 200);
+	EXPECT_LT(centerPixel[1], 80);
+	EXPECT_LT(centerPixel[2], 80);
+
+	EXPECT_GT(rightPixel[0], 200);
+	EXPECT_LT(rightPixel[1], 80);
+	EXPECT_LT(rightPixel[2], 80);
+	EXPECT_TRUE(std::filesystem::exists(artifactPath));
+
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");

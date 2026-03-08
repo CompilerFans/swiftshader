@@ -23,6 +23,7 @@
 #include "VulkanTester.hpp"
 #include "Window.hpp"
 
+#include <filesystem>
 #include <functional>
 #include <memory>
 
@@ -43,6 +44,7 @@ public:
 	void initialize();
 	void renderFrame();
 	std::array<uint8_t, 4> readbackPixel(uint32_t x, uint32_t y);
+	void saveFrame(const std::filesystem::path &path);
 	void show();
 
 	/////////////////////////
@@ -70,6 +72,11 @@ public:
 	// Callback may create resources (tester.addImage, tester.addSampler, etc.), and make sure to
 	// call tester.device().updateDescriptorSets.
 	void onUpdateDescriptorSet(std::function<void(ThisType &tester, vk::CommandPool &commandPool, vk::DescriptorSet &descriptorSet)> callback);
+
+	// Called from createCommandBuffers after pipeline and vertex buffer binding.
+	// Callback may record one or more draw commands. If unset, DrawTester records a single draw
+	// covering all uploaded vertices.
+	void onRecordDrawCommands(std::function<void(ThisType &tester, vk::CommandBuffer &commandBuffer)> callback);
 
 	/////////////////////////
 	// Resource Management
@@ -132,6 +139,7 @@ private:
 		std::function<vk::ShaderModule(ThisType &tester)> createVertexShader = [](auto &) { return vk::ShaderModule{}; };
 		std::function<vk::ShaderModule(ThisType &tester)> createFragmentShader = [](auto &) { return vk::ShaderModule{}; };
 		std::function<void(ThisType &tester, vk::CommandPool &commandPool, vk::DescriptorSet &descriptorSet)> updateDescriptorSet = [](auto &, auto &, auto &) {};
+		std::function<void(ThisType &tester, vk::CommandBuffer &commandBuffer)> recordDrawCommands;
 	} hooks;
 
 	const vk::Extent2D windowSize = { 1280, 720 };
@@ -197,6 +205,11 @@ inline void DrawTester::onCreateFragmentShader(std::function<vk::ShaderModule(Th
 inline void DrawTester::onUpdateDescriptorSet(std::function<void(ThisType &tester, vk::CommandPool &commandPool, vk::DescriptorSet &descriptorSet)> callback)
 {
 	hooks.updateDescriptorSet = std::move(callback);
+}
+
+inline void DrawTester::onRecordDrawCommands(std::function<void(ThisType &tester, vk::CommandBuffer &commandBuffer)> callback)
+{
+	hooks.recordDrawCommands = std::move(callback);
 }
 
 #endif  // DRAW_TESTER_HPP_

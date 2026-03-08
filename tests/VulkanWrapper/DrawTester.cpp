@@ -16,6 +16,7 @@
 
 #include <array>
 #include <cstdint>
+#include <fstream>
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof(arr[0]))
 
@@ -120,6 +121,74 @@ std::array<uint8_t, 4> DrawTester::readbackPixel(uint32_t x, uint32_t y)
 	std::array<uint8_t, 4> rgba = { pixels[offset + 2], pixels[offset + 1], pixels[offset + 0], pixels[offset + 3] };
 	readback.unmapMemory();
 	return rgba;
+}
+
+void DrawTester::saveFrame(const std::filesystem::path &path)
+{
+	queue.waitIdle();
+
+	if(path.has_parent_path())
+	{
+		std::filesystem::create_directories(path.parent_path());
+	}
+
+	vk::Image image = swapchain->getImage(currentFrameBuffer);
+	size_t imageSize = static_cast<size_t>(windowSize.width) * windowSize.height * 4;
+	Buffer readback(physicalDevice, device, imageSize, vk::BufferUsageFlagBits::eTransferDst);
+
+	Util::transitionImageLayout(device, commandPool, queue, image, swapchain->colorFormat, vk::ImageLayout::ePresentSrcKHR, vk::ImageLayout::eTransferSrcOptimal);
+	Util::copyImageToBuffer(device, commandPool, queue, image, readback.getBuffer(), windowSize.width, windowSize.height);
+	Util::transitionImageLayout(device, commandPool, queue, image, swapchain->colorFormat, vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::ePresentSrcKHR);
+
+	auto *pixels = reinterpret_cast<const uint8_t *>(readback.mapMemory());
+
+	std::ofstream stream(path, std::ios::binary);
+	assert(stream.good());
+
+	auto writeLE16 = [&stream](uint16_t value) {
+		stream.put(static_cast<char>(value & 0xFF));
+		stream.put(static_cast<char>((value >> 8) & 0xFF));
+	};
+
+	auto writeLE32 = [&stream](uint32_t value) {
+		stream.put(static_cast<char>(value & 0xFF));
+		stream.put(static_cast<char>((value >> 8) & 0xFF));
+		stream.put(static_cast<char>((value >> 16) & 0xFF));
+		stream.put(static_cast<char>((value >> 24) & 0xFF));
+	};
+
+	auto writeLE32Signed = [&writeLE32](int32_t value) {
+		writeLE32(static_cast<uint32_t>(value));
+	};
+
+	constexpr uint32_t fileHeaderSize = 14;
+	constexpr uint32_t infoHeaderSize = 40;
+	uint32_t pixelDataOffset = fileHeaderSize + infoHeaderSize;
+	uint32_t fileSize = pixelDataOffset + static_cast<uint32_t>(imageSize);
+
+	stream.put('B');
+	stream.put('M');
+	writeLE32(fileSize);
+	writeLE16(0);
+	writeLE16(0);
+	writeLE32(pixelDataOffset);
+
+	writeLE32(infoHeaderSize);
+	writeLE32(windowSize.width);
+	writeLE32Signed(-static_cast<int32_t>(windowSize.height));
+	writeLE16(1);
+	writeLE16(32);
+	writeLE32(0);
+	writeLE32(static_cast<uint32_t>(imageSize));
+	writeLE32(0);
+	writeLE32(0);
+	writeLE32(0);
+	writeLE32(0);
+
+	stream.write(reinterpret_cast<const char *>(pixels), imageSize);
+	stream.close();
+
+	readback.unmapMemory();
 }
 
 void DrawTester::show()
@@ -418,7 +487,14 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 			commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 			VULKAN_HPP_NAMESPACE::DeviceSize offset = 0;
 			commandBuffers[i].bindVertexBuffers(0, 1, &vertices.buffer, &offset);
-			commandBuffers[i].draw(vertices.numVertices, 1, 0, 0);
+			if(hooks.recordDrawCommands)
+			{
+				hooks.recordDrawCommands(*this, commandBuffers[i]);
+			}
+			else
+			{
+				commandBuffers[i].draw(vertices.numVertices, 1, 0, 0);
+			}
 		}
 
 		commandBuffers[i].endRenderPass();
