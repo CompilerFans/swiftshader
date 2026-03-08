@@ -83,6 +83,7 @@ Complete
 - Current graphics milestone: `DrawTest.SolidColorTriangle` passes in `build-cuda-bootstrap/` when run from the build directory, and the test's stamp-file assertion confirms that the custom CUDA build performed at least one real CUDA launch during initialization.
 - Current multi-draw milestone: `DrawTest.MultipleSolidColorTriangles` passes in both `build-cuda-bootstrap/` and `build-draw-custom-subzero/`, using a test-only multi-draw recording hook in `DrawTester` while preserving the default single-draw path.
 - Current artifact milestone: both triangle draw tests now save `BMP` snapshots under `draw-test-artifacts/` in the build directory via the test-only `DrawTester::saveFrame()` helper.
+- Current CUDA debug milestone: the real CUDA runtime path now dumps kernel source to `stderr` by default, with `SWIFTSHADER_CUDA_DUMP_SOURCE=0|false|off|no` available to suppress it when needed.
 - Current limitation: Vulkan shared-library compute dispatch in the real CUDA build is not yet wired end-to-end and is explicitly skipped in `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp`.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.

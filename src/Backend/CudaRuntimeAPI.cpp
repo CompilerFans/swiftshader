@@ -4,6 +4,8 @@
 #include "System/SharedLibrary.hpp"
 
 #include <algorithm>
+#include <cctype>
+#include <cstdio>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
@@ -41,6 +43,39 @@ void recordLaunchStamp()
 	{
 		stream << "1\n";
 	}
+}
+
+bool shouldDumpCudaSource()
+{
+	const char *value = std::getenv("SWIFTSHADER_CUDA_DUMP_SOURCE");
+	if(!value || value[0] == '\0')
+	{
+		return true;
+	}
+
+	std::string normalized(value);
+	std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](unsigned char ch) {
+		return static_cast<char>(std::tolower(ch));
+	});
+
+	return normalized != "0" && normalized != "false" && normalized != "off" && normalized != "no";
+}
+
+void dumpCudaSource(const std::string &source)
+{
+	if(!shouldDumpCudaSource())
+	{
+		return;
+	}
+
+	std::fputs("=== SWIFTSHADER CUDA SOURCE BEGIN ===\n", stderr);
+	std::fwrite(source.data(), 1, source.size(), stderr);
+	if(source.empty() || source.back() != '\n')
+	{
+		std::fputc('\n', stderr);
+	}
+	std::fputs("=== SWIFTSHADER CUDA SOURCE END ===\n", stderr);
+	std::fflush(stderr);
 }
 
 }  // namespace
@@ -324,6 +359,8 @@ ModuleHandle CudaRuntimeAPI::createModule(const std::string &sourceOrIR)
 	{
 		return {};
 	}
+
+	dumpCudaSource(sourceOrIR);
 
 	auto compile = impl->compiler.compileToFatbin(sourceOrIR, impl->gpuArchitecture);
 	if(!compile.succeeded)

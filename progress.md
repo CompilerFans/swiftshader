@@ -104,3 +104,10 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles && ls -l draw-test-artifacts)` passed and produced `solid-color-triangle.bmp` plus `multiple-solid-color-triangles.bmp`
   - `(cd build-draw-custom-subzero && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles && ls -l draw-test-artifacts)` passed and produced the same two BMP files
+- CUDA source dump RED/GREEN:
+  - added focused runtime tests for default-on source dumping and the disable switch
+  - implemented a runtime-controlled source dump in `CudaRuntimeAPI::createModule()`, printing to `stderr` by default during the current bootstrap stage
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0|false|off|no` now disables the dump
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=RuntimeAPI.CudaRuntimePrintsKernelSourceByDefault:RuntimeAPI.CudaRuntimeSuppressesKernelSourceWhenDisabled:RuntimeAPI.CudaRuntimeCompilesLaunchesAndReadsBackDeviceMemory)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed, and the CUDA kernel source was printed to the terminal by default

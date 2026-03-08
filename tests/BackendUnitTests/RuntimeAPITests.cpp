@@ -1,6 +1,7 @@
 #include "Backend/FakeRuntimeAPI.hpp"
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 #	include "Backend/CudaRuntimeAPI.hpp"
+#	include <cstdlib>
 #endif
 
 #include <gtest/gtest.h>
@@ -13,6 +14,63 @@ TEST(RuntimeAPI, FakeRuntimeCreatesModuleHandle)
 }
 
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+TEST(RuntimeAPI, CudaRuntimePrintsKernelSourceByDefault)
+{
+	::unsetenv("SWIFTSHADER_CUDA_DUMP_SOURCE");
+
+	backend::CudaRuntimeAPI api;
+	ASSERT_TRUE(api.isAvailable()) << api.initializationError();
+
+	const char *source = R"(
+extern "C" __global__ void kernel_main(unsigned int *value)
+{
+	if(blockIdx.x == 0 && threadIdx.x == 0)
+	{
+		*value = 7u;
+	}
+}
+)";
+
+	testing::internal::CaptureStderr();
+	auto module = api.createModule(source);
+	std::string dump = testing::internal::GetCapturedStderr();
+
+	ASSERT_TRUE(module.valid()) << api.initializationError();
+	EXPECT_NE(dump.find("SWIFTSHADER CUDA SOURCE BEGIN"), std::string::npos);
+	EXPECT_NE(dump.find("kernel_main"), std::string::npos);
+	EXPECT_NE(dump.find("*value = 7u;"), std::string::npos);
+	EXPECT_NE(dump.find("SWIFTSHADER CUDA SOURCE END"), std::string::npos);
+}
+
+TEST(RuntimeAPI, CudaRuntimeSuppressesKernelSourceWhenDisabled)
+{
+	::setenv("SWIFTSHADER_CUDA_DUMP_SOURCE", "off", 1);
+
+	backend::CudaRuntimeAPI api;
+	ASSERT_TRUE(api.isAvailable()) << api.initializationError();
+
+	const char *source = R"(
+extern "C" __global__ void kernel_main(unsigned int *value)
+{
+	if(blockIdx.x == 0 && threadIdx.x == 0)
+	{
+		*value = 9u;
+	}
+}
+)";
+
+	testing::internal::CaptureStderr();
+	auto module = api.createModule(source);
+	std::string dump = testing::internal::GetCapturedStderr();
+
+	ASSERT_TRUE(module.valid()) << api.initializationError();
+	EXPECT_EQ(dump.find("SWIFTSHADER CUDA SOURCE BEGIN"), std::string::npos);
+	EXPECT_EQ(dump.find("kernel_main"), std::string::npos);
+	EXPECT_EQ(dump.find("SWIFTSHADER CUDA SOURCE END"), std::string::npos);
+
+	::unsetenv("SWIFTSHADER_CUDA_DUMP_SOURCE");
+}
+
 TEST(RuntimeAPI, CudaRuntimeCompilesLaunchesAndReadsBackDeviceMemory)
 {
 	backend::CudaRuntimeAPI api;
