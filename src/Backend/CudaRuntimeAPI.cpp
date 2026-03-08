@@ -61,21 +61,60 @@ bool shouldDumpCudaSource()
 	return normalized != "0" && normalized != "false" && normalized != "off" && normalized != "no";
 }
 
+std::string cudaSourceDumpPath()
+{
+	const char *path = std::getenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
+	if(!path || path[0] == '\0')
+	{
+		return {};
+	}
+
+	return std::string(path);
+}
+
+std::string formatCudaSourceDump(const std::string &source)
+{
+	std::string dump = "=== SWIFTSHADER CUDA SOURCE BEGIN ===\n";
+	dump += source;
+	if(source.empty() || source.back() != '\n')
+	{
+		dump.push_back('\n');
+	}
+	dump += "=== SWIFTSHADER CUDA SOURCE END ===\n";
+	return dump;
+}
+
 void dumpCudaSource(const std::string &source)
 {
-	if(!shouldDumpCudaSource())
+	const bool dumpToStderr = shouldDumpCudaSource();
+	const std::string dumpPath = cudaSourceDumpPath();
+	if(!dumpToStderr && dumpPath.empty())
 	{
 		return;
 	}
 
-	std::fputs("=== SWIFTSHADER CUDA SOURCE BEGIN ===\n", stderr);
-	std::fwrite(source.data(), 1, source.size(), stderr);
-	if(source.empty() || source.back() != '\n')
+	const std::string dump = formatCudaSourceDump(source);
+	if(dumpToStderr)
 	{
-		std::fputc('\n', stderr);
+		std::fwrite(dump.data(), 1, dump.size(), stderr);
+		std::fflush(stderr);
 	}
-	std::fputs("=== SWIFTSHADER CUDA SOURCE END ===\n", stderr);
-	std::fflush(stderr);
+
+	if(!dumpPath.empty())
+	{
+		std::filesystem::path path(dumpPath);
+		if(path.has_parent_path())
+		{
+			std::error_code error;
+			std::filesystem::create_directories(path.parent_path(), error);
+		}
+
+		std::ofstream stream(path, std::ios::app);
+		if(stream.is_open())
+		{
+			stream.write(dump.data(), static_cast<std::streamsize>(dump.size()));
+		}
+	}
 }
 
 }  // namespace

@@ -2,9 +2,23 @@
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 #	include "Backend/CudaRuntimeAPI.hpp"
 #	include <cstdlib>
+#	include <filesystem>
+#	include <fstream>
 #endif
 
 #include <gtest/gtest.h>
+
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+namespace {
+
+std::string readTextFile(const std::filesystem::path &path)
+{
+	std::ifstream stream(path);
+	return std::string((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+}
+
+}  // namespace
+#endif
 
 TEST(RuntimeAPI, FakeRuntimeCreatesModuleHandle)
 {
@@ -76,6 +90,39 @@ extern "C" __global__ void kernel_main(unsigned int *value)
 	EXPECT_EQ(dump.find("SWIFTSHADER CUDA SOURCE END"), std::string::npos);
 
 	::unsetenv("SWIFTSHADER_CUDA_DUMP_SOURCE");
+}
+
+TEST(RuntimeAPI, CudaRuntimeWritesKernelSourceToFile)
+{
+	auto dumpPath = std::filesystem::temp_directory_path() / "swiftshader-cuda-runtime-dump.cu";
+	std::filesystem::remove(dumpPath);
+	::setenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH", dumpPath.string().c_str(), 1);
+
+	backend::CudaRuntimeAPI api;
+	ASSERT_TRUE(api.isAvailable()) << api.initializationError();
+
+	const char *source = R"(
+extern "C" __global__ void kernel_main(unsigned int *value)
+{
+	if(blockIdx.x == 0 && threadIdx.x == 0)
+	{
+		*value = 11u;
+	}
+}
+)";
+
+	auto module = api.createModule(source);
+	ASSERT_TRUE(module.valid()) << api.initializationError();
+	ASSERT_TRUE(std::filesystem::exists(dumpPath));
+
+	std::string dump = readTextFile(dumpPath);
+	EXPECT_NE(dump.find("SWIFTSHADER CUDA SOURCE BEGIN"), std::string::npos);
+	EXPECT_NE(dump.find("kernel_main"), std::string::npos);
+	EXPECT_NE(dump.find("*value = 11u;"), std::string::npos);
+	EXPECT_NE(dump.find("SWIFTSHADER CUDA SOURCE END"), std::string::npos);
+
+	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
+	std::filesystem::remove(dumpPath);
 }
 
 TEST(RuntimeAPI, CudaRuntimeCompilesLaunchesAndReadsBackDeviceMemory)

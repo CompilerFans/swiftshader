@@ -58,6 +58,12 @@ uint32_t countStampedLaunches(const std::filesystem::path &path)
 	return count;
 }
 
+std::string readTextFile(const std::filesystem::path &path)
+{
+	std::ifstream stream(path);
+	return std::string((std::istreambuf_iterator<char>(stream)), std::istreambuf_iterator<char>());
+}
+
 #endif
 }  // namespace
 
@@ -376,8 +382,11 @@ TEST_F(DrawTest, FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle)
 	std::filesystem::remove(artifactPath);
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("fragcoord-quadrant-triangle");
+	auto sourceDumpPath = makeCudaLaunchStampPath("fragcoord-quadrant-triangle-source");
 	std::filesystem::remove(stampPath);
+	std::filesystem::remove(sourceDumpPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+	::setenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH", sourceDumpPath.c_str(), 1);
 	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
 #endif
 
@@ -473,7 +482,10 @@ TEST_F(DrawTest, FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle)
 
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	auto sourceDump = readTextFile(sourceDumpPath);
+	EXPECT_NE(sourceDump.find("bool left = invocation.x * 2u < params.width"), std::string::npos);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
 #endif
 }

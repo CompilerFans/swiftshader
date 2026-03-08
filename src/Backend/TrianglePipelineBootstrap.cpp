@@ -46,7 +46,7 @@ std::array<RasterBootstrapVertex, 3> toRasterVertices(const GraphicsBootstrapVer
 
 }  // namespace
 
-bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config)
+bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig)
 {
 	if(config == nullptr || positionStream.buffer == nullptr)
 	{
@@ -75,6 +75,10 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, VkPr
 	config->binding.vertexStride = positionStream.vertexStride;
 	config->binding.positionOffset = 0;
 	config->binding.positionComponentCount = componentCount;
+	if(fragmentConfig)
+	{
+		config->fragmentConfig = *fragmentConfig;
+	}
 	return true;
 }
 
@@ -185,10 +189,10 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	return true;
 }
 
-bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer)
+bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig)
 {
 	TrianglePipelineBootstrapConfig config = {};
-	if(!buildTrianglePipelineBootstrapConfig(positionStream, topology, primitiveCount, renderArea, &config))
+	if(!buildTrianglePipelineBootstrapConfig(positionStream, topology, primitiveCount, renderArea, &config, fragmentConfig))
 	{
 		return false;
 	}

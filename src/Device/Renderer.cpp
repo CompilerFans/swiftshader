@@ -343,8 +343,17 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 	{
 		if(auto *runtime = device->getRuntimeAPI())
 		{
+			backend::FragmentBootstrapConfig fragmentBootstrapConfig = {};
+			if(const sw::SpirvShader *bootstrapFragmentShader = pipeline->getShader(VK_SHADER_STAGE_FRAGMENT_BIT).get())
+			{
+				if(bootstrapFragmentShader->hasBuiltinInput(spv::BuiltInFragCoord))
+				{
+					fragmentBootstrapConfig.shaderKind = backend::FragmentBootstrapShaderKind::FragCoordQuadrants;
+				}
+			}
+
 			if(runtime->isHardwareBacked() &&
-			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), draw->topology, count, renderArea, nullptr))
+			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), draw->topology, count, renderArea, nullptr, &fragmentBootstrapConfig))
 			{
 				customGraphicsBootstrapDone = true;
 			}

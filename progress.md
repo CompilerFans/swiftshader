@@ -337,3 +337,13 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.EmitsFragCoordQuadrantShaderWhenRequested:FragmentBootstrap.CudaRuntimeWritesFragCoordQuadrantColors:TrianglePipelineBootstrap.CudaRuntimeAppliesFragCoordQuadrantFragmentMode')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed
+- CUDA source dump persistence RED/GREEN:
+  - added a failing backend test requiring `CudaRuntimeAPI` to persist emitted kernel source to a file when `SWIFTSHADER_CUDA_SOURCE_DUMP_PATH` is set, and kept the Vulkan draw regression that checks the fragment quadrant shader through that file after a real draw
+  - root cause was the shared-library boundary: `draw-unittests` and `libvk_swiftshader.so` do not share the runtime's in-process static capture buffers, so `globalLastModuleSource()` cannot prove which module the loaded Vulkan driver compiled
+  - updated `dumpCudaSource()` to format the source once, keep the default stderr dump behavior, and append the same dump to the optional file path so tests can observe generated CUDA source across the library boundary
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='RuntimeAPI.CudaRuntimePrintsKernelSourceByDefault:RuntimeAPI.CudaRuntimeSuppressesKernelSourceWhenDisabled:RuntimeAPI.CudaRuntimeWritesKernelSourceToFile')` passed
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='RuntimeAPI.CudaRuntimeWritesKernelSourceToFile:FragmentBootstrap.EmitsFragCoordQuadrantShaderWhenRequested:FragmentBootstrap.CudaRuntimeWritesFragCoordQuadrantColors:TrianglePipelineBootstrap.CudaRuntimeAppliesFragCoordQuadrantFragmentMode')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle:DrawTest.FragmentShaderUsesFragCoordQuadrantColors:DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles')` passed
