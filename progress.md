@@ -357,3 +357,13 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.CudaRuntimeAppliesRequestedFragmentColor:TrianglePipelineBootstrap.CudaRuntimeAppliesFragCoordQuadrantFragmentMode:FragmentBootstrap.CudaRuntimeWritesConstantColor:FragmentBootstrap.CudaRuntimeWritesFragCoordQuadrantColors')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed
+- Minimal varying-color bridge RED/GREEN:
+  - added a failing Vulkan draw test, `DrawTest.VertexColorTriangleInterpolation`, that renders a real position+color triangle, saves a BMP artifact, and requires the draw-triggered CUDA dump to contain `invocation.color*`-based fragment writes
+  - extended `GraphicsBootstrap` with an optional color attribute fetch, widened `RasterBootstrap` and `FragmentBootstrapInvocation` to carry interpolated RGBA, added `FragmentBootstrapShaderKind::InterpolatedColor`, and taught `Renderer::draw()` / `TrianglePipelineBootstrap` to source a second vertex stream when it shares binding/stride with position
+  - debugged a second-stage failure in the backend tests and found the fragment bootstrap was still launching all work in a single block; once interpolated-color triangles produced larger invocation lists, the kernel silently stopped writing output. Switching `FragmentBootstrap` to a multi-block launch fixed the path
+  - added backend coverage for `position + color` stream config derivation and for the raw-vertex interpolated-color bootstrap path, while keeping the existing constant-color and `gl_FragCoord` paths green
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexColorTriangleInterpolation')` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromPositionAndColorStreams:TrianglePipelineBootstrap.CudaRuntimeInterpolatesVertexColorFromRawVertexData:TrianglePipelineBootstrap.CudaRuntimeAppliesRequestedFragmentColor:TrianglePipelineBootstrap.CudaRuntimeAppliesFragCoordQuadrantFragmentMode')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexColorTriangleInterpolation:DrawTest.SolidColorTriangle:DrawTest.FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle')` passed

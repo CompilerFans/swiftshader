@@ -13,6 +13,7 @@ enum class FragmentBootstrapShaderKind
 {
 	ConstantColor,
 	FragCoordQuadrants,
+	InterpolatedColor,
 };
 
 struct FragmentBootstrapInvocation
@@ -21,6 +22,10 @@ struct FragmentBootstrapInvocation
 	uint32_t y = 0;
 	uint32_t exportMask = 1;
 	uint32_t helperInvocation = 0;
+	float colorR = 0.0f;
+	float colorG = 0.0f;
+	float colorB = 0.0f;
+	float colorA = 1.0f;
 };
 
 struct FragmentBootstrapConfig

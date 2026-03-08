@@ -15,6 +15,8 @@ struct BootstrapVsParams
 	uint32_t vertexStride = 0;
 	uint32_t positionOffset = 0;
 	uint32_t positionComponentCount = 3;
+	uint32_t colorOffset = 0;
+	uint32_t colorComponentCount = 0;
 	uint32_t instanceIndex = 0;
 	float runtimeOffsetX = 0.0f;
 	float runtimeOffsetY = 0.0f;
@@ -61,6 +63,10 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "\tfloat x;\n"
 	          "\tfloat y;\n"
 	          "\tfloat z;\n"
+	          "\tfloat colorR;\n"
+	          "\tfloat colorG;\n"
+	          "\tfloat colorB;\n"
+	          "\tfloat colorA;\n"
 	          "};\n\n"
 	          "struct VertexOutput\n"
 	          "{\n"
@@ -68,6 +74,10 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "\tfloat y;\n"
 	          "\tfloat z;\n"
 	          "\tfloat w;\n"
+	          "\tfloat colorR;\n"
+	          "\tfloat colorG;\n"
+	          "\tfloat colorB;\n"
+	          "\tfloat colorA;\n"
 	          "};\n\n"
 	          "struct VsParams\n"
 	          "{\n"
@@ -77,6 +87,8 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "\tunsigned int vertexStride;\n"
 	          "\tunsigned int positionOffset;\n"
 	          "\tunsigned int positionComponentCount;\n"
+	          "\tunsigned int colorOffset;\n"
+	          "\tunsigned int colorComponentCount;\n"
 	          "\tunsigned int instanceIndex;\n"
 	          "\tfloat runtimeOffsetX;\n"
 	          "\tfloat runtimeOffsetY;\n"
@@ -88,6 +100,10 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	       << "\toutVertex.y = " << yExpression << " + params.runtimeOffsetY;\n"
 	       << "\toutVertex.z = inVertex.z + " << literalFloat(config.offsetZ) << " + params.runtimeOffsetZ;\n"
 	          "\toutVertex.w = 1.0f;\n"
+	          "\toutVertex.colorR = inVertex.colorR;\n"
+	          "\toutVertex.colorG = inVertex.colorG;\n"
+	          "\toutVertex.colorB = inVertex.colorB;\n"
+	          "\toutVertex.colorA = inVertex.colorA;\n"
 	          "}\n\n"
 	          "static __device__ void run_vs_entry(VsParams params)\n"
 	          "{\n"
@@ -99,7 +115,19 @@ std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &con
 	          "\tconst unsigned char *vertexBase = params.vertexData + vertexIndex * params.vertexStride + params.positionOffset;\n"
 	          "\tconst float *position = reinterpret_cast<const float *>(vertexBase);\n"
 	          "\tfloat z = params.positionComponentCount > 2 ? position[2] : 0.0f;\n"
-	          "\tVertexInput inVertex = { position[0], position[1], z };\n"
+	          "\tfloat colorR = 1.0f;\n"
+	          "\tfloat colorG = 1.0f;\n"
+	          "\tfloat colorB = 1.0f;\n"
+	          "\tfloat colorA = 1.0f;\n"
+	          "\tif(params.colorComponentCount != 0u)\n"
+	          "\t{\n"
+	          "\t\tconst float *color = reinterpret_cast<const float *>(params.vertexData + vertexIndex * params.vertexStride + params.colorOffset);\n"
+	          "\t\tcolorR = color[0];\n"
+	          "\t\tcolorG = params.colorComponentCount > 1 ? color[1] : colorR;\n"
+	          "\t\tcolorB = params.colorComponentCount > 2 ? color[2] : colorG;\n"
+	          "\t\tcolorA = params.colorComponentCount > 3 ? color[3] : 1.0f;\n"
+	          "\t}\n"
+	          "\tVertexInput inVertex = { position[0], position[1], z, colorR, colorG, colorB, colorA };\n"
 	          "\tVertexOutput outVertex = {};\n"
 	          "\tvs_main(params, vertexIndex, inVertex, outVertex);\n"
 	          "\tparams.outVertices[vertexIndex] = outVertex;\n"
@@ -132,6 +160,9 @@ bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstr
 	GraphicsBootstrapBindingConfig bindingConfig = {};
 	bindingConfig.vertexStride = sizeof(GraphicsBootstrapVertexInput);
 	bindingConfig.positionOffset = 0;
+	bindingConfig.positionComponentCount = 3;
+	bindingConfig.colorOffset = offsetof(GraphicsBootstrapVertexInput, colorR);
+	bindingConfig.colorComponentCount = 4;
 	return runGraphicsBootstrap(runtime, rawVertexData, static_cast<uint32_t>(inputs.size()), bindingConfig, config, runtimeConfig, outputs);
 }
 
@@ -176,6 +207,8 @@ bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<uint8_t> &rawVe
 	params.vertexStride = bindingConfig.vertexStride;
 	params.positionOffset = bindingConfig.positionOffset;
 	params.positionComponentCount = bindingConfig.positionComponentCount;
+	params.colorOffset = bindingConfig.colorOffset;
+	params.colorComponentCount = bindingConfig.colorComponentCount;
 	params.instanceIndex = runtimeConfig.instanceIndex;
 	params.runtimeOffsetX = runtimeConfig.offsetX;
 	params.runtimeOffsetY = runtimeConfig.offsetY;

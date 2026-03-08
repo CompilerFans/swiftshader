@@ -8,6 +8,8 @@
 namespace backend {
 namespace {
 
+constexpr uint32_t kFragmentBlockWidth = 128u;
+
 struct BootstrapFsParams
 {
 	const FragmentBootstrapInvocation *invocations = nullptr;
@@ -43,6 +45,10 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tunsigned int y;\n"
 	          "\tunsigned int exportMask;\n"
 	          "\tunsigned int helperInvocation;\n"
+	          "\tfloat colorR;\n"
+	          "\tfloat colorG;\n"
+	          "\tfloat colorB;\n"
+	          "\tfloat colorA;\n"
 	          "};\n\n"
 	          "struct FsParams\n"
 	          "{\n"
@@ -69,6 +75,14 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 		          "\toutG = !left && top ? 255u : (!left && !top ? 255u : 0u);\n"
 		          "\toutB = left && !top ? 255u : 0u;\n"
 		          "\toutA = 255u;\n";
+	}
+	else if(config.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor)
+	{
+		source << "\t(void)params;\n"
+		          "\toutR = packColor(invocation.colorR);\n"
+		          "\toutG = packColor(invocation.colorG);\n"
+		          "\toutB = packColor(invocation.colorB);\n"
+		          "\toutA = packColor(invocation.colorA);\n";
 	}
 	else
 	{
@@ -153,10 +167,10 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	std::vector<void *> arguments = { &params };
 
 	LaunchRecord record = {};
-	record.groupCountX = 1;
+	record.groupCountX = (static_cast<uint32_t>(invocations.size()) + kFragmentBlockWidth - 1) / kFragmentBlockWidth;
 	record.groupCountY = 1;
 	record.groupCountZ = 1;
-	record.blockCountX = static_cast<uint32_t>(invocations.size());
+	record.blockCountX = std::min(static_cast<uint32_t>(invocations.size()), kFragmentBlockWidth);
 	record.blockCountY = 1;
 	record.blockCountZ = 1;
 	record.argumentCount = arguments.size();

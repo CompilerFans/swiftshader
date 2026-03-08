@@ -145,7 +145,18 @@ bool tryBuildBootstrapFragmentConfig(const SpirvShader &shader, backend::Fragmen
 		return true;
 	}
 
-	return tryGetBootstrapFragmentConstantColor(shader, config);
+	if(tryGetBootstrapFragmentConstantColor(shader, config))
+	{
+		return true;
+	}
+
+	if(shader.GetNumInputComponents(0) >= 3)
+	{
+		config->shaderKind = backend::FragmentBootstrapShaderKind::InterpolatedColor;
+		return true;
+	}
+
+	return false;
 }
 
 }  // namespace
@@ -454,9 +465,14 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 					fragmentBootstrapConfigPtr = &fragmentBootstrapConfig;
 				}
 			}
+			const sw::Stream *colorStream = nullptr;
+			if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
+			{
+				colorStream = &inputs.getStream(1);
+			}
 
 			if(runtime->isHardwareBacked() &&
-			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr))
+			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr))
 			{
 				customGraphicsBootstrapDone = true;
 			}

@@ -3,6 +3,7 @@
 
 #include "RuntimeAPI.hpp"
 
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -14,6 +15,10 @@ struct GraphicsBootstrapVertexInput
 	float x = 0.0f;
 	float y = 0.0f;
 	float z = 0.0f;
+	float colorR = 1.0f;
+	float colorG = 1.0f;
+	float colorB = 1.0f;
+	float colorA = 1.0f;
 };
 
 struct GraphicsBootstrapVertexOutput
@@ -22,6 +27,10 @@ struct GraphicsBootstrapVertexOutput
 	float y = 0.0f;
 	float z = 0.0f;
 	float w = 0.0f;
+	float colorR = 1.0f;
+	float colorG = 1.0f;
+	float colorB = 1.0f;
+	float colorA = 1.0f;
 };
 
 struct GraphicsBootstrapShaderConfig
@@ -46,6 +55,8 @@ struct GraphicsBootstrapBindingConfig
 	uint32_t vertexStride = sizeof(GraphicsBootstrapVertexInput);
 	uint32_t positionOffset = 0;
 	uint32_t positionComponentCount = 3;
+	uint32_t colorOffset = offsetof(GraphicsBootstrapVertexInput, colorR);
+	uint32_t colorComponentCount = 4;
 };
 
 std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &config = {});

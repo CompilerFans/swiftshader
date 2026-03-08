@@ -17,6 +17,10 @@ struct RasterBootstrapVertex
 	float y = 0.0f;
 	float z = 0.0f;
 	float w = 1.0f;
+	float colorR = 1.0f;
+	float colorG = 1.0f;
+	float colorB = 1.0f;
+	float colorA = 1.0f;
 };
 
 struct RasterBootstrapConfig

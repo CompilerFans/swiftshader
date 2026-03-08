@@ -18,6 +18,8 @@ uint32_t positionComponentCount(VkFormat format)
 		return 2;
 	case VK_FORMAT_R32G32B32_SFLOAT:
 		return 3;
+	case VK_FORMAT_R32G32B32A32_SFLOAT:
+		return 4;
 	default:
 		return 0;
 	}
@@ -34,6 +36,10 @@ std::array<RasterBootstrapVertex, 3> toRasterVertices(const std::vector<Graphics
 		triangle[i].y = (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(height);
 		triangle[i].z = outputs[i].z;
 		triangle[i].w = outputs[i].w;
+		triangle[i].colorR = outputs[i].colorR;
+		triangle[i].colorG = outputs[i].colorG;
+		triangle[i].colorB = outputs[i].colorB;
+		triangle[i].colorA = outputs[i].colorA;
 	}
 	return triangle;
 }
@@ -46,7 +52,7 @@ std::array<RasterBootstrapVertex, 3> toRasterVertices(const GraphicsBootstrapVer
 
 }  // namespace
 
-bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig)
+bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig)
 {
 	if(config == nullptr || positionStream.buffer == nullptr)
 	{
@@ -75,6 +81,23 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, VkPr
 	config->binding.vertexStride = positionStream.vertexStride;
 	config->binding.positionOffset = 0;
 	config->binding.positionComponentCount = componentCount;
+	config->binding.colorOffset = 0;
+	config->binding.colorComponentCount = 0;
+	if(colorStream &&
+	   colorStream->buffer != nullptr &&
+	   colorStream->binding == positionStream.binding &&
+	   colorStream->inputRate == positionStream.inputRate &&
+	   colorStream->vertexStride == positionStream.vertexStride)
+	{
+		const uint32_t colorComponentCount = positionComponentCount(colorStream->format);
+		auto positionBase = static_cast<const uint8_t *>(positionStream.buffer);
+		auto colorBase = static_cast<const uint8_t *>(colorStream->buffer);
+		if(colorComponentCount >= 3 && colorBase >= positionBase)
+		{
+			config->binding.colorOffset = static_cast<uint32_t>(colorBase - positionBase);
+			config->binding.colorComponentCount = colorComponentCount;
+		}
+	}
 	if(fragmentConfig)
 	{
 		config->fragmentConfig = *fragmentConfig;
@@ -127,7 +150,19 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 			const uint8_t *vertexBase = config.rawVertexData.data() + i * config.binding.vertexStride + config.binding.positionOffset;
 			const float *position = reinterpret_cast<const float *>(vertexBase);
 			float z = config.binding.positionComponentCount > 2 ? position[2] : 0.0f;
-			vsOutputs[i] = { position[0], position[1], z, 1.0f };
+			float colorR = 1.0f;
+			float colorG = 1.0f;
+			float colorB = 1.0f;
+			float colorA = 1.0f;
+			if(config.binding.colorComponentCount != 0)
+			{
+				const float *color = reinterpret_cast<const float *>(config.rawVertexData.data() + i * config.binding.vertexStride + config.binding.colorOffset);
+				colorR = color[0];
+				colorG = config.binding.colorComponentCount > 1 ? color[1] : colorR;
+				colorB = config.binding.colorComponentCount > 2 ? color[2] : colorG;
+				colorA = config.binding.colorComponentCount > 3 ? color[3] : 1.0f;
+			}
+			vsOutputs[i] = { position[0], position[1], z, 1.0f, colorR, colorG, colorB, colorA };
 		}
 	}
 	else
@@ -135,7 +170,7 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		vsOutputs.resize(config.vertices.size());
 		for(size_t i = 0; i < config.vertices.size(); i++)
 		{
-			vsOutputs[i] = { config.vertices[i].x, config.vertices[i].y, config.vertices[i].z, 1.0f };
+			vsOutputs[i] = { config.vertices[i].x, config.vertices[i].y, config.vertices[i].z, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
 		}
 	}
 
@@ -196,10 +231,10 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	return true;
 }
 
-bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig)
+bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig)
 {
 	TrianglePipelineBootstrapConfig config = {};
-	if(!buildTrianglePipelineBootstrapConfig(positionStream, topology, primitiveCount, renderArea, &config, fragmentConfig))
+	if(!buildTrianglePipelineBootstrapConfig(positionStream, colorStream, topology, primitiveCount, renderArea, &config, fragmentConfig))
 	{
 		return false;
 	}

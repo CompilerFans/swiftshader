@@ -5,6 +5,7 @@
 #	include "Backend/CudaRuntimeAPI.hpp"
 #endif
 
+#include <algorithm>
 #include <cstring>
 #include <gtest/gtest.h>
 
@@ -40,7 +41,7 @@ TEST(TrianglePipelineBootstrap, BuildsConfigFromVec3PositionStream)
 	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
 
 	backend::TrianglePipelineBootstrapConfig config = {};
-	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 1u, { { 0, 0 }, { 96, 48 } }, &config));
+	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, nullptr, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 1u, { { 0, 0 }, { 96, 48 } }, &config));
 	EXPECT_EQ(config.width, 96u);
 	EXPECT_EQ(config.height, 48u);
 	EXPECT_EQ(config.vertexCount, 3u);
@@ -73,7 +74,7 @@ TEST(TrianglePipelineBootstrap, BuildsConfigFromVec2PositionStream)
 	positionStream.format = VK_FORMAT_R32G32_SFLOAT;
 
 	backend::TrianglePipelineBootstrapConfig config = {};
-	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 1u, { { 0, 0 }, { 64, 64 } }, &config));
+	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, nullptr, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 1u, { { 0, 0 }, { 64, 64 } }, &config));
 	EXPECT_EQ(config.vertexCount, 3u);
 	EXPECT_EQ(config.binding.positionComponentCount, 2u);
 	ASSERT_EQ(config.rawVertexData.size(), sizeof(Vertex) * vertices.size());
@@ -103,10 +104,44 @@ TEST(TrianglePipelineBootstrap, BuildsConfigFromMultipleTrianglesPositionStream)
 	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
 
 	backend::TrianglePipelineBootstrapConfig config = {};
-	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 2u, { { 0, 0 }, { 96, 48 } }, &config));
+	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, nullptr, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 2u, { { 0, 0 }, { 96, 48 } }, &config));
 	EXPECT_EQ(config.vertexCount, 6u);
 	ASSERT_EQ(config.rawVertexData.size(), sizeof(Vertex) * vertices.size());
 	EXPECT_EQ(std::memcmp(config.rawVertexData.data(), vertices.data(), config.rawVertexData.size()), 0);
+}
+
+TEST(TrianglePipelineBootstrap, BuildsConfigFromPositionAndColorStreams)
+{
+	struct Vertex
+	{
+		float position[3];
+		float color[3];
+	};
+
+	const std::array<Vertex, 3> vertices = {{
+		{ { -0.5f, -0.25f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+		{ { 0.0f, 0.75f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+		{ { 0.5f, -0.25f, 0.0f }, { 0.0f, 0.0f, 1.0f } },
+	}};
+
+	sw::Stream positionStream = {};
+	positionStream.buffer = &vertices[0].position[0];
+	positionStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	positionStream.vertexStride = sizeof(Vertex);
+	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+	positionStream.binding = 0;
+
+	sw::Stream colorStream = {};
+	colorStream.buffer = &vertices[0].color[0];
+	colorStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	colorStream.vertexStride = sizeof(Vertex);
+	colorStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+	colorStream.binding = 0;
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, &colorStream, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 1u, { { 0, 0 }, { 64, 64 } }, &config));
+	EXPECT_EQ(config.binding.colorOffset, offsetof(Vertex, color));
+	EXPECT_EQ(config.binding.colorComponentCount, 3u);
 }
 
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
@@ -300,5 +335,44 @@ TEST(TrianglePipelineBootstrap, CudaRuntimeAppliesFragCoordQuadrantFragmentMode)
 	EXPECT_EQ(colorBuffer[topRightInside + 2], 0u);
 	EXPECT_EQ(colorBuffer[topRightInside + 3], 255u);
 	EXPECT_NE(backend::CudaRuntimeAPI::globalLastModuleSource().find("bool left = invocation.x * 2u < params.width"), std::string::npos);
+}
+
+TEST(TrianglePipelineBootstrap, CudaRuntimeInterpolatesVertexColorFromRawVertexData)
+{
+	struct Vertex
+	{
+		float position[3];
+		float color[3];
+	};
+
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	const std::array<Vertex, 3> vertices = {{
+		{ { -0.95f, -0.85f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+		{ { 0.95f, -0.85f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+		{ { 0.0f, 0.95f, 0.0f }, { 0.0f, 0.0f, 1.0f } },
+	}};
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	config.width = 64u;
+	config.height = 64u;
+	config.rawVertexData.resize(sizeof(Vertex) * vertices.size());
+	std::memcpy(config.rawVertexData.data(), vertices.data(), config.rawVertexData.size());
+	config.vertexCount = static_cast<uint32_t>(vertices.size());
+	config.binding.vertexStride = sizeof(Vertex);
+	config.binding.positionOffset = offsetof(Vertex, position);
+	config.binding.positionComponentCount = 3u;
+	config.binding.colorOffset = offsetof(Vertex, color);
+	config.binding.colorComponentCount = 3u;
+	config.fragmentConfig.shaderKind = backend::FragmentBootstrapShaderKind::InterpolatedColor;
+
+	std::vector<uint8_t> colorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, config, &colorBuffer));
+	ASSERT_EQ(colorBuffer.size(), 64u * 64u * 4u);
+	EXPECT_TRUE(std::any_of(colorBuffer.begin(), colorBuffer.end(), [](uint8_t value) {
+		return value != 0u;
+	}));
+	EXPECT_NE(backend::CudaRuntimeAPI::globalLastModuleSource().find("outR = packColor(invocation.colorR);"), std::string::npos);
 }
 #endif

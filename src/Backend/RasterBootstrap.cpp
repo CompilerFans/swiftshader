@@ -37,6 +37,22 @@ bool pointInsideTriangle(const std::array<RasterBootstrapVertex, 3> &triangle, f
 	return allNonNegative || allNonPositive;
 }
 
+void interpolateVertexColor(const std::array<RasterBootstrapVertex, 3> &triangle, float px, float py, float *color)
+{
+	float denominator0 = edgeFunction(triangle[1], triangle[2], triangle[0].x, triangle[0].y);
+	float denominator1 = edgeFunction(triangle[2], triangle[0], triangle[1].x, triangle[1].y);
+	float denominator2 = edgeFunction(triangle[0], triangle[1], triangle[2].x, triangle[2].y);
+
+	float weight0 = edgeFunction(triangle[1], triangle[2], px, py) / denominator0;
+	float weight1 = edgeFunction(triangle[2], triangle[0], px, py) / denominator1;
+	float weight2 = edgeFunction(triangle[0], triangle[1], px, py) / denominator2;
+
+	color[0] = triangle[0].colorR * weight0 + triangle[1].colorR * weight1 + triangle[2].colorR * weight2;
+	color[1] = triangle[0].colorG * weight0 + triangle[1].colorG * weight1 + triangle[2].colorG * weight2;
+	color[2] = triangle[0].colorB * weight0 + triangle[1].colorB * weight1 + triangle[2].colorB * weight2;
+	color[3] = triangle[0].colorA * weight0 + triangle[1].colorA * weight1 + triangle[2].colorA * weight2;
+}
+
 }  // namespace
 
 std::string rasterBootstrapCudaSource()
@@ -48,6 +64,10 @@ std::string rasterBootstrapCudaSource()
 	          "\tfloat y;\n"
 	          "\tfloat z;\n"
 	          "\tfloat w;\n"
+	          "\tfloat colorR;\n"
+	          "\tfloat colorG;\n"
+	          "\tfloat colorB;\n"
+	          "\tfloat colorA;\n"
 	          "};\n\n"
 	          "struct RasterInvocation\n"
 	          "{\n"
@@ -55,6 +75,10 @@ std::string rasterBootstrapCudaSource()
 	          "\tunsigned int y;\n"
 	          "\tunsigned int exportMask;\n"
 	          "\tunsigned int helperInvocation;\n"
+	          "\tfloat colorR;\n"
+	          "\tfloat colorG;\n"
+	          "\tfloat colorB;\n"
+	          "\tfloat colorA;\n"
 	          "};\n\n"
 	          "struct RasterParams\n"
 	          "{\n"
@@ -77,6 +101,19 @@ std::string rasterBootstrapCudaSource()
 	          "\tbool allNonPositive = (e0 <= 0.0f) && (e1 <= 0.0f) && (e2 <= 0.0f);\n"
 	          "\treturn allNonNegative || allNonPositive;\n"
 	          "}\n\n"
+	          "static __device__ void interpolateColor(const RasterVertex &v0, const RasterVertex &v1, const RasterVertex &v2, float px, float py, float &colorR, float &colorG, float &colorB, float &colorA)\n"
+	          "{\n"
+	          "\tfloat denominator0 = edgeFunction(v1, v2, v0.x, v0.y);\n"
+	          "\tfloat denominator1 = edgeFunction(v2, v0, v1.x, v1.y);\n"
+	          "\tfloat denominator2 = edgeFunction(v0, v1, v2.x, v2.y);\n"
+	          "\tfloat weight0 = edgeFunction(v1, v2, px, py) / denominator0;\n"
+	          "\tfloat weight1 = edgeFunction(v2, v0, px, py) / denominator1;\n"
+	          "\tfloat weight2 = edgeFunction(v0, v1, px, py) / denominator2;\n"
+	          "\tcolorR = v0.colorR * weight0 + v1.colorR * weight1 + v2.colorR * weight2;\n"
+	          "\tcolorG = v0.colorG * weight0 + v1.colorG * weight1 + v2.colorG * weight2;\n"
+	          "\tcolorB = v0.colorB * weight0 + v1.colorB * weight1 + v2.colorB * weight2;\n"
+	          "\tcolorA = v0.colorA * weight0 + v1.colorA * weight1 + v2.colorA * weight2;\n"
+	          "}\n\n"
 	          "extern \"C\" __global__ void raster_entry(RasterParams params)\n"
 	          "{\n"
 	          "\tunsigned int x = blockIdx.x * blockDim.x + threadIdx.x;\n"
@@ -95,11 +132,16 @@ std::string rasterBootstrapCudaSource()
 	          "\tinvocation.y = y;\n"
 	          "\tinvocation.exportMask = 0u;\n"
 	          "\tinvocation.helperInvocation = 0u;\n"
+	          "\tinvocation.colorR = 0.0f;\n"
+	          "\tinvocation.colorG = 0.0f;\n"
+	          "\tinvocation.colorB = 0.0f;\n"
+	          "\tinvocation.colorA = 1.0f;\n"
 	          "\tfloat px = static_cast<float>(x) + 0.5f;\n"
 	          "\tfloat py = static_cast<float>(y) + 0.5f;\n"
 	          "\tif(pointInsideTriangle(params.vertices[0], params.vertices[1], params.vertices[2], px, py))\n"
 	          "\t{\n"
 	          "\t\tinvocation.exportMask = 1u;\n"
+	          "\t\tinterpolateColor(params.vertices[0], params.vertices[1], params.vertices[2], px, py, invocation.colorR, invocation.colorG, invocation.colorB, invocation.colorA);\n"
 	          "\t}\n"
 	          "\tparams.invocations[index] = invocation;\n"
 	          "}\n";
@@ -146,6 +188,12 @@ RasterBootstrapOutput rasterBootstrapCpuReference(const std::array<RasterBootstr
 			invocation.y = y;
 			invocation.exportMask = 1u;
 			invocation.helperInvocation = 0u;
+			float color[4] = {};
+			interpolateVertexColor(triangle, px, py, color);
+			invocation.colorR = color[0];
+			invocation.colorG = color[1];
+			invocation.colorB = color[2];
+			invocation.colorA = color[3];
 			output.invocations.push_back(invocation);
 		}
 	}
