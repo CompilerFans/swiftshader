@@ -174,6 +174,17 @@
   - decided to establish CPU-only baselines first, using automated benchmark output plus a window-visible FPS observer
   - selected `SolidColorTriangle` as the sanity case and `ManySolidTriangles` as the primary simple-but-real throughput case for future CPU/GPU comparison
   - explicitly kept full SPIR-V compilation out of this gate so GLSL, SPIR-V text, and simple lowering remain acceptable during bring-up
+- CPU draw-performance baseline RED/GREEN:
+  - enabled benchmark targets in the active incremental build and found a pre-existing compile issue in `TriangleSampleTexture`, where `Buffer` was called with the wrong constructor shape once benchmarks were finally built
+  - fixed that necessary benchmark-only build bug, then added a new `ManySolidTriangles` CPU baseline that uses one packed `vec3 position` vertex buffer and a fixed-color pipeline across `1K`, `16K`, and `64K` triangle scales
+  - normalized benchmark output with `triangle_count`, `fps`, and a label carrying `case`, `backend`, and `mode`
+  - added a standalone `draw-fps-observer` tool that reuses the same simple draw scenes and prints once-per-second FPS; on non-Windows platforms it currently reports the existing headless-surface limitation instead of opening a visible native window
+- Validation:
+  - `cmake -S . -B build-cuda-bootstrap -DSWIFTSHADER_BUILD_BENCHMARKS=ON -DSWIFTSHADER_BUILD_TESTS=ON` passed
+  - `cmake --build build-cuda-bootstrap --target VulkanBenchmarks --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./VulkanBenchmarks --benchmark_filter='ManySolidTriangles' --benchmark_min_time=0.01s)` passed and printed `fps`, `triangle_count`, and `case=ManySolidTriangles,backend=cpu,mode=headless`
+  - `cmake --build build-cuda-bootstrap --target draw-fps-observer --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./draw-fps-observer --case=solid --seconds=2)` passed and printed a live `window_fps` line
 - Minimal SPIR-V vertex lowering RED/GREEN:
   - added failing backend tests that require `SemanticIRBuilder` to preserve minimal vertex lowering metadata, lower it into `KernelIR`, and emit a vertex-style CUDA wrapper/body instead of the placeholder `kernel_main`
   - added a minimal `VertexLoweringInfo` model shared by `SemanticIR` and `KernelIR`, plus a lightweight `lowerToKernelIR()` bridge so the new path is not stuck at raw metadata storage
