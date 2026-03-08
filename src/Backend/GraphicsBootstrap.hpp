@@ -23,8 +23,16 @@ struct GraphicsBootstrapVertexOutput
 	float w = 0.0f;
 };
 
-std::string graphicsBootstrapCudaSource();
+struct GraphicsBootstrapShaderConfig
+{
+	float offsetX = 0.0f;
+	float offsetY = 0.0f;
+	float offsetZ = 0.0f;
+};
+
+std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &config = {});
 bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstrapVertexInput> &inputs, std::vector<GraphicsBootstrapVertexOutput> *outputs);
+bool runGraphicsBootstrap(RuntimeAPI &runtime, const std::vector<GraphicsBootstrapVertexInput> &inputs, const GraphicsBootstrapShaderConfig &config, std::vector<GraphicsBootstrapVertexOutput> *outputs);
 void launchGraphicsBootstrap(RuntimeAPI &runtime);
 
 }  // namespace backend

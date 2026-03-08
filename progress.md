@@ -160,3 +160,10 @@
 - Validation:
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
+- Generated VS offset RED/GREEN:
+  - added failing backend tests that require `graphicsBootstrapCudaSource()` to emit compile-time offset literals and `runGraphicsBootstrap()` to execute the shifted outputs correctly
+  - introduced `GraphicsBootstrapShaderConfig` and overloaded bootstrap helpers so a minimal generated `vs_main` can model shader-lowered constant offsets without adding a new draw-level test
+  - fixed literal emission precision so generated CUDA source preserves values like `0.25f` and `0.125f` instead of truncating them
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle)` passed
