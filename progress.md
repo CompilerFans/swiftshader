@@ -121,3 +121,12 @@
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed
   - simple triangle screen output now shows the expected `vertex bootstrap` kernel instead of the previous warmup-only empty kernel
   - `(cd build-draw-custom-subzero && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed
+- Vertex-style graphics bootstrap RED/GREEN:
+  - added `GraphicsBootstrap` helper coverage for emitted source text and launch ABI
+  - replaced the comment-only bootstrap kernel with a vertex-style CUDA kernel containing `VertexInput`, `VertexOutput`, and `w = 1.0f` writeback
+  - switched `CustomExecutionBackend` to call the shared helper instead of embedding a private source string
+  - disabled warmup in the multi-triangle draw test too, so draw-path dumps stay focused on the graphics bootstrap kernel
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter=GraphicsBootstrap.*:RuntimeAPI.CudaRuntimePrintsKernelSourceByDefault:RuntimeAPI.CudaRuntimeSuppressesKernelSourceWhenDisabled:RuntimeAPI.CudaRuntimeCompilesLaunchesAndReadsBackDeviceMemory)` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed, and the screen dump now shows the vertex-style kernel source
+  - `(cd build-draw-custom-subzero && ./draw-unittests --gtest_filter=DrawTest.SolidColorTriangle:DrawTest.MultipleSolidColorTriangles)` passed

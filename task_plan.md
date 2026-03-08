@@ -85,6 +85,7 @@ Complete
 - Current artifact milestone: both triangle draw tests now save `BMP` snapshots under `draw-test-artifacts/` in the build directory via the test-only `DrawTester::saveFrame()` helper.
 - Current CUDA debug milestone: the real CUDA runtime path now dumps kernel source to `stderr` by default, with `SWIFTSHADER_CUDA_DUMP_SOURCE=0|false|off|no` available to suppress it when needed.
 - Current graphics-bootstrap milestone: the custom execution backend now performs one minimal `vertex bootstrap` CUDA compile+launch on the first graphics submit, while still delegating actual triangle rendering to the CPU fallback path.
+- Current vertex-style bootstrap milestone: the graphics bootstrap kernel now carries an explicit vertex input/output contract and a `w = 1.0f` writeback, instead of the earlier comment-only placeholder.
 - Current limitation: Vulkan shared-library compute dispatch in the real CUDA build is not yet wired end-to-end and is explicitly skipped in `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp`.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.

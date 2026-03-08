@@ -1,20 +1,10 @@
 #include "Backend/RuntimeAPI.hpp"
+#include "GraphicsBootstrap.hpp"
 #include "Vulkan/VkDevice.hpp"
 #include "GraphicsBackend.hpp"
 
 namespace backend {
 namespace {
-
-const char kGraphicsBootstrapKernel[] = R"(extern "C" __global__ void kernel_main()
-{
-	unsigned int vertexIndex = blockIdx.x * blockDim.x + threadIdx.x;
-	// vertex bootstrap
-	if(vertexIndex == 0)
-	{
-		return;
-	}
-}
-)";
 
 class CustomExecutionBackend : public ExecutionBackend
 {
@@ -48,20 +38,7 @@ private:
 		}
 
 		graphicsBootstrapDone = true;
-		auto module = runtime->createModule(kGraphicsBootstrapKernel);
-		if(!module.valid())
-		{
-			return;
-		}
-
-		LaunchRecord record = {};
-		record.groupCountX = 1;
-		record.groupCountY = 1;
-		record.groupCountZ = 1;
-		record.blockCountX = 1;
-		record.blockCountY = 1;
-		record.blockCountZ = 1;
-		runtime->launch(module, record, {});
+		launchGraphicsBootstrap(*runtime);
 	}
 
 	std::unique_ptr<ExecutionBackend> cpuBackend;

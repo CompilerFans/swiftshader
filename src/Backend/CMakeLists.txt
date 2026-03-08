@@ -4,8 +4,10 @@ set(BACKEND_SRC_FILES
     ComputeExecutable.cpp
     CustomExecutionBackend.cpp
     CpuExecutionBackend.cpp
+    GraphicsBootstrap.cpp
     ComputeExecutable.hpp
     GraphicsBackend.cpp
+    GraphicsBootstrap.hpp
     PresentAdapter.cpp
     PresentAdapter.hpp
     GraphicsBackend.hpp

@@ -195,6 +195,7 @@ TEST_F(DrawTest, MultipleSolidColorTriangles)
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("multi-draw");
 	std::filesystem::remove(stampPath);
+	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
 #endif
 
@@ -273,5 +274,6 @@ TEST_F(DrawTest, MultipleSolidColorTriangles)
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
 #endif
 }
