@@ -54,4 +54,7 @@
 - Validation: `cmake -S . -B build-custom -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON -DSWIFTSHADER_BUILD_TESTS=OFF && cmake --build build-custom --target vk_backend --parallel 1` passed.
 - Task 14 GREEN: added Vulkan smoke tests, updated the bring-up checklist, and recorded bootstrap status back into the design document.
 - Validation: `tests/VulkanUnitTests/BackendSmokeTests.cpp` compiled successfully.
+- Task 12/13/14 completed: fallback present adapter, custom-backend flag/docs, and Vulkan smoke tests are now in place.
+- Final verification: full `backend-unittests` passed (12 tests), custom-backend configure plus `vk_backend` build passed, and all newly added Vulkan-side test files compiled successfully.
+- Cleaned generated `build-custom` and `.cache` directories after verification.
 
