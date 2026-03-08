@@ -383,3 +383,16 @@
   - `(cd build-benchmark-cpu && timeout 5s ./animated-triangle-benchmark --seconds=2 --backend-label=cpu)` passed and printed `window_fps current=290.80 avg=290.80 case=AnimatedColorTriangle backend=cpu`
   - `timeout 8s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cpu --seconds=2` passed and printed `window_fps current=297.83 avg=297.83 case=AnimatedColorTriangle backend=cpu`
   - `timeout 8s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --seconds=2` passed and printed `window_fps current=0.81 avg=0.81 case=AnimatedColorTriangle backend=cuda`
+- CPU stage audit + next-phase planning:
+  - audited the original CPU SwiftShader path across `VS`, `Setup/Raster`, and `FS`, using `VertexProcessor`, `SetupProcessor`, `PixelProcessor`, `VertexRoutine`, `SetupRoutine`, `PixelRoutine`, and `SpirvShader` as the primary source of truth
+  - distilled that audit into a stage feature matrix and a concrete next-phase roadmap that orders CUDA expansion by parity family instead of demo convenience
+  - captured the recommended order as:
+    1. indexed triangle-list
+    2. barycentrics and first-class interpolation
+    3. fragment builtins (`FrontFacing`, `PointCoord`, discard/demote, `FragDepth`, sample semantics)
+    4. depth/stencil/blend
+    5. topology and raster breadth
+    6. descriptor-heavy shader support
+- Artifacts:
+  - `docs/plans/2026-03-09-cpu-stage-feature-audit-design.md`
+  - `docs/plans/2026-03-09-next-phase-stage-roadmap.md`
