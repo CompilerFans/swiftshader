@@ -283,6 +283,12 @@
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.*:RasterBootstrap.CudaRuntimeMatchesCpuReference')` passed
   - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle')` passed, and the terminal dump now shows `vs_entry`, `raster_entry`, and `fs_entry`
+- Triangle pipeline config RED/GREEN:
+  - added a failing backend test requiring `TrianglePipelineBootstrap` to accept a configurable fragment output color instead of hard-coding green
+  - introduced `TrianglePipelineBootstrapConfig` with explicit framebuffer size and RGBA output fields, while preserving the old width/height overload for existing callers
+  - verified that the real CUDA bootstrap path now produces both the old green triangle and a requested red triangle, which narrows the gap between hard-coded bootstrap behavior and future draw-state-driven execution
+- Validation:
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.*')` passed
 - Generated vertex-index RED/GREEN:
   - added failing backend tests that require the generated `vs_main` to reference `vertexIndex` in emitted CUDA source and to produce shifted `x` outputs at runtime
   - extended `GraphicsBootstrapShaderConfig` with a minimal `vertexIndexScaleX` builtin-lowering knob

@@ -41,4 +41,28 @@ TEST(TrianglePipelineBootstrap, CudaRuntimeProducesGreenTriangleColorBuffer)
 	EXPECT_EQ(colorBuffer[outside + 2], 0u);
 	EXPECT_EQ(colorBuffer[outside + 3], 0u);
 }
+
+TEST(TrianglePipelineBootstrap, CudaRuntimeAppliesRequestedFragmentColor)
+{
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	config.width = 64u;
+	config.height = 64u;
+	config.colorR = 1.0f;
+	config.colorG = 0.0f;
+	config.colorB = 0.0f;
+	config.colorA = 1.0f;
+
+	std::vector<uint8_t> colorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, config, &colorBuffer));
+	ASSERT_EQ(colorBuffer.size(), 64u * 64u * 4u);
+
+	size_t inside = ((32u * 64u) + 32u) * 4u;
+	EXPECT_EQ(colorBuffer[inside + 0], 255u);
+	EXPECT_EQ(colorBuffer[inside + 1], 0u);
+	EXPECT_EQ(colorBuffer[inside + 2], 0u);
+	EXPECT_EQ(colorBuffer[inside + 3], 255u);
+}
 #endif

@@ -36,9 +36,9 @@ std::array<RasterBootstrapVertex, 3> toRasterVertices(const std::vector<Graphics
 
 }  // namespace
 
-bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, std::vector<uint8_t> *colorBuffer)
+bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBootstrapConfig &config, std::vector<uint8_t> *colorBuffer)
 {
-	if(width == 0 || height == 0)
+	if(config.width == 0 || config.height == 0)
 	{
 		return false;
 	}
@@ -61,23 +61,31 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t 
 	}
 
 	RasterBootstrapConfig rasterConfig = {};
-	rasterConfig.width = width;
-	rasterConfig.height = height;
-
 	FragmentBootstrapConfig fragmentConfig = {};
-	fragmentConfig.colorR = 0.0f;
-	fragmentConfig.colorG = 1.0f;
-	fragmentConfig.colorB = 0.0f;
-	fragmentConfig.colorA = 1.0f;
+	rasterConfig.width = config.width;
+	rasterConfig.height = config.height;
 
-	return runRasterFragmentBootstrap(runtime, toRasterVertices(vsOutputs, width, height), rasterConfig, fragmentConfig, colorBuffer);
+	fragmentConfig.colorR = config.colorR;
+	fragmentConfig.colorG = config.colorG;
+	fragmentConfig.colorB = config.colorB;
+	fragmentConfig.colorA = config.colorA;
+
+	return runRasterFragmentBootstrap(runtime, toRasterVertices(vsOutputs, config.width, config.height), rasterConfig, fragmentConfig, colorBuffer);
+}
+
+bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, std::vector<uint8_t> *colorBuffer)
+{
+	TrianglePipelineBootstrapConfig config = {};
+	config.width = width;
+	config.height = height;
+	return runTrianglePipelineBootstrap(runtime, config, colorBuffer);
 }
 
 void launchTrianglePipelineBootstrap(RuntimeAPI &runtime)
 {
 	if(runtime.isHardwareBacked())
 	{
-		runTrianglePipelineBootstrap(runtime, 64u, 64u, nullptr);
+		runTrianglePipelineBootstrap(runtime, TrianglePipelineBootstrapConfig{}, nullptr);
 		return;
 	}
 
