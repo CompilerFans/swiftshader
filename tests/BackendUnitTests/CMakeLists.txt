@@ -8,12 +8,14 @@ set(ROOT_PROJECT_LINK_LIBRARIES
 )
 
 set(BACKEND_UNIT_TESTS_SRC_FILES
+    ComputeDispatchValidationTests.cpp
     RuntimeAPITests.cpp
     CodegenEmitterTests.cpp
     AbiParityTests.cpp
     SpirvToSemanticIRTests.cpp
     ${SWIFTSHADER_DIR}/src/Pipeline/CudaLikeSourceEmitter.cpp
     ${SWIFTSHADER_DIR}/src/Pipeline/LlvmIREmitter.cpp
+    ${SWIFTSHADER_DIR}/src/Backend/ComputeExecutable.cpp
     KernelIRTests.cpp
     SemanticIRTests.cpp
     BackendFactoryTests.cpp
@@ -33,6 +35,9 @@ target_include_directories(backend-unittests
     PRIVATE
         "${SWIFTSHADER_DIR}/include"
         "${SWIFTSHADER_DIR}/src"
+        "${SWIFTSHADER_DIR}/third_party/marl/include"
+        "${SWIFTSHADER_DIR}/third_party/SPIRV-Headers/include"
+        "${SWIFTSHADER_DIR}/third_party/SPIRV-Tools/include"
 )
 
 target_compile_options(backend-unittests

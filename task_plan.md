@@ -63,6 +63,7 @@ Implementation - Task 1 complete
 - Task 6 complete: standalone `SemanticIRBuilder` bootstrap path added.
 - Task 7 complete: codegen text emitters and ABI parity checks added.
 - Task 8 complete: runtime adapter and fake runtime bootstrap added.
+- Task 9 complete: compute backend executable bootstrap and fake dispatch validation added.
 - Re-read this file before changing either plan document.
 - Record accept/reject decisions explicitly.
 - Keep design and implementation plan synchronized.

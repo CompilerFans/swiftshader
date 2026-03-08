@@ -3,6 +3,7 @@ import("../swiftshader.gni")
 swiftshader_source_set("Backend_headers") {
   sources = [
     "BackendConfig.hpp",
+    "ComputeExecutable.hpp",
     "BackendFactory.hpp",
     "FakeRuntimeAPI.hpp",
     "ExecutionBackend.hpp",
@@ -13,12 +14,14 @@ swiftshader_source_set("Backend_headers") {
 swiftshader_source_set("Backend") {
   sources = [
     "BackendFactory.cpp",
+    "ComputeExecutable.cpp",
     "FakeRuntimeAPI.cpp",
     "ExecutionBackend.cpp",
     "RuntimeAPI.cpp",
   ]
 
   deps = [
+    "../Pipeline",
     "../System:System_headers",
   ]
 

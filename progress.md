@@ -38,4 +38,7 @@
 - Task 8 RED: added `RuntimeAPITests.cpp` and confirmed the build failed because `FakeRuntimeAPI.hpp` was missing.
 - Task 8 GREEN: added `RuntimeAPI`, `ModuleHandle`, and `FakeRuntimeAPI`, then wired them into `vk_backend`.
 - Validation: `./build/backend-unittests --gtest_filter=RuntimeAPI.*` passed.
+- Task 9 RED: added compute backend tests and confirmed the build failed because `ComputeExecutable` / runtime-launch pieces were missing.
+- Task 9 GREEN: added `ComputeExecutable`, extended `FakeRuntimeAPI` with launch capture, and created a side-by-side backend executable path inside `vk::ComputePipeline::compileShaders`.
+- Validation: `./build/backend-unittests --gtest_filter=ComputeDispatchValidation.*` passed, `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp` compiled, and `src/Vulkan/VkPipeline.cpp` compiled with the target-equivalent compile flags.
 

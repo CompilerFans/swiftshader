@@ -1,6 +1,8 @@
 set(BACKEND_SRC_FILES
     BackendConfig.hpp
     BackendFactory.cpp
+    ComputeExecutable.cpp
+    ComputeExecutable.hpp
     FakeRuntimeAPI.cpp
     FakeRuntimeAPI.hpp
     BackendFactory.hpp
@@ -18,6 +20,9 @@ target_include_directories(vk_backend
     PUBLIC
         ".."
         "${SWIFTSHADER_DIR}/include"
+        "${SWIFTSHADER_DIR}/third_party/SPIRV-Headers/include"
+        "${SWIFTSHADER_DIR}/third_party/SPIRV-Tools/include"
+        "${SWIFTSHADER_DIR}/third_party/marl/include"
 )
 
 target_compile_options(vk_backend

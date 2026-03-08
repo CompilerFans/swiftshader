@@ -23,6 +23,7 @@ set(ROOT_PROJECT_LINK_LIBRARIES
 set(VULKAN_UNIT_TESTS_SRC_FILES
     BasicTests.cpp
     BackendSelectionTests.cpp
+    ComputeBackendPipelineTests.cpp
     ComputeTests.cpp
     Device.cpp
     Device.hpp
@@ -51,6 +52,7 @@ set_target_properties(vk-unittests PROPERTIES
 target_include_directories(vk-unittests
     PRIVATE
         "${SWIFTSHADER_DIR}/include"
+        "${SWIFTSHADER_DIR}/src"
 )
 
 target_compile_definitions(vk-unittests

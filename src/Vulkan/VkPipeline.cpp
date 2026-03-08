@@ -17,11 +17,13 @@
 #include "VkDestroy.hpp"
 #include "VkDevice.hpp"
 #include "VkPipelineCache.hpp"
+#include "Backend/ComputeExecutable.hpp"
 #include "VkPipelineLayout.hpp"
 #include "VkRenderPass.hpp"
 #include "VkShaderModule.hpp"
 #include "VkStringify.hpp"
 #include "Pipeline/ComputeProgram.hpp"
+#include "Pipeline/SemanticIRBuilder.hpp"
 #include "Pipeline/SpirvShader.hpp"
 
 #include "marl/trace.h"
@@ -613,6 +615,7 @@ void ComputePipeline::destroyPipeline(const VkAllocationCallbacks *pAllocator)
 {
 	shader.reset();
 	program.reset();
+	backendExecutable.reset();
 }
 
 size_t ComputePipeline::ComputeRequiredAllocationSize(const VkComputePipelineCreateInfo *pCreateInfo)
@@ -697,6 +700,14 @@ VkResult ComputePipeline::compileShaders(const VkAllocationCallbacks *pAllocator
 	else
 	{
 		program = createProgram(device, shader, layout);
+	}
+
+	sw::SemanticIRBuilder backendIRBuilder;
+	auto semantic = backendIRBuilder.build(*shader);
+	if(semantic)
+	{
+		sw::ParsedSpirvInfo parsed = { semantic->stage(), semantic->entryPoint() };
+		backendExecutable = backend::ComputeExecutable::create(parsed);
 	}
 
 	pipelineCreationFeedback.stageCreationEnds(0);

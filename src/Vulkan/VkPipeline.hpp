@@ -26,6 +26,10 @@ class SpirvShader;
 
 }  // namespace sw
 
+namespace backend {
+class ComputeExecutable;
+}
+
 namespace vk {
 
 class ShaderModule;
@@ -140,6 +144,8 @@ public:
 
 	VkResult compileShaders(const VkAllocationCallbacks *pAllocator, const VkComputePipelineCreateInfo *pCreateInfo, PipelineCache *pipelineCache);
 
+	bool hasBackendExecutable() const { return backendExecutable != nullptr; }
+
 	void run(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
 	         uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ,
 	         const vk::DescriptorSet::Array &descriptorSetObjects,
@@ -150,6 +156,7 @@ public:
 protected:
 	std::shared_ptr<sw::SpirvShader> shader;
 	std::shared_ptr<sw::ComputeProgram> program;
+	std::shared_ptr<backend::ComputeExecutable> backendExecutable;
 };
 
 static inline Pipeline *Cast(VkPipeline object)
