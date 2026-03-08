@@ -3,9 +3,18 @@
 
 #include "Backend/ResourceStateTracker.hpp"
 
+#include <cstdint>
 #include <memory>
 
 namespace backend {
+
+struct PresentAdapterCapture
+{
+	uint32_t acquireCount = 0;
+	uint32_t presentCount = 0;
+	uint64_t lastAcquireImageId = 0;
+	uint64_t lastPresentImageId = 0;
+};
 
 class PresentAdapter
 {
@@ -18,6 +27,10 @@ public:
 };
 
 std::unique_ptr<PresentAdapter> createFallbackPresentAdapter();
+std::unique_ptr<PresentAdapter> createPresentAdapter();
+
+void resetPresentAdapterCapture();
+const PresentAdapterCapture &lastPresentAdapterCapture();
 
 }  // namespace backend
 

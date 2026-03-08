@@ -8,6 +8,7 @@ set(ROOT_PROJECT_LINK_LIBRARIES
 )
 
 set(BACKEND_UNIT_TESTS_SRC_FILES
+    PresentAdapterFactoryTests.cpp
     ResourceStateTrackerTests.cpp
     ComputeDispatchValidationTests.cpp
     RuntimeAPITests.cpp

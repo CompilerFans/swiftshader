@@ -29,7 +29,7 @@ SwapchainKHR::SwapchainKHR(const VkSwapchainCreateInfoKHR *pCreateInfo, void *me
     , images(reinterpret_cast<PresentImage *>(mem))
     , imageCount(pCreateInfo->minImageCount)
     , retired(false)
-    , presentAdapter(backend::createFallbackPresentAdapter())
+    , presentAdapter(backend::createPresentAdapter())
 {
 	memset(reinterpret_cast<void *>(images), 0, imageCount * sizeof(PresentImage));
 }
