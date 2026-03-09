@@ -420,4 +420,49 @@ TEST(TrianglePipelineBootstrap, CudaRuntimeInterpolatesVertexColorFromRawVertexD
 	}));
 	EXPECT_NE(backend::CudaRuntimeAPI::globalLastModuleSource().find("invocation.barycentric0"), std::string::npos);
 }
+
+TEST(TrianglePipelineBootstrap, CudaRuntimeAppliesFragDepthMode)
+{
+	struct Vertex
+	{
+		float position[3];
+		float color[3];
+	};
+
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	const std::array<Vertex, 6> vertices = {{
+		{ { -0.75f, -0.75f, 0.0f }, { 0.0f, 0.0f, 1.0f } },
+		{ { 0.0f, 0.75f, 0.0f }, { 0.0f, 0.0f, 1.0f } },
+		{ { 0.75f, -0.75f, 0.0f }, { 0.0f, 0.0f, 1.0f } },
+		{ { -0.75f, -0.75f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+		{ { 0.0f, 0.75f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+		{ { 0.75f, -0.75f, 0.0f }, { 1.0f, 0.0f, 0.0f } },
+	}};
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	config.width = 64u;
+	config.height = 64u;
+	config.rawVertexData.resize(sizeof(Vertex) * vertices.size());
+	std::memcpy(config.rawVertexData.data(), vertices.data(), config.rawVertexData.size());
+	config.vertexCount = static_cast<uint32_t>(vertices.size());
+	config.binding.vertexStride = sizeof(Vertex);
+	config.binding.positionOffset = offsetof(Vertex, position);
+	config.binding.positionComponentCount = 3u;
+	config.binding.colorOffset = offsetof(Vertex, color);
+	config.binding.colorComponentCount = 3u;
+	config.fragmentConfig.shaderKind = backend::FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth;
+	config.fragmentConfig.nearDepth = 0.2f;
+	config.fragmentConfig.farDepth = 0.8f;
+
+	std::vector<uint8_t> colorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, config, &colorBuffer));
+	ASSERT_EQ(colorBuffer.size(), 64u * 64u * 4u);
+
+	size_t center = ((32u * 64u) + 32u) * 4u;
+	EXPECT_LT(colorBuffer[center + 0], colorBuffer[center + 2]);
+	EXPECT_NE(backend::CudaRuntimeAPI::globalLastModuleSource().find("params.nearDepth"), std::string::npos);
+}
+
 #endif

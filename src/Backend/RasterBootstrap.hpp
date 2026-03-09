@@ -45,7 +45,7 @@ struct RasterBootstrapOutput
 std::string rasterBootstrapCudaSource();
 RasterBootstrapOutput rasterBootstrapCpuReference(const std::array<RasterBootstrapVertex, 3> &triangle, const RasterBootstrapConfig &config);
 bool runRasterBootstrap(RuntimeAPI &runtime, const std::array<RasterBootstrapVertex, 3> &triangle, const RasterBootstrapConfig &config, RasterBootstrapOutput *output);
-bool runRasterFragmentBootstrap(RuntimeAPI &runtime, const std::array<RasterBootstrapVertex, 3> &triangle, const RasterBootstrapConfig &rasterConfig, const FragmentBootstrapConfig &fragmentConfig, std::vector<uint8_t> *colorBuffer);
+bool runRasterFragmentBootstrap(RuntimeAPI &runtime, const std::array<RasterBootstrapVertex, 3> &triangle, const RasterBootstrapConfig &rasterConfig, const FragmentBootstrapConfig &fragmentConfig, std::vector<uint8_t> *colorBuffer, std::vector<float> *depthBuffer = nullptr);
 void launchRasterBootstrap(RuntimeAPI &runtime);
 
 }  // namespace backend

@@ -48,6 +48,7 @@ public:
 	void saveFrame(const std::filesystem::path &path);
 	void updateVertexBufferData(const void *vertexBufferData, size_t vertexBufferDataSize);
 	void show();
+	void enableDepthTest(bool depthTestEnable, bool depthWriteEnable, vk::CompareOp depthCompareOp);
 	void pumpWindowEvents();
 	void setWindowTitle(const std::string &title);
 	void bindIndexBuffer(vk::CommandBuffer &commandBuffer);
@@ -157,6 +158,10 @@ private:
 
 	const vk::Extent2D windowSize = { 1280, 720 };
 	const bool multisample;
+	bool depthTestEnabled = false;
+	bool depthWriteEnabled = false;
+	vk::CompareOp depthCompareOp = vk::CompareOp::eLessOrEqual;
+	vk::Format depthFormat = vk::Format::eD32Sfloat;
 
 	std::unique_ptr<Window> window;
 	std::unique_ptr<Swapchain> swapchain;

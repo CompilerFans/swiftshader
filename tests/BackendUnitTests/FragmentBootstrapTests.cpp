@@ -43,6 +43,17 @@ TEST(FragmentBootstrap, EmitsInterpolatedColorShaderFromBarycentrics)
 	EXPECT_EQ(source.find("outR = packColor(invocation.colorR);"), std::string::npos);
 }
 
+TEST(FragmentBootstrap, EmitsInterpolatedColorFragDepthShaderWhenRequested)
+{
+	backend::FragmentBootstrapConfig config = {};
+	config.shaderKind = backend::FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth;
+
+	std::string source = backend::fragmentBootstrapCudaSource(config);
+
+	EXPECT_NE(source.find("params.nearDepth"), std::string::npos);
+	EXPECT_NE(source.find("outDepth = colorB > colorR ? params.nearDepth : params.farDepth;"), std::string::npos);
+}
+
 TEST(FragmentBootstrap, EmitsFrontFacingBinaryShaderWhenRequested)
 {
 	backend::FragmentBootstrapConfig config = {};

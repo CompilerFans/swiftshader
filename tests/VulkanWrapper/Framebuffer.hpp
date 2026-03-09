@@ -23,7 +23,7 @@
 class Framebuffer
 {
 public:
-	Framebuffer(vk::Device device, vk::PhysicalDevice physicalDevice, vk::ImageView attachment, vk::Format colorFormat, vk::RenderPass renderPass, vk::Extent2D extent, bool multisample);
+	Framebuffer(vk::Device device, vk::PhysicalDevice physicalDevice, vk::ImageView attachment, vk::Format colorFormat, vk::RenderPass renderPass, vk::Extent2D extent, bool multisample, bool enableDepth, vk::Format depthFormat);
 	~Framebuffer();
 
 	vk::Framebuffer getFramebuffer()
@@ -35,6 +35,7 @@ private:
 	const vk::Device device;
 	vk::Framebuffer framebuffer;  // Owning handle
 	std::unique_ptr<Image> multisampleImage;
+	std::unique_ptr<Image> depthImage;
 };
 
 #endif  // BENCHMARKS_FRAMEBUFFER_HPP_

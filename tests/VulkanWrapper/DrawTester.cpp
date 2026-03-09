@@ -218,6 +218,13 @@ void DrawTester::show()
 	window->show();
 }
 
+void DrawTester::enableDepthTest(bool enableTest, bool enableWrite, vk::CompareOp compareOp)
+{
+	depthTestEnabled = enableTest;
+	depthWriteEnabled = enableWrite;
+	depthCompareOp = compareOp;
+}
+
 void DrawTester::pumpWindowEvents()
 {
 	window->pumpEvents();
@@ -237,6 +244,10 @@ void DrawTester::bindIndexBuffer(vk::CommandBuffer &commandBuffer)
 vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
 {
 	std::vector<vk::AttachmentDescription> attachments(multisample ? 2 : 1);
+	if(depthTestEnabled)
+	{
+		attachments.push_back(vk::AttachmentDescription{});
+	}
 
 	if(multisample)
 	{
@@ -280,11 +291,29 @@ vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
 	attachment1.attachment = 1;
 	attachment1.layout = vk::ImageLayout::eColorAttachmentOptimal;
 
+	vk::AttachmentReference depthAttachment;
+	depthAttachment.attachment = multisample ? 2 : 1;
+	depthAttachment.layout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+
+	if(depthTestEnabled)
+	{
+		auto &depth = attachments.back();
+		depth.format = depthFormat;
+		depth.samples = multisample ? vk::SampleCountFlagBits::e4 : vk::SampleCountFlagBits::e1;
+		depth.loadOp = vk::AttachmentLoadOp::eClear;
+		depth.storeOp = vk::AttachmentStoreOp::eDontCare;
+		depth.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
+		depth.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
+		depth.initialLayout = vk::ImageLayout::eUndefined;
+		depth.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
+	}
+
 	vk::SubpassDescription subpassDescription;
 	subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
 	subpassDescription.colorAttachmentCount = 1;
 	subpassDescription.pResolveAttachments = multisample ? &attachment1 : nullptr;
 	subpassDescription.pColorAttachments = &attachment0;
+	subpassDescription.pDepthStencilAttachment = depthTestEnabled ? &depthAttachment : nullptr;
 
 	std::array<vk::SubpassDependency, 2> dependencies;
 
@@ -321,7 +350,7 @@ void DrawTester::createFramebuffers(vk::RenderPass renderPass)
 
 	for(size_t i = 0; i < framebuffers.size(); i++)
 	{
-		framebuffers[i].reset(new Framebuffer(device, physicalDevice, swapchain->getImageView(i), swapchain->colorFormat, renderPass, swapchain->getExtent(), multisample));
+		framebuffers[i].reset(new Framebuffer(device, physicalDevice, swapchain->getImageView(i), swapchain->colorFormat, renderPass, swapchain->getExtent(), multisample, depthTestEnabled, depthFormat));
 	}
 }
 
@@ -385,9 +414,9 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass)
 	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
 
 	vk::PipelineDepthStencilStateCreateInfo depthStencilState;
-	depthStencilState.depthTestEnable = VK_FALSE;
-	depthStencilState.depthWriteEnable = VK_FALSE;
-	depthStencilState.depthCompareOp = vk::CompareOp::eLessOrEqual;
+	depthStencilState.depthTestEnable = depthTestEnabled ? VK_TRUE : VK_FALSE;
+	depthStencilState.depthWriteEnable = depthWriteEnabled ? VK_TRUE : VK_FALSE;
+	depthStencilState.depthCompareOp = depthCompareOp;
 	depthStencilState.depthBoundsTestEnable = VK_FALSE;
 	depthStencilState.back.failOp = vk::StencilOp::eKeep;
 	depthStencilState.back.passOp = vk::StencilOp::eKeep;
@@ -494,8 +523,12 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 		vk::CommandBufferBeginInfo commandBufferBeginInfo;
 		commandBuffers[i].begin(commandBufferBeginInfo);
 
-		vk::ClearValue clearValues[1];
+		std::vector<vk::ClearValue> clearValues(depthTestEnabled ? 2 : 1);
 		clearValues[0].color = vk::ClearColorValue(std::array<float, 4>{ 0.5f, 0.5f, 0.5f, 1.0f });
+		if(depthTestEnabled)
+		{
+			clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0u);
+		}
 
 		vk::RenderPassBeginInfo renderPassBeginInfo;
 		renderPassBeginInfo.framebuffer = framebuffers[i]->getFramebuffer();
@@ -503,8 +536,8 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 		renderPassBeginInfo.renderArea.offset.x = 0;
 		renderPassBeginInfo.renderArea.offset.y = 0;
 		renderPassBeginInfo.renderArea.extent = windowSize;
-		renderPassBeginInfo.clearValueCount = ARRAY_SIZE(clearValues);
-		renderPassBeginInfo.pClearValues = clearValues;
+		renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+		renderPassBeginInfo.pClearValues = clearValues.data();
 		commandBuffers[i].beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
 
 		// Set dynamic state

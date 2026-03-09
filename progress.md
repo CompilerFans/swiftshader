@@ -428,3 +428,11 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.EmitsFragCoordDiscardLeftShaderWhenRequested:FragmentBootstrap.CudaRuntimeDiscardsLeftHalfForFragCoordMode')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderDiscardsLeftHalfByFragCoord')` passed
+- FragDepth RED/GREEN:
+  - added a failing draw test with two overlapping triangles where fragment color determines `gl_FragDepth`, forcing the nearer blue triangle to remain visible over the later red triangle
+  - extended the test harness with optional depth attachment + depth-test state, added optional depth-buffer output to `FragmentBootstrap`, and taught `TrianglePipelineBootstrap` to depth-compose multiple triangle results on the host
+  - added a narrow `InterpolatedColorBlueNearFragDepth` fragment mode and routed current interpolated-color fragment shaders through it, which is enough to validate a first real depth-output path before broader depth/stencil parity work
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.EmitsInterpolatedColorFragDepthShaderWhenRequested:TrianglePipelineBootstrap.CudaRuntimeAppliesFragDepthMode')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFragDepthFromInterpolatedColor')` passed

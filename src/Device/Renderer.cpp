@@ -137,6 +137,8 @@ bool tryGetBootstrapFragmentConstantColor(const SpirvShader &shader, backend::Fr
 	return true;
 }
 
+
+
 bool tryBuildBootstrapFragmentConfig(const SpirvShader &shader, backend::FragmentBootstrapConfig *config)
 {
 	if(shader.hasBuiltinInput(spv::BuiltInFragCoord) && shader.getAnalysis().ContainsDiscard)
@@ -152,6 +154,14 @@ bool tryBuildBootstrapFragmentConfig(const SpirvShader &shader, backend::Fragmen
 	if(shader.hasBuiltinInput(spv::BuiltInFragCoord))
 	{
 		config->shaderKind = backend::FragmentBootstrapShaderKind::FragCoordQuadrants;
+		return true;
+	}
+
+	if(shader.GetNumInputComponents(0) >= 3)
+	{
+		config->shaderKind = backend::FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth;
+		config->nearDepth = 0.2f;
+		config->farDepth = 0.8f;
 		return true;
 	}
 

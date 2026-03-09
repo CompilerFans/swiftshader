@@ -16,6 +16,7 @@ enum class FragmentBootstrapShaderKind
 	InterpolatedColor,
 	FrontFacingBinaryColors,
 	FragCoordDiscardLeftConstantColor,
+	InterpolatedColorBlueNearFragDepth,
 };
 
 struct FragmentBootstrapInvocation
@@ -41,6 +42,8 @@ struct FragmentBootstrapConfig
 	float backColorG = 0.0f;
 	float backColorB = 1.0f;
 	float backColorA = 1.0f;
+	float nearDepth = 0.2f;
+	float farDepth = 0.8f;
 	float vertexColor0R = 1.0f;
 	float vertexColor0G = 1.0f;
 	float vertexColor0B = 1.0f;
@@ -56,7 +59,7 @@ struct FragmentBootstrapConfig
 };
 
 std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config = {});
-bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, const std::vector<FragmentBootstrapInvocation> &invocations, const FragmentBootstrapConfig &config, std::vector<uint8_t> *colorBuffer);
+bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, const std::vector<FragmentBootstrapInvocation> &invocations, const FragmentBootstrapConfig &config, std::vector<uint8_t> *colorBuffer, std::vector<float> *depthBuffer = nullptr);
 void launchFragmentBootstrap(RuntimeAPI &runtime);
 
 }  // namespace backend

@@ -20,7 +20,10 @@
 class Image
 {
 public:
-	Image(vk::Device device, vk::PhysicalDevice physicalDevice, uint32_t width, uint32_t height, vk::Format format, vk::SampleCountFlagBits sampleCount = vk::SampleCountFlagBits::e1);
+	Image(vk::Device device, vk::PhysicalDevice physicalDevice, uint32_t width, uint32_t height, vk::Format format,
+	      vk::SampleCountFlagBits sampleCount = vk::SampleCountFlagBits::e1,
+	      vk::ImageUsageFlags usage = vk::ImageUsageFlagBits::eColorAttachment,
+	      vk::ImageAspectFlags aspectMask = vk::ImageAspectFlagBits::eColor);
 	~Image();
 
 	vk::Image getImage()

@@ -15,7 +15,7 @@
 #include "Image.hpp"
 #include "Util.hpp"
 
-Image::Image(vk::Device device, vk::PhysicalDevice physicalDevice, uint32_t width, uint32_t height, vk::Format format, vk::SampleCountFlagBits sampleCount /*= vk::SampleCountFlagBits::e1*/)
+Image::Image(vk::Device device, vk::PhysicalDevice physicalDevice, uint32_t width, uint32_t height, vk::Format format, vk::SampleCountFlagBits sampleCount /*= vk::SampleCountFlagBits::e1*/, vk::ImageUsageFlags usage /*= vk::ImageUsageFlagBits::eColorAttachment*/, vk::ImageAspectFlags aspectMask /*= vk::ImageAspectFlagBits::eColor*/)
     : device(device)
 {
 	vk::ImageCreateInfo imageInfo;
@@ -23,7 +23,7 @@ Image::Image(vk::Device device, vk::PhysicalDevice physicalDevice, uint32_t widt
 	imageInfo.format = format;
 	imageInfo.tiling = vk::ImageTiling::eOptimal;
 	imageInfo.initialLayout = vk::ImageLayout::eGeneral;
-	imageInfo.usage = vk::ImageUsageFlagBits::eColorAttachment;
+	imageInfo.usage = usage;
 	imageInfo.samples = sampleCount;
 	imageInfo.extent = vk::Extent3D(width, height, 1);
 	imageInfo.mipLevels = 1;
@@ -45,7 +45,7 @@ Image::Image(vk::Device device, vk::PhysicalDevice physicalDevice, uint32_t widt
 	imageViewInfo.image = image;
 	imageViewInfo.viewType = vk::ImageViewType::e2D;
 	imageViewInfo.format = format;
-	imageViewInfo.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+	imageViewInfo.subresourceRange.aspectMask = aspectMask;
 	imageViewInfo.subresourceRange.baseMipLevel = 0;
 	imageViewInfo.subresourceRange.levelCount = 1;
 	imageViewInfo.subresourceRange.baseArrayLayer = 0;

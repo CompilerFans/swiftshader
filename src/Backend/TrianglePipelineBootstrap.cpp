@@ -252,15 +252,21 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 
 	const size_t triangleCount = vsOutputs.size() / 3;
 	std::vector<uint8_t> accumulatedColorBuffer;
+	std::vector<float> accumulatedDepthBuffer;
+	const bool useDepthCompose = (fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth);
 	if(colorBuffer)
 	{
 		accumulatedColorBuffer.assign(static_cast<size_t>(config.width) * config.height * 4u, 0u);
+	}
+	if(useDepthCompose)
+	{
+		accumulatedDepthBuffer.assign(static_cast<size_t>(config.width) * config.height, 1.0f);
 	}
 
 	for(size_t triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++)
 	{
 		const auto triangle = toRasterVertices(vsOutputs.data() + triangleIndex * 3, config.width, config.height);
-		if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor)
+		if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth)
 		{
 			fragmentConfig.vertexColor0R = triangle[0].colorR;
 			fragmentConfig.vertexColor0G = triangle[0].colorG;
@@ -276,7 +282,8 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 			fragmentConfig.vertexColor2A = triangle[2].colorA;
 		}
 		std::vector<uint8_t> triangleColorBuffer;
-		if(!runRasterFragmentBootstrap(runtime, triangle, rasterConfig, fragmentConfig, colorBuffer ? &triangleColorBuffer : nullptr))
+		std::vector<float> triangleDepthBuffer;
+		if(!runRasterFragmentBootstrap(runtime, triangle, rasterConfig, fragmentConfig, colorBuffer ? &triangleColorBuffer : nullptr, useDepthCompose ? &triangleDepthBuffer : nullptr))
 		{
 			return false;
 		}
@@ -285,13 +292,23 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		{
 			for(size_t i = 0; i < triangleColorBuffer.size(); i += 4)
 			{
-				if(triangleColorBuffer[i + 3] != 0u)
+				if(triangleColorBuffer[i + 3] == 0u)
 				{
-					accumulatedColorBuffer[i + 0] = triangleColorBuffer[i + 0];
-					accumulatedColorBuffer[i + 1] = triangleColorBuffer[i + 1];
-					accumulatedColorBuffer[i + 2] = triangleColorBuffer[i + 2];
-					accumulatedColorBuffer[i + 3] = triangleColorBuffer[i + 3];
+					continue;
 				}
+				if(useDepthCompose)
+				{
+					size_t pixelIndex = i / 4;
+					if(triangleDepthBuffer[pixelIndex] >= accumulatedDepthBuffer[pixelIndex])
+					{
+						continue;
+					}
+					accumulatedDepthBuffer[pixelIndex] = triangleDepthBuffer[pixelIndex];
+				}
+				accumulatedColorBuffer[i + 0] = triangleColorBuffer[i + 0];
+				accumulatedColorBuffer[i + 1] = triangleColorBuffer[i + 1];
+				accumulatedColorBuffer[i + 2] = triangleColorBuffer[i + 2];
+				accumulatedColorBuffer[i + 3] = triangleColorBuffer[i + 3];
 			}
 		}
 	}

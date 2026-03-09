@@ -17,6 +17,7 @@ struct BootstrapFsParams
 	uint32_t invocationCount = 0;
 	uint32_t width = 0;
 	uint32_t height = 0;
+	float *depthBuffer = nullptr;
 	float colorR = 1.0f;
 	float colorG = 0.0f;
 	float colorB = 0.0f;
@@ -25,6 +26,8 @@ struct BootstrapFsParams
 	float backColorG = 0.0f;
 	float backColorB = 1.0f;
 	float backColorA = 1.0f;
+	float nearDepth = 0.2f;
+	float farDepth = 0.8f;
 	float vertexColor0R = 1.0f;
 	float vertexColor0G = 1.0f;
 	float vertexColor0B = 1.0f;
@@ -77,6 +80,7 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tunsigned int invocationCount;\n"
 	          "\tunsigned int width;\n"
 	          "\tunsigned int height;\n"
+	          "\tfloat *depthBuffer;\n"
 	          "\tfloat colorR;\n"
 	          "\tfloat colorG;\n"
 	          "\tfloat colorB;\n"
@@ -85,6 +89,8 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tfloat backColorG;\n"
 	          "\tfloat backColorB;\n"
 	          "\tfloat backColorA;\n"
+	          "\tfloat nearDepth;\n"
+	          "\tfloat farDepth;\n"
 	          "\tfloat vertexColor0R;\n"
 	          "\tfloat vertexColor0G;\n"
 	          "\tfloat vertexColor0B;\n"
@@ -104,12 +110,13 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tvalue = value > 1.0f ? 1.0f : value;\n"
 	          "\treturn static_cast<unsigned char>(value * 255.0f + 0.5f);\n"
 	          "}\n\n"
-	          "static __device__ void fs_main(FsParams params, unsigned int invocationIndex, const FragmentInvocation &invocation, unsigned char &outR, unsigned char &outG, unsigned char &outB, unsigned char &outA)\n"
+	          "static __device__ void fs_main(FsParams params, unsigned int invocationIndex, const FragmentInvocation &invocation, unsigned char &outR, unsigned char &outG, unsigned char &outB, unsigned char &outA, float &outDepth)\n"
 	          "{\n"
 	          "\t(void)invocationIndex;\n";
 	if(config.shaderKind == FragmentBootstrapShaderKind::FragCoordQuadrants)
 	{
-		source << "\tbool left = invocation.x * 2u < params.width;\n"
+		source << "\toutDepth = 1.0f;\n"
+		          "\tbool left = invocation.x * 2u < params.width;\n"
 		          "\tbool top = invocation.y * 2u < params.height;\n"
 		          "\toutR = left && top ? 255u : (!left && !top ? 255u : 0u);\n"
 		          "\toutG = !left && top ? 255u : (!left && !top ? 255u : 0u);\n"
@@ -118,7 +125,8 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	}
 	else if(config.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor)
 	{
-		source << "\tfloat colorR = params.vertexColor0R * invocation.barycentric0 + params.vertexColor1R * invocation.barycentric1 + params.vertexColor2R * invocation.barycentric2;\n"
+		source << "\toutDepth = 1.0f;\n"
+		          "\tfloat colorR = params.vertexColor0R * invocation.barycentric0 + params.vertexColor1R * invocation.barycentric1 + params.vertexColor2R * invocation.barycentric2;\n"
 		          "\tfloat colorG = params.vertexColor0G * invocation.barycentric0 + params.vertexColor1G * invocation.barycentric1 + params.vertexColor2G * invocation.barycentric2;\n"
 		          "\tfloat colorB = params.vertexColor0B * invocation.barycentric0 + params.vertexColor1B * invocation.barycentric1 + params.vertexColor2B * invocation.barycentric2;\n"
 		          "\tfloat colorA = params.vertexColor0A * invocation.barycentric0 + params.vertexColor1A * invocation.barycentric1 + params.vertexColor2A * invocation.barycentric2;\n"
@@ -127,9 +135,22 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 		          "\toutB = packColor(colorB);\n"
 		          "\toutA = packColor(colorA);\n";
 	}
+	else if(config.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth)
+	{
+		source << "\tfloat colorR = params.vertexColor0R * invocation.barycentric0 + params.vertexColor1R * invocation.barycentric1 + params.vertexColor2R * invocation.barycentric2;\n"
+		          "\tfloat colorG = params.vertexColor0G * invocation.barycentric0 + params.vertexColor1G * invocation.barycentric1 + params.vertexColor2G * invocation.barycentric2;\n"
+		          "\tfloat colorB = params.vertexColor0B * invocation.barycentric0 + params.vertexColor1B * invocation.barycentric1 + params.vertexColor2B * invocation.barycentric2;\n"
+		          "\tfloat colorA = params.vertexColor0A * invocation.barycentric0 + params.vertexColor1A * invocation.barycentric1 + params.vertexColor2A * invocation.barycentric2;\n"
+		          "\toutDepth = colorB > colorR ? params.nearDepth : params.farDepth;\n"
+		          "\toutR = packColor(colorR);\n"
+		          "\toutG = packColor(colorG);\n"
+		          "\toutB = packColor(colorB);\n"
+		          "\toutA = packColor(colorA);\n";
+	}
 	else if(config.shaderKind == FragmentBootstrapShaderKind::FrontFacingBinaryColors)
 	{
-		source << "\tbool frontFacing = invocation.frontFacing != 0u;\n"
+		source << "\toutDepth = 1.0f;\n"
+		          "\tbool frontFacing = invocation.frontFacing != 0u;\n"
 		          "\tfloat colorR = frontFacing ? params.colorR : params.backColorR;\n"
 		          "\tfloat colorG = frontFacing ? params.colorG : params.backColorG;\n"
 		          "\tfloat colorB = frontFacing ? params.colorB : params.backColorB;\n"
@@ -141,7 +162,8 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	}
 	else if(config.shaderKind == FragmentBootstrapShaderKind::FragCoordDiscardLeftConstantColor)
 	{
-		source << "\tif(invocation.x * 2u < params.width)\n"
+		source << "\toutDepth = 1.0f;\n"
+		          "\tif(invocation.x * 2u < params.width)\n"
 		          "\t{\n"
 		          "\t\toutR = 0u;\n"
 		          "\t\toutG = 0u;\n"
@@ -156,7 +178,8 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	}
 	else
 	{
-		source << "\t(void)params;\n"
+		source << "\toutDepth = 1.0f;\n"
+		       << "\t(void)params;\n"
 		       << "\toutR = packColor(" << literalFloat(config.colorR) << ");\n"
 		       << "\toutG = packColor(" << literalFloat(config.colorG) << ");\n"
 		       << "\toutB = packColor(" << literalFloat(config.colorB) << ");\n"
@@ -183,17 +206,22 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tunsigned char outG = 0;\n"
 	          "\tunsigned char outB = 0;\n"
 	          "\tunsigned char outA = 0;\n"
-	          "\tfs_main(params, invocationIndex, invocation, outR, outG, outB, outA);\n"
+	          "\tfloat outDepth = 1.0f;\n"
+	          "\tfs_main(params, invocationIndex, invocation, outR, outG, outB, outA, outDepth);\n"
 	          "\tunsigned int offset = (invocation.y * params.width + invocation.x) * 4u;\n"
 	          "\tparams.colorBuffer[offset + 0] = outR;\n"
 	          "\tparams.colorBuffer[offset + 1] = outG;\n"
 	          "\tparams.colorBuffer[offset + 2] = outB;\n"
 	          "\tparams.colorBuffer[offset + 3] = outA;\n"
+	          "\tif(params.depthBuffer != nullptr)\n"
+	          "\t{\n"
+	          "\t\tparams.depthBuffer[invocation.y * params.width + invocation.x] = outDepth;\n"
+	          "\t}\n"
 	          "}\n";
 	return source.str();
 }
 
-bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, const std::vector<FragmentBootstrapInvocation> &invocations, const FragmentBootstrapConfig &config, std::vector<uint8_t> *colorBuffer)
+bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, const std::vector<FragmentBootstrapInvocation> &invocations, const FragmentBootstrapConfig &config, std::vector<uint8_t> *colorBuffer, std::vector<float> *depthBuffer)
 {
 	if(width == 0 || height == 0 || invocations.empty())
 	{
@@ -208,11 +236,17 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 
 	size_t invocationBytes = sizeof(FragmentBootstrapInvocation) * invocations.size();
 	size_t colorBytes = static_cast<size_t>(width) * height * 4u;
+	size_t depthBytes = static_cast<size_t>(width) * height * sizeof(float);
 
 	auto invocationMemory = runtime.allocateMemory(invocationBytes);
 	auto colorMemory = runtime.allocateMemory(colorBytes);
-	if(!invocationMemory.valid() || !colorMemory.valid())
+	auto depthMemory = depthBuffer ? runtime.allocateMemory(depthBytes) : DeviceMemoryHandle{};
+	if(!invocationMemory.valid() || !colorMemory.valid() || (depthBuffer && !depthMemory.valid()))
 	{
+		if(depthMemory.valid())
+		{
+			runtime.freeMemory(depthMemory);
+		}
 		if(colorMemory.valid())
 		{
 			runtime.freeMemory(colorMemory);
@@ -225,8 +259,17 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	}
 
 	std::vector<uint8_t> zeroColor(colorBytes, 0);
+	std::vector<float> clearDepth;
+	if(depthBuffer)
+	{
+		clearDepth.assign(static_cast<size_t>(width) * height, 1.0f);
+	}
 	runtime.copyHostToMemory(invocationMemory, invocations.data(), invocationBytes);
 	runtime.copyHostToMemory(colorMemory, zeroColor.data(), zeroColor.size());
+	if(depthBuffer)
+	{
+		runtime.copyHostToMemory(depthMemory, clearDepth.data(), depthBytes);
+	}
 
 	BootstrapFsParams params = {};
 	params.invocations = reinterpret_cast<const FragmentBootstrapInvocation *>(static_cast<uintptr_t>(runtime.memoryAddress(invocationMemory)));
@@ -234,6 +277,7 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	params.invocationCount = static_cast<uint32_t>(invocations.size());
 	params.width = width;
 	params.height = height;
+	params.depthBuffer = depthBuffer ? reinterpret_cast<float *>(static_cast<uintptr_t>(runtime.memoryAddress(depthMemory))) : nullptr;
 	params.colorR = config.colorR;
 	params.colorG = config.colorG;
 	params.colorB = config.colorB;
@@ -242,6 +286,8 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	params.backColorG = config.backColorG;
 	params.backColorB = config.backColorB;
 	params.backColorA = config.backColorA;
+	params.nearDepth = config.nearDepth;
+	params.farDepth = config.farDepth;
 	params.vertexColor0R = config.vertexColor0R;
 	params.vertexColor0G = config.vertexColor0G;
 	params.vertexColor0B = config.vertexColor0B;
@@ -271,6 +317,12 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	{
 		colorBuffer->resize(colorBytes);
 		runtime.copyMemoryToHost(colorBuffer->data(), colorMemory, colorBytes);
+	}
+	if(depthBuffer)
+	{
+		depthBuffer->resize(static_cast<size_t>(width) * height);
+		runtime.copyMemoryToHost(depthBuffer->data(), depthMemory, depthBytes);
+		runtime.freeMemory(depthMemory);
 	}
 
 	runtime.freeMemory(colorMemory);

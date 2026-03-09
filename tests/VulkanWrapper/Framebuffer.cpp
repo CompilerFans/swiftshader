@@ -14,10 +14,14 @@
 
 #include "Framebuffer.hpp"
 
-Framebuffer::Framebuffer(vk::Device device, vk::PhysicalDevice physicalDevice, vk::ImageView attachment, vk::Format colorFormat, vk::RenderPass renderPass, vk::Extent2D extent, bool multisample)
+Framebuffer::Framebuffer(vk::Device device, vk::PhysicalDevice physicalDevice, vk::ImageView attachment, vk::Format colorFormat, vk::RenderPass renderPass, vk::Extent2D extent, bool multisample, bool enableDepth, vk::Format depthFormat)
     : device(device)
 {
 	std::vector<vk::ImageView> attachments(multisample ? 2 : 1);
+	if(enableDepth)
+	{
+		attachments.push_back(vk::ImageView{});
+	}
 
 	if(multisample)
 	{
@@ -30,6 +34,15 @@ Framebuffer::Framebuffer(vk::Device device, vk::PhysicalDevice physicalDevice, v
 	else
 	{
 		attachments[0] = attachment;
+	}
+
+	if(enableDepth)
+	{
+		depthImage.reset(new Image(device, physicalDevice, extent.width, extent.height, depthFormat,
+		                           multisample ? vk::SampleCountFlagBits::e4 : vk::SampleCountFlagBits::e1,
+		                           vk::ImageUsageFlagBits::eDepthStencilAttachment,
+		                           vk::ImageAspectFlagBits::eDepth));
+		attachments.back() = depthImage->getImageView();
 	}
 
 	vk::FramebufferCreateInfo framebufferCreateInfo;
@@ -47,5 +60,6 @@ Framebuffer::Framebuffer(vk::Device device, vk::PhysicalDevice physicalDevice, v
 Framebuffer::~Framebuffer()
 {
 	multisampleImage.reset();
+	depthImage.reset();
 	device.destroyFramebuffer(framebuffer);
 }
