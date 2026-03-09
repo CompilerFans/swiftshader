@@ -43,6 +43,18 @@ TEST(FragmentBootstrap, EmitsInterpolatedColorShaderFromBarycentrics)
 	EXPECT_EQ(source.find("outR = packColor(invocation.colorR);"), std::string::npos);
 }
 
+TEST(FragmentBootstrap, EmitsFrontFacingBinaryShaderWhenRequested)
+{
+	backend::FragmentBootstrapConfig config = {};
+	config.shaderKind = backend::FragmentBootstrapShaderKind::FrontFacingBinaryColors;
+
+	std::string source = backend::fragmentBootstrapCudaSource(config);
+
+	EXPECT_NE(source.find("invocation.frontFacing"), std::string::npos);
+	EXPECT_NE(source.find("params.backColorR"), std::string::npos);
+	EXPECT_NE(source.find("params.colorR"), std::string::npos);
+}
+
 TEST(FragmentBootstrap, LaunchUsesSingleFsParamsArgument)
 {
 	backend::FakeRuntimeAPI runtime;
@@ -144,5 +156,45 @@ TEST(FragmentBootstrap, CudaRuntimeWritesFragCoordQuadrantColors)
 	EXPECT_EQ(colorBuffer[bottomRight + 1], 255u);
 	EXPECT_EQ(colorBuffer[bottomRight + 2], 0u);
 	EXPECT_EQ(colorBuffer[bottomRight + 3], 255u);
+}
+
+TEST(FragmentBootstrap, CudaRuntimeWritesFrontFacingBinaryColors)
+{
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	std::vector<backend::FragmentBootstrapInvocation> invocations(2);
+	invocations[0].x = 1u;
+	invocations[0].y = 1u;
+	invocations[0].exportMask = 1u;
+	invocations[0].frontFacing = 1u;
+	invocations[1].x = 2u;
+	invocations[1].y = 1u;
+	invocations[1].exportMask = 1u;
+	invocations[1].frontFacing = 0u;
+	backend::FragmentBootstrapConfig config = {};
+	config.shaderKind = backend::FragmentBootstrapShaderKind::FrontFacingBinaryColors;
+	config.colorR = 1.0f;
+	config.colorG = 0.0f;
+	config.colorB = 0.0f;
+	config.colorA = 1.0f;
+	config.backColorR = 0.0f;
+	config.backColorG = 0.0f;
+	config.backColorB = 1.0f;
+	config.backColorA = 1.0f;
+	std::vector<uint8_t> colorBuffer;
+
+	ASSERT_TRUE(backend::runFragmentBootstrap(runtime, 4u, 4u, invocations, config, &colorBuffer));
+	ASSERT_EQ(colorBuffer.size(), 4u * 4u * 4u);
+
+	size_t front = ((1u * 4u) + 1u) * 4u;
+	EXPECT_EQ(colorBuffer[front + 0], 255u);
+	EXPECT_EQ(colorBuffer[front + 1], 0u);
+	EXPECT_EQ(colorBuffer[front + 2], 0u);
+
+	size_t back = ((1u * 4u) + 2u) * 4u;
+	EXPECT_EQ(colorBuffer[back + 0], 0u);
+	EXPECT_EQ(colorBuffer[back + 1], 0u);
+	EXPECT_EQ(colorBuffer[back + 2], 255u);
 }
 #endif

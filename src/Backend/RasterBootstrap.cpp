@@ -19,6 +19,7 @@ struct RasterParams
 	uint32_t invocationCount = 0;
 	uint32_t width = 0;
 	uint32_t height = 0;
+	uint32_t frontFacing = 1;
 };
 
 float edgeFunction(const RasterBootstrapVertex &a, const RasterBootstrapVertex &b, float px, float py)
@@ -35,6 +36,12 @@ bool pointInsideTriangle(const std::array<RasterBootstrapVertex, 3> &triangle, f
 	bool allNonNegative = (e0 >= 0.0f) && (e1 >= 0.0f) && (e2 >= 0.0f);
 	bool allNonPositive = (e0 <= 0.0f) && (e1 <= 0.0f) && (e2 <= 0.0f);
 	return allNonNegative || allNonPositive;
+}
+
+bool computeFrontFacing(const std::array<RasterBootstrapVertex, 3> &triangle, bool frontFaceCounterClockwise)
+{
+	float area = edgeFunction(triangle[0], triangle[1], triangle[2].x, triangle[2].y);
+	return frontFaceCounterClockwise ? (area >= 0.0f) : (area <= 0.0f);
 }
 
 void interpolateBarycentrics(const std::array<RasterBootstrapVertex, 3> &triangle, float px, float py, float *barycentrics)
@@ -70,6 +77,7 @@ std::string rasterBootstrapCudaSource()
 	          "\tunsigned int y;\n"
 	          "\tunsigned int exportMask;\n"
 	          "\tunsigned int helperInvocation;\n"
+	          "\tunsigned int frontFacing;\n"
 	          "\tfloat barycentric0;\n"
 	          "\tfloat barycentric1;\n"
 	          "\tfloat barycentric2;\n"
@@ -81,6 +89,7 @@ std::string rasterBootstrapCudaSource()
 	          "\tunsigned int invocationCount;\n"
 	          "\tunsigned int width;\n"
 	          "\tunsigned int height;\n"
+	          "\tunsigned int frontFacing;\n"
 	          "};\n\n"
 	          "static __device__ float edgeFunction(const RasterVertex &a, const RasterVertex &b, float px, float py)\n"
 	          "{\n"
@@ -94,6 +103,11 @@ std::string rasterBootstrapCudaSource()
 	          "\tbool allNonNegative = (e0 >= 0.0f) && (e1 >= 0.0f) && (e2 >= 0.0f);\n"
 	          "\tbool allNonPositive = (e0 <= 0.0f) && (e1 <= 0.0f) && (e2 <= 0.0f);\n"
 	          "\treturn allNonNegative || allNonPositive;\n"
+	          "}\n\n"
+	          "static __device__ unsigned int computeFrontFacing(const RasterVertex &v0, const RasterVertex &v1, const RasterVertex &v2, unsigned int frontFaceCounterClockwise)\n"
+	          "{\n"
+	          "\tfloat area = edgeFunction(v0, v1, v2.x, v2.y);\n"
+	          "\treturn frontFaceCounterClockwise != 0u ? (area >= 0.0f ? 1u : 0u) : (area <= 0.0f ? 1u : 0u);\n"
 	          "}\n\n"
 	          "static __device__ void interpolateBarycentrics(const RasterVertex &v0, const RasterVertex &v1, const RasterVertex &v2, float px, float py, float &barycentric0, float &barycentric1, float &barycentric2)\n"
 	          "{\n"
@@ -122,6 +136,7 @@ std::string rasterBootstrapCudaSource()
 	          "\tinvocation.y = y;\n"
 	          "\tinvocation.exportMask = 0u;\n"
 	          "\tinvocation.helperInvocation = 0u;\n"
+	          "\tinvocation.frontFacing = params.frontFacing;\n"
 	          "\tinvocation.barycentric0 = 0.0f;\n"
 	          "\tinvocation.barycentric1 = 0.0f;\n"
 	          "\tinvocation.barycentric2 = 0.0f;\n"
@@ -157,6 +172,7 @@ RasterBootstrapOutput rasterBootstrapCpuReference(const std::array<RasterBootstr
 
 	output.valid = true;
 	output.bboxMinX = bboxMinX;
+	bool frontFacing = computeFrontFacing(triangle, config.frontFaceCounterClockwise);
 	output.bboxMinY = bboxMinY;
 	output.bboxMaxX = bboxMaxX;
 	output.bboxMaxY = bboxMaxY;
@@ -177,6 +193,7 @@ RasterBootstrapOutput rasterBootstrapCpuReference(const std::array<RasterBootstr
 			invocation.y = y;
 			invocation.exportMask = 1u;
 			invocation.helperInvocation = 0u;
+			invocation.frontFacing = frontFacing ? 1u : 0u;
 			float barycentrics[3] = {};
 			interpolateBarycentrics(triangle, px, py, barycentrics);
 			invocation.barycentric0 = barycentrics[0];
@@ -200,6 +217,7 @@ bool runRasterBootstrap(RuntimeAPI &runtime, const std::array<RasterBootstrapVer
 	RasterParams params = {};
 	params.width = config.width;
 	params.height = config.height;
+	params.frontFacing = computeFrontFacing(triangle, config.frontFaceCounterClockwise) ? 1u : 0u;
 	params.invocationCount = config.width * config.height;
 
 	if(!runtime.isHardwareBacked())

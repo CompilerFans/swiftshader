@@ -145,6 +145,20 @@ bool tryBuildBootstrapFragmentConfig(const SpirvShader &shader, backend::Fragmen
 		return true;
 	}
 
+	if(shader.hasBuiltinInput(spv::BuiltInFrontFacing))
+	{
+		config->shaderKind = backend::FragmentBootstrapShaderKind::FrontFacingBinaryColors;
+		config->colorR = 1.0f;
+		config->colorG = 0.0f;
+		config->colorB = 0.0f;
+		config->colorA = 1.0f;
+		config->backColorR = 0.0f;
+		config->backColorG = 0.0f;
+		config->backColorB = 1.0f;
+		config->backColorA = 1.0f;
+		return true;
+	}
+
 	if(tryGetBootstrapFragmentConstantColor(shader, config))
 	{
 		return true;
@@ -472,7 +486,7 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 			}
 
 			if(runtime->isHardwareBacked() &&
-			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex))
+			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE))
 			{
 				customGraphicsBootstrapDone = true;
 			}

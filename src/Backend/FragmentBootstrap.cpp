@@ -17,6 +17,14 @@ struct BootstrapFsParams
 	uint32_t invocationCount = 0;
 	uint32_t width = 0;
 	uint32_t height = 0;
+	float colorR = 1.0f;
+	float colorG = 0.0f;
+	float colorB = 0.0f;
+	float colorA = 1.0f;
+	float backColorR = 0.0f;
+	float backColorG = 0.0f;
+	float backColorB = 1.0f;
+	float backColorA = 1.0f;
 	float vertexColor0R = 1.0f;
 	float vertexColor0G = 1.0f;
 	float vertexColor0B = 1.0f;
@@ -57,6 +65,7 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tunsigned int y;\n"
 	          "\tunsigned int exportMask;\n"
 	          "\tunsigned int helperInvocation;\n"
+	          "\tunsigned int frontFacing;\n"
 	          "\tfloat barycentric0;\n"
 	          "\tfloat barycentric1;\n"
 	          "\tfloat barycentric2;\n"
@@ -68,6 +77,14 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tunsigned int invocationCount;\n"
 	          "\tunsigned int width;\n"
 	          "\tunsigned int height;\n"
+	          "\tfloat colorR;\n"
+	          "\tfloat colorG;\n"
+	          "\tfloat colorB;\n"
+	          "\tfloat colorA;\n"
+	          "\tfloat backColorR;\n"
+	          "\tfloat backColorG;\n"
+	          "\tfloat backColorB;\n"
+	          "\tfloat backColorA;\n"
 	          "\tfloat vertexColor0R;\n"
 	          "\tfloat vertexColor0G;\n"
 	          "\tfloat vertexColor0B;\n"
@@ -105,6 +122,18 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 		          "\tfloat colorG = params.vertexColor0G * invocation.barycentric0 + params.vertexColor1G * invocation.barycentric1 + params.vertexColor2G * invocation.barycentric2;\n"
 		          "\tfloat colorB = params.vertexColor0B * invocation.barycentric0 + params.vertexColor1B * invocation.barycentric1 + params.vertexColor2B * invocation.barycentric2;\n"
 		          "\tfloat colorA = params.vertexColor0A * invocation.barycentric0 + params.vertexColor1A * invocation.barycentric1 + params.vertexColor2A * invocation.barycentric2;\n"
+		          "\toutR = packColor(colorR);\n"
+		          "\toutG = packColor(colorG);\n"
+		          "\toutB = packColor(colorB);\n"
+		          "\toutA = packColor(colorA);\n";
+	}
+	else if(config.shaderKind == FragmentBootstrapShaderKind::FrontFacingBinaryColors)
+	{
+		source << "\tbool frontFacing = invocation.frontFacing != 0u;\n"
+		          "\tfloat colorR = frontFacing ? params.colorR : params.backColorR;\n"
+		          "\tfloat colorG = frontFacing ? params.colorG : params.backColorG;\n"
+		          "\tfloat colorB = frontFacing ? params.colorB : params.backColorB;\n"
+		          "\tfloat colorA = frontFacing ? params.colorA : params.backColorA;\n"
 		          "\toutR = packColor(colorR);\n"
 		          "\toutG = packColor(colorG);\n"
 		          "\toutB = packColor(colorB);\n"
@@ -190,6 +219,14 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	params.invocationCount = static_cast<uint32_t>(invocations.size());
 	params.width = width;
 	params.height = height;
+	params.colorR = config.colorR;
+	params.colorG = config.colorG;
+	params.colorB = config.colorB;
+	params.colorA = config.colorA;
+	params.backColorR = config.backColorR;
+	params.backColorG = config.backColorG;
+	params.backColorB = config.backColorB;
+	params.backColorA = config.backColorA;
 	params.vertexColor0R = config.vertexColor0R;
 	params.vertexColor0G = config.vertexColor0G;
 	params.vertexColor0B = config.vertexColor0B;

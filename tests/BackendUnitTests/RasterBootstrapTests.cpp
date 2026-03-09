@@ -71,6 +71,32 @@ TEST(RasterBootstrap, LaunchUsesSingleRasterParamsArgument)
 	EXPECT_EQ(runtime.lastLaunch().groupCountX, 1u);
 }
 
+TEST(RasterBootstrap, CpuReferenceSetsFrontFacingFlag)
+{
+	std::array<backend::RasterBootstrapVertex, 3> backFacingTriangle = {{
+		backend::RasterBootstrapVertex{ 1.0f, 1.0f, 0.0f, 1.0f },
+		backend::RasterBootstrapVertex{ 5.0f, 1.0f, 0.0f, 1.0f },
+		backend::RasterBootstrapVertex{ 1.0f, 5.0f, 0.0f, 1.0f },
+	}};
+	std::array<backend::RasterBootstrapVertex, 3> frontFacingTriangle = {{
+		backend::RasterBootstrapVertex{ 1.0f, 1.0f, 0.0f, 1.0f },
+		backend::RasterBootstrapVertex{ 1.0f, 5.0f, 0.0f, 1.0f },
+		backend::RasterBootstrapVertex{ 5.0f, 1.0f, 0.0f, 1.0f },
+	}};
+
+	backend::RasterBootstrapConfig config = {};
+	config.width = 8u;
+	config.height = 8u;
+
+	auto back = backend::rasterBootstrapCpuReference(backFacingTriangle, config);
+	auto front = backend::rasterBootstrapCpuReference(frontFacingTriangle, config);
+
+	ASSERT_FALSE(back.invocations.empty());
+	ASSERT_FALSE(front.invocations.empty());
+	EXPECT_EQ(back.invocations.front().frontFacing, 0u);
+	EXPECT_EQ(front.invocations.front().frontFacing, 1u);
+}
+
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 TEST(RasterBootstrap, CudaRuntimeMatchesCpuReference)
 {

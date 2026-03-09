@@ -29,6 +29,7 @@ struct RasterBootstrapConfig
 	uint32_t height = 0;
 	uint32_t reservedTileWidth = 0;
 	uint32_t reservedQuadWidth = 0;
+	bool frontFaceCounterClockwise = true;
 };
 
 struct RasterBootstrapOutput

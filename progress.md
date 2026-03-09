@@ -412,3 +412,11 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='RasterBootstrap.EmitsBarycentricPayload:FragmentBootstrap.EmitsInterpolatedColorShaderFromBarycentrics:TrianglePipelineBootstrap.CudaRuntimeInterpolatesVertexColorFromRawVertexData')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.VertexColorTriangleInterpolation:DrawTest.IndexedVertexColorTriangleInterpolation')` passed
+- FrontFacing RED/GREEN:
+  - added failing backend tests for raster-facing propagation and fragment front/back shader emission, plus a Vulkan draw test with one front-facing and one back-facing triangle using `gl_FrontFacing ? red : blue`
+  - extended raster output with a `frontFacing` flag, added `FrontFacingBinaryColors` to `FragmentBootstrap`, and taught `Renderer::draw()` to switch to that mode when the fragment shader uses `BuiltInFrontFacing`
+  - aligned the raster-facing rule with the CPU `SetupRoutine` convention so the bootstrap follows the same front-face direction as the original renderer
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='RasterBootstrap.CpuReferenceSetsFrontFacingFlag:FragmentBootstrap.EmitsFrontFacingBinaryShaderWhenRequested:FragmentBootstrap.CudaRuntimeWritesFrontFacingBinaryColors')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFrontFacingColors')` passed
