@@ -596,3 +596,7 @@
   - `timeout 10s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cpu --scene=texture --seconds=1` passed
   - `timeout 10s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --scene=color --seconds=1` passed
   - `timeout 10s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --scene=texture --seconds=1` passed
+
+## 2026-03-09: NoPerspective recheck with matched qualifiers
+- Re-ran the local `noperspective` reproducer after also marking the VS output as `noperspective`.
+- Result: the case still does not complete in either CPU or CUDA builds, so the issue is not just a VS/FS qualifier mismatch.
