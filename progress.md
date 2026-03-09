@@ -649,3 +649,13 @@
 - Validation:
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.DrawUsesFirstInstanceOffset')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.DrawUsesFirstInstanceOffset')` passed
+
+## 2026-03-10: Dynamic rendering probe
+- Added a local minimal `vkCmdBeginRendering`-style draw probe through `DrawTester` and ran it in both CPU and CUDA builds.
+- Result: both paths crashed before frame completion. The local experiment was reverted to keep the tree green.
+
+## 2026-03-10: MSAA draw coverage
+- Added `DrawTest.MultisampleSolidColorTriangle`, with BMP output to `draw-test-artifacts/msaa-solid-color-triangle.bmp`.
+- Validation:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.MultisampleSolidColorTriangle')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.MultisampleSolidColorTriangle')` passed

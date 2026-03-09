@@ -176,3 +176,7 @@ Complete
 - Explicit blocker: `separate image + sampler` is a real capability gap and is now deferred until a dedicated investigation cycle; do not route normal short-term feature work back into it.
 
 - Current firstInstance milestone: `draw(..., firstInstance)` / `gl_InstanceIndex` offset coverage is now present in both CPU and CUDA builds.
+
+- Current sample-gap blocker: `dynamic rendering` is not yet ready for promotion into the committed parity suite and needs a dedicated investigation cycle.
+
+- Current sample-aligned milestone: `MSAA resolve` draw coverage is now present in both CPU and CUDA builds, while `dynamic rendering` remains a separate blocker.

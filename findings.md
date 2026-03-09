@@ -150,3 +150,7 @@
 - `separate image + sampler` has now been explicitly confirmed as a blocker: a minimal local reproducer crashes in both CPU and CUDA builds, so we should not keep circling back to it until it becomes a dedicated investigation item.
 
 - `draw(..., firstInstance)` is another low-risk external-sample-aligned gain: the renderer already honors `gl_InstanceIndex` with non-zero firstInstance, and the only adjustment needed was choosing sample points inside the resulting shifted geometry.
+
+- A minimal `dynamic rendering` draw probe currently crashes in both CPU and CUDA builds. This makes `hello_triangle_1_3` / `dynamic_rendering` a real missing capability, not just an untested path.
+
+- The existing multisample harness path is already strong enough for an initial `msaa` sample-aligned gate. A simple resolved solid triangle passes in both CPU and CUDA builds without requiring new backend work.
