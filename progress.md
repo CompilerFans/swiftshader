@@ -536,3 +536,9 @@
 - Reproduction commands:
   - `(cd build && timeout 5s ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesNoPerspectiveColor')` -> `EXIT:139`
   - `(cd build-cuda-bootstrap && timeout 5s ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesNoPerspectiveColor')` -> abnormal termination / timeout after core dump message
+
+## 2026-03-09: Indexed PointCoord coverage
+- Added `DrawTest.IndexedPointCoordGradient`, with BMP artifact dump to `draw-test-artifacts/indexed-pointcoord-gradient.bmp`.
+- Validation:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.IndexedPointCoordGradient')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.IndexedPointCoordGradient')` passed

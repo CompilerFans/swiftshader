@@ -116,3 +116,5 @@
 - `IndexedTriangleStripWithPrimitiveRestart` is currently covered at the draw-harness level and passes in both CPU and CUDA builds; the previously observed failure was caused by sampling below the actual covered region, not by primitive restart semantics being broken in the renderer path.
 
 - A minimal `noperspective` varying-color draw case still crashes in both the CPU baseline and the CUDA build before producing a frame. This remains a real blocker and should stay out of committed test suites until the crash is root-caused.
+
+- `indexed POINT_LIST` composes cleanly not only with constant-color output but also with the existing `PointCoordGradient` fragment path; no extra runtime changes were required beyond the earlier deindex + point-size work.

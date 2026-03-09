@@ -144,3 +144,5 @@ Complete
 - Current primitive-restart draw milestone: `IndexedTriangleStripWithPrimitiveRestart` is now covered in the draw harness and passes in both CPU and CUDA builds; the earlier failure was a bad sample point, not a renderer defect.
 
 - Current blocker revalidated: `noperspective` still crashes in both CPU and CUDA draw paths, so it remains outside the committed parity suite until root-caused.
+
+- Current indexed-pointcoord milestone: `indexed point-list` now also has `PointCoord` gradient coverage in both CPU and CUDA draw builds.
