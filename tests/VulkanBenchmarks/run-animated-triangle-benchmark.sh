@@ -3,6 +3,7 @@ set -euo pipefail
 
 backend="cpu"
 seconds="10"
+scene="color"
 
 for arg in "$@"; do
     case "$arg" in
@@ -11,6 +12,9 @@ for arg in "$@"; do
             ;;
         --seconds=*)
             seconds="${arg#*=}"
+            ;;
+        --scene=color|--scene=texture)
+            scene="${arg#*=}"
             ;;
         *)
             echo "unknown argument: $arg" >&2
@@ -44,4 +48,5 @@ cmake --build "${build_dir}" --target animated-triangle-benchmark --parallel "$(
 cd "${build_dir}"
 exec ./animated-triangle-benchmark \
     "--seconds=${seconds}" \
-    "--backend-label=${backend}"
+    "--backend-label=${backend}" \
+    "--scene=${scene}"
