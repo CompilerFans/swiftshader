@@ -576,3 +576,12 @@
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleLinearRepeat')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleLinearRepeat')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./VulkanBenchmarks --benchmark_filter='TriangleSampleTexture' --benchmark_min_time=0.01s)` ran successfully
+
+## 2026-03-09: Explicit clear-color harness path
+- Analyzed the original CPU/renderpass behavior and confirmed that the non-multisample `DrawTester` path intentionally uses `AttachmentLoadOp::eDontCare` for the color attachment by default.
+- Added `DrawTester::enableColorClear()` as an opt-in test harness feature instead of changing the default behavior.
+- Added `DrawTest.ClearColorBackground` with BMP dump to validate explicit clear-color behavior in both CPU and CUDA builds.
+- Switched the texture draw tests to opt into a stable gray background for easier visual inspection.
+- Validation:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleNearest:DrawTest.IndexedTexturedTriangleNearest:DrawTest.TexturedTriangleLinearRepeat:DrawTest.ClearColorBackground')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleNearest:DrawTest.IndexedTexturedTriangleNearest:DrawTest.TexturedTriangleLinearRepeat:DrawTest.ClearColorBackground')` passed

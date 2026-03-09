@@ -154,3 +154,5 @@ Complete
 - Current texture-followup milestone: `linear/repeat` textured draw coverage and texture benchmark integration are now in progress.
 
 - Current texture-followup milestone: `linear/repeat` textured draw coverage is now green, and the texture benchmark shader/descriptors are binding-aligned.
+
+- Clear-background harness milestone: `DrawTester` now has an explicit opt-in color clear path for tests that need stable backgrounds, while the default non-MSAA path remains `eDontCare` to match the original CPU behavior.
