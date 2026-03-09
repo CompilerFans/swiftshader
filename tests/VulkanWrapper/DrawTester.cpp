@@ -223,6 +223,11 @@ void DrawTester::setPrimitiveTopology(vk::PrimitiveTopology topology)
 	primitiveTopology = topology;
 }
 
+void DrawTester::setPrimitiveRestartEnable(bool enable)
+{
+	primitiveRestartEnable = enable;
+}
+
 void DrawTester::enableDepthTest(bool enableTest, bool enableWrite, vk::CompareOp compareOp)
 {
 	depthTestEnabled = enableTest;
@@ -390,6 +395,7 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass)
 
 	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState;
 	inputAssemblyState.topology = primitiveTopology;
+	inputAssemblyState.primitiveRestartEnable = primitiveRestartEnable ? VK_TRUE : VK_FALSE;
 
 	vk::PipelineRasterizationStateCreateInfo rasterizationState;
 	rasterizationState.depthClampEnable = VK_FALSE;

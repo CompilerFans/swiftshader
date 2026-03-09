@@ -469,3 +469,12 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromTriangleStripPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersTriangleStripConstantColor')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.TriangleStripConstantColor')` passed
+- Triangle fan RED/GREEN + primitive restart triage:
+  - added failing backend tests for triangle-fan config extraction and constant-color fan rendering, plus a Vulkan draw test that saves `triangle-fan-constant-color.bmp`
+  - also added an indexed strip + primitive restart draw test, then verified that it fails in the CPU-only baseline too; that case is now treated as a CPU-reference blocker rather than a CUDA-specific regression and has been removed from the current green path
+  - implemented `TRIANGLE_FAN` via host-side expansion `(0, i+1, i+2)` while reusing the existing triangle bootstrap chain unchanged
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromTriangleFanPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersTriangleFanConstantColor')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.TriangleFanConstantColor')` passed
+  - `(cd build-benchmark-cpu && ./draw-unittests --gtest_filter='DrawTest.IndexedTriangleStripWithPrimitiveRestart')` failed, confirming the restart blocker exists in the CPU baseline too

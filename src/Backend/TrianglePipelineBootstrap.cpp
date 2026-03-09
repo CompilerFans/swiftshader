@@ -111,7 +111,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 	{
 		return false;
 	}
-	if((topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST && topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP) || primitiveCount == 0)
+	if((topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST && topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) || primitiveCount == 0)
 	{
 		return false;
 	}
@@ -129,7 +129,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 	config->width = renderArea.extent.width;
 	config->height = renderArea.extent.height;
 	config->topology = topology;
-	config->vertexCount = topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? primitiveCount : (topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP ? primitiveCount + 2u : primitiveCount * 3u);
+	config->vertexCount = topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? primitiveCount : ((topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? primitiveCount + 2u : primitiveCount * 3u);
 	if(indexData != nullptr)
 	{
 		switch(indexType)
@@ -280,12 +280,12 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	{
 		return false;
 	}
-	if(config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP && vsOutputs.size() < 3)
+	if((config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) && vsOutputs.size() < 3)
 	{
 		return false;
 	}
 
-	const size_t primitiveCount = config.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? vsOutputs.size() : (config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP ? (vsOutputs.size() - 2) : (vsOutputs.size() / 3));
+	const size_t primitiveCount = config.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? vsOutputs.size() : ((config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? (vsOutputs.size() - 2) : (vsOutputs.size() / 3));
 	std::vector<uint8_t> accumulatedColorBuffer;
 	std::vector<float> accumulatedDepthBuffer;
 	const bool useDepthCompose = (fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth);
@@ -359,6 +359,39 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				return false;
 			}
 			composeColorBuffers(pointColorBuffer, std::vector<float>{});
+			continue;
+		}
+
+		if(config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN)
+		{
+			GraphicsBootstrapVertexOutput fanVertices[3] = {
+				vsOutputs[0],
+				vsOutputs[primitiveIndex + 1],
+				vsOutputs[primitiveIndex + 2],
+			};
+			const auto triangle = toRasterVertices(fanVertices, config.width, config.height);
+			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::FlatInterpolatedColor)
+			{
+				fragmentConfig.vertexColor0R = triangle[0].colorR;
+				fragmentConfig.vertexColor0G = triangle[0].colorG;
+				fragmentConfig.vertexColor0B = triangle[0].colorB;
+				fragmentConfig.vertexColor0A = triangle[0].colorA;
+				fragmentConfig.vertexColor1R = triangle[1].colorR;
+				fragmentConfig.vertexColor1G = triangle[1].colorG;
+				fragmentConfig.vertexColor1B = triangle[1].colorB;
+				fragmentConfig.vertexColor1A = triangle[1].colorA;
+				fragmentConfig.vertexColor2R = triangle[2].colorR;
+				fragmentConfig.vertexColor2G = triangle[2].colorG;
+				fragmentConfig.vertexColor2B = triangle[2].colorB;
+				fragmentConfig.vertexColor2A = triangle[2].colorA;
+			}
+			std::vector<uint8_t> triangleColorBuffer;
+			std::vector<float> triangleDepthBuffer;
+			if(!runRasterFragmentBootstrap(runtime, triangle, rasterConfig, fragmentConfig, colorBuffer ? &triangleColorBuffer : nullptr, useDepthCompose ? &triangleDepthBuffer : nullptr))
+			{
+				return false;
+			}
+			composeColorBuffers(triangleColorBuffer, triangleDepthBuffer);
 			continue;
 		}
 

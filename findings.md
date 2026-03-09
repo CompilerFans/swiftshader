@@ -97,3 +97,6 @@
 - `flat` 插值在当前 bootstrap 里不需要新的 raster payload；只要在 fragment 侧直接选 provoking vertex 的颜色即可。结合当前默认 `FIRST_VERTEX` 规则，这是一条非常短的 parity 增量路径。
 - The current CPU baseline crashes on the `noperspective` draw test in both CPU-only and CUDA-enabled builds. Until that upstream CPU-path issue is understood, `noperspective` should be treated as a blocked parity item rather than forced through the bootstrap path.
 - `triangle strip` can be brought up with the same transitional strategy used for indexed draws and point lists: expand to triangle-list on the host side using the CPU default `FIRST_VERTEX` strip ordering, then reuse the existing triangle bootstrap chain.
+- `IndexedTriangleStripWithPrimitiveRestart` currently fails in the CPU-only baseline as well as the CUDA build, so primitive restart should be tracked as a CPU-reference blocker rather than a CUDA-bootstrap regression until the baseline path is understood.
+- `IndexedTriangleStripWithPrimitiveRestart` currently fails in the CPU-only baseline, so primitive restart remains a CPU-reference blocker and should not be used as a CUDA regression signal yet.
+- `triangle fan` is another good fit for host-side topology expansion: keep the center vertex fixed, expand `(0, i+1, i+2)` per primitive, and reuse the existing triangle bootstrap chain unchanged.

@@ -49,6 +49,7 @@ public:
 	void updateVertexBufferData(const void *vertexBufferData, size_t vertexBufferDataSize);
 	void show();
 	void setPrimitiveTopology(vk::PrimitiveTopology topology);
+	void setPrimitiveRestartEnable(bool enable);
 	void enableDepthTest(bool depthTestEnable, bool depthWriteEnable, vk::CompareOp depthCompareOp);
 	void pumpWindowEvents();
 	void setWindowTitle(const std::string &title);
@@ -164,6 +165,7 @@ private:
 	vk::CompareOp depthCompareOp = vk::CompareOp::eLessOrEqual;
 	vk::Format depthFormat = vk::Format::eD32Sfloat;
 	vk::PrimitiveTopology primitiveTopology = vk::PrimitiveTopology::eTriangleList;
+	bool primitiveRestartEnable = false;
 
 	std::unique_ptr<Window> window;
 	std::unique_ptr<Swapchain> swapchain;
