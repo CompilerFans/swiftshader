@@ -27,6 +27,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <vector>
 
 enum class Multisample
 {
@@ -44,6 +45,7 @@ public:
 
 	void initialize();
 	void renderFrame();
+	std::vector<uint8_t> readbackFrameRgba();
 	std::array<uint8_t, 4> readbackPixel(uint32_t x, uint32_t y);
 	void saveFrame(const std::filesystem::path &path);
 	void updateVertexBufferData(const void *vertexBufferData, size_t vertexBufferDataSize);

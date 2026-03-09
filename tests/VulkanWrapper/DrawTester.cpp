@@ -115,7 +115,7 @@ void DrawTester::renderFrame()
 	swapchain->queuePresent(queue, currentFrameBuffer, renderCompleteSemaphore);
 }
 
-std::array<uint8_t, 4> DrawTester::readbackPixel(uint32_t x, uint32_t y)
+std::vector<uint8_t> DrawTester::readbackFrameRgba()
 {
 	queue.waitIdle();
 
@@ -127,10 +127,23 @@ std::array<uint8_t, 4> DrawTester::readbackPixel(uint32_t x, uint32_t y)
 	Util::transitionImageLayout(device, commandPool, queue, image, swapchain->colorFormat, vk::ImageLayout::eTransferSrcOptimal, vk::ImageLayout::ePresentSrcKHR);
 
 	auto *pixels = reinterpret_cast<const uint8_t *>(readback.mapMemory());
-	size_t offset = (static_cast<size_t>(y) * windowSize.width + x) * 4;
-	std::array<uint8_t, 4> rgba = { pixels[offset + 2], pixels[offset + 1], pixels[offset + 0], pixels[offset + 3] };
+	std::vector<uint8_t> rgba(static_cast<size_t>(windowSize.width) * windowSize.height * 4);
+	for(size_t offset = 0; offset < rgba.size(); offset += 4)
+	{
+		rgba[offset + 0] = pixels[offset + 2];
+		rgba[offset + 1] = pixels[offset + 1];
+		rgba[offset + 2] = pixels[offset + 0];
+		rgba[offset + 3] = pixels[offset + 3];
+	}
 	readback.unmapMemory();
 	return rgba;
+}
+
+std::array<uint8_t, 4> DrawTester::readbackPixel(uint32_t x, uint32_t y)
+{
+	auto rgba = readbackFrameRgba();
+	size_t offset = (static_cast<size_t>(y) * windowSize.width + x) * 4;
+	return { rgba[offset + 0], rgba[offset + 1], rgba[offset + 2], rgba[offset + 3] };
 }
 
 void DrawTester::saveFrame(const std::filesystem::path &path)

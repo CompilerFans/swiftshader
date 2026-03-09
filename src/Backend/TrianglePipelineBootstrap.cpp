@@ -160,7 +160,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 	{
 		return false;
 	}
-	if((topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST && topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN && topology != VK_PRIMITIVE_TOPOLOGY_LINE_LIST) || primitiveCount == 0)
+	if((topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST && topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN && topology != VK_PRIMITIVE_TOPOLOGY_LINE_LIST && topology != VK_PRIMITIVE_TOPOLOGY_LINE_STRIP) || primitiveCount == 0)
 	{
 		return false;
 	}
@@ -178,7 +178,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 	config->width = renderArea.extent.width;
 	config->height = renderArea.extent.height;
 	config->topology = topology;
-	config->vertexCount = topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? primitiveCount : (topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST ? primitiveCount * 2u : ((topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? primitiveCount + 2u : primitiveCount * 3u));
+	config->vertexCount = topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? primitiveCount : ((topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST) ? primitiveCount * 2u : ((topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? primitiveCount + (topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP ? 1u : 2u) : primitiveCount * 3u));
 	if(indexData != nullptr)
 	{
 		switch(indexType)
@@ -334,7 +334,7 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		return false;
 	}
 
-	const size_t primitiveCount = config.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? vsOutputs.size() : (config.topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST ? (vsOutputs.size() / 2) : ((config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? (vsOutputs.size() - 2) : (vsOutputs.size() / 3)));
+	const size_t primitiveCount = config.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? vsOutputs.size() : (config.topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST ? (vsOutputs.size() / 2) : (config.topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP ? (vsOutputs.size() - 1) : ((config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? (vsOutputs.size() - 2) : (vsOutputs.size() / 3))));
 	std::vector<uint8_t> accumulatedColorBuffer;
 	std::vector<float> accumulatedDepthBuffer;
 	const bool useDepthCompose = (fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth);
@@ -408,6 +408,26 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				return false;
 			}
 			composeColorBuffers(pointColorBuffer, std::vector<float>{});
+			continue;
+		}
+
+		if(config.topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP)
+		{
+			const auto quad = toLineQuad(vsOutputs[primitiveIndex], vsOutputs[primitiveIndex + 1], config.width, config.height, config.lineWidth);
+			std::array<std::array<RasterBootstrapVertex, 3>, 2> triangles = {{
+				{{ quad[0], quad[1], quad[2] }},
+				{{ quad[0], quad[2], quad[3] }},
+			}};
+			for(const auto &triangle : triangles)
+			{
+				std::vector<uint8_t> triangleColorBuffer;
+				std::vector<float> triangleDepthBuffer;
+				if(!runRasterFragmentBootstrap(runtime, triangle, rasterConfig, fragmentConfig, colorBuffer ? &triangleColorBuffer : nullptr, useDepthCompose ? &triangleDepthBuffer : nullptr))
+				{
+					return false;
+				}
+				composeColorBuffers(triangleColorBuffer, triangleDepthBuffer);
+			}
 			continue;
 		}
 
