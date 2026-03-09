@@ -275,3 +275,46 @@ TEST(FragmentBootstrap, CudaRuntimeWritesFrontFacingBinaryColors)
 	EXPECT_EQ(colorBuffer[back + 2], 255u);
 }
 #endif
+
+
+TEST(FragmentBootstrap, CudaRuntimeSamplesTexture2DNearest)
+{
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	backend::FragmentBootstrapConfig config = {};
+	config.shaderKind = backend::FragmentBootstrapShaderKind::Texture2DColor;
+	config.vertexTexCoord0U = 0.0f;
+	config.vertexTexCoord0V = 0.0f;
+	config.vertexTexCoord1U = 1.0f;
+	config.vertexTexCoord1V = 0.0f;
+	config.vertexTexCoord2U = 0.0f;
+	config.vertexTexCoord2V = 1.0f;
+	config.textureWidth = 2u;
+	config.textureHeight = 2u;
+	config.textureRowPitchTexels = 2u;
+	config.textureFilterLinear = 0u;
+	config.textureAddressModeU = 0u;
+	config.textureAddressModeV = 0u;
+	config.textureData = {
+		255u, 0u,   0u,   255u,
+		0u,   255u, 0u,   255u,
+		0u,   0u,   255u, 255u,
+		255u, 255u, 0u,   255u,
+	};
+
+	std::vector<backend::FragmentBootstrapInvocation> invocations(1);
+	invocations[0].x = 0u;
+	invocations[0].y = 0u;
+	invocations[0].barycentric0 = 1.0f;
+	invocations[0].barycentric1 = 0.0f;
+	invocations[0].barycentric2 = 0.0f;
+
+	std::vector<uint8_t> colorBuffer;
+	ASSERT_TRUE(backend::runFragmentBootstrap(runtime, 1u, 1u, invocations, config, &colorBuffer));
+	ASSERT_EQ(colorBuffer.size(), 4u);
+	EXPECT_EQ(colorBuffer[0], 255u);
+	EXPECT_EQ(colorBuffer[1], 0u);
+	EXPECT_EQ(colorBuffer[2], 0u);
+	EXPECT_EQ(colorBuffer[3], 255u);
+}

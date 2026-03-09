@@ -29,6 +29,7 @@
 #include "System/Timer.hpp"
 #include "Vulkan/VkConfig.hpp"
 #include "Vulkan/VkDescriptorSet.hpp"
+#include "Vulkan/VkDescriptorSetLayout.hpp"
 #include "Vulkan/VkDevice.hpp"
 #include "Vulkan/VkFence.hpp"
 #include "Vulkan/VkImageView.hpp"
@@ -126,6 +127,103 @@ bool tryGetBootstrapVertexPointSizeConstant(const SpirvShader &shader, float *po
 	}
 	*pointSize = constantPointSize;
 	return true;
+}
+
+
+
+bool shaderContainsTextureSampling(const SpirvShader &shader)
+{
+	for(auto insn : shader)
+	{
+		switch(insn.opcode())
+		{
+		case spv::OpImageSampleImplicitLod:
+		case spv::OpImageSampleExplicitLod:
+		case spv::OpImageSampleProjImplicitLod:
+		case spv::OpImageSampleProjExplicitLod:
+			return true;
+		default:
+			break;
+		}
+	}
+	return false;
+}
+
+bool tryBuildBootstrapTextureConfig(const SpirvShader &shader,
+                                   const vk::PipelineLayout *pipelineLayout,
+                                   const vk::DescriptorSet::Bindings &descriptorSets,
+                                   vk::Device *device,
+                                   backend::FragmentBootstrapConfig *config)
+{
+	if(config == nullptr || pipelineLayout == nullptr || device == nullptr)
+	{
+		return false;
+	}
+	if(shader.GetNumInputComponents(0) < 2 || !shaderContainsTextureSampling(shader))
+	{
+		return false;
+	}
+	for(const auto &entry : shader.descriptorDecorations)
+	{
+		const auto &decoration = entry.second;
+		if(decoration.DescriptorSet < 0 || decoration.Binding < 0)
+		{
+			continue;
+		}
+		if(static_cast<uint32_t>(decoration.DescriptorSet) >= pipelineLayout->getDescriptorSetCount())
+		{
+			continue;
+		}
+		if(static_cast<uint32_t>(decoration.Binding) >= pipelineLayout->getBindingCount(decoration.DescriptorSet))
+		{
+			continue;
+		}
+		if(pipelineLayout->getDescriptorType(decoration.DescriptorSet, decoration.Binding) != VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)
+		{
+			continue;
+		}
+		auto descriptorSet = descriptorSets[decoration.DescriptorSet];
+		if(descriptorSet == nullptr)
+		{
+			continue;
+		}
+		auto bindingOffset = pipelineLayout->getBindingOffset(decoration.DescriptorSet, decoration.Binding);
+		auto *sampledImage = reinterpret_cast<const vk::SampledImageDescriptor *>(descriptorSet + bindingOffset);
+		if(sampledImage == nullptr || sampledImage->memoryOwner == nullptr || sampledImage->texture.mipmap[0].buffer == nullptr)
+		{
+			continue;
+		}
+		auto format = sampledImage->memoryOwner->getFormat(vk::ImageView::SAMPLING);
+		if(format.bytes() != 4 || sampledImage->width <= 0 || sampledImage->height <= 0)
+		{
+			continue;
+		}
+		const vk::SamplerState *samplerState = device->findSampler(sampledImage->samplerId);
+		if(!samplerState)
+		{
+			continue;
+		}
+		if(samplerState->addressModeU != VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE && samplerState->addressModeU != VK_SAMPLER_ADDRESS_MODE_REPEAT)
+		{
+			continue;
+		}
+		if(samplerState->addressModeV != VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE && samplerState->addressModeV != VK_SAMPLER_ADDRESS_MODE_REPEAT)
+		{
+			continue;
+		}
+		config->shaderKind = backend::FragmentBootstrapShaderKind::Texture2DColor;
+		config->textureWidth = static_cast<uint32_t>(sampledImage->width);
+		config->textureHeight = static_cast<uint32_t>(sampledImage->height);
+		config->textureRowPitchTexels = sampledImage->texture.mipmap[0].pitchP.x;
+		config->textureFilterLinear = (samplerState->magFilter == VK_FILTER_LINEAR || samplerState->minFilter == VK_FILTER_LINEAR) ? 1u : 0u;
+		config->textureAddressModeU = samplerState->addressModeU == VK_SAMPLER_ADDRESS_MODE_REPEAT ? 1u : 0u;
+		config->textureAddressModeV = samplerState->addressModeV == VK_SAMPLER_ADDRESS_MODE_REPEAT ? 1u : 0u;
+		size_t textureBytes = static_cast<size_t>(config->textureRowPitchTexels) * config->textureHeight * 4u;
+		auto *bytes = reinterpret_cast<const uint8_t *>(sampledImage->texture.mipmap[0].buffer);
+		config->textureData.assign(bytes, bytes + textureBytes);
+		return true;
+	}
+	return false;
 }
 
 bool tryGetBootstrapFragmentConstantColor(const SpirvShader &shader, backend::FragmentBootstrapConfig *config)
@@ -585,13 +683,26 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 			const backend::FragmentBootstrapConfig *fragmentBootstrapConfigPtr = nullptr;
 			if(const sw::SpirvShader *bootstrapFragmentShader = pipeline->getShader(VK_SHADER_STAGE_FRAGMENT_BIT).get())
 			{
-				if(tryBuildBootstrapFragmentConfig(*bootstrapFragmentShader, &fragmentBootstrapConfig))
+				if(tryBuildBootstrapTextureConfig(*bootstrapFragmentShader, fragmentState->getPipelineLayout(), inputs.getDescriptorSets(), device, &fragmentBootstrapConfig) ||
+				   tryBuildBootstrapFragmentConfig(*bootstrapFragmentShader, &fragmentBootstrapConfig))
 				{
 					fragmentBootstrapConfigPtr = &fragmentBootstrapConfig;
 				}
 			}
 			const sw::Stream *colorStream = nullptr;
-			if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
+			const sw::Stream *texCoordStream = nullptr;
+			if(draw->fragmentPipelineLayout != draw->preRasterizationPipelineLayout)
+			{
+				vk::DescriptorSet::PrepareForSampling(draw->descriptorSetObjects, draw->fragmentPipelineLayout, device);
+			}
+			if(fragmentBootstrapConfigPtr && fragmentBootstrapConfig.shaderKind == backend::FragmentBootstrapShaderKind::Texture2DColor)
+			{
+				if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
+				{
+					texCoordStream = &inputs.getStream(1);
+				}
+			}
+			else if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
 			{
 				colorStream = &inputs.getStream(1);
 			}
@@ -603,7 +714,7 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 			}
 
 			if(runtime->isHardwareBacked() &&
-			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE, bootstrapPointSize))
+			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE, bootstrapPointSize, texCoordStream))
 			{
 				customGraphicsBootstrapDone = true;
 			}

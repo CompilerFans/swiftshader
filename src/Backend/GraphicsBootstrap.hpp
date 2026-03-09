@@ -19,6 +19,8 @@ struct GraphicsBootstrapVertexInput
 	float colorG = 1.0f;
 	float colorB = 1.0f;
 	float colorA = 1.0f;
+	float u = 0.0f;
+	float v = 0.0f;
 };
 
 struct GraphicsBootstrapVertexOutput
@@ -32,6 +34,8 @@ struct GraphicsBootstrapVertexOutput
 	float colorG = 1.0f;
 	float colorB = 1.0f;
 	float colorA = 1.0f;
+	float u = 0.0f;
+	float v = 0.0f;
 };
 
 struct GraphicsBootstrapShaderConfig
@@ -59,6 +63,8 @@ struct GraphicsBootstrapBindingConfig
 	uint32_t positionComponentCount = 3;
 	uint32_t colorOffset = offsetof(GraphicsBootstrapVertexInput, colorR);
 	uint32_t colorComponentCount = 4;
+	uint32_t texCoordOffset = offsetof(GraphicsBootstrapVertexInput, u);
+	uint32_t texCoordComponentCount = 2;
 };
 
 std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &config = {});

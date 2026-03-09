@@ -154,7 +154,7 @@ std::array<RasterBootstrapVertex, 4> toPointQuad(const GraphicsBootstrapVertexOu
 
 }  // namespace
 
-bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize)
+bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize, const sw::Stream *texCoordStream)
 {
 	if(config == nullptr || positionStream.buffer == nullptr)
 	{
@@ -232,6 +232,23 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 			config->binding.colorComponentCount = colorComponentCount;
 		}
 	}
+	config->binding.texCoordOffset = 0;
+	config->binding.texCoordComponentCount = 0;
+	if(texCoordStream &&
+	   texCoordStream->buffer != nullptr &&
+	   texCoordStream->binding == positionStream.binding &&
+	   texCoordStream->inputRate == positionStream.inputRate &&
+	   texCoordStream->vertexStride == positionStream.vertexStride)
+	{
+		const uint32_t texCoordComponentCount = positionComponentCount(texCoordStream->format);
+		auto positionBase = static_cast<const uint8_t *>(positionStream.buffer);
+		auto texCoordBase = static_cast<const uint8_t *>(texCoordStream->buffer);
+		if(texCoordComponentCount >= 2 && texCoordBase >= positionBase)
+		{
+			config->binding.texCoordOffset = static_cast<uint32_t>(texCoordBase - positionBase);
+			config->binding.texCoordComponentCount = texCoordComponentCount;
+		}
+	}
 	if(fragmentConfig)
 	{
 		config->fragmentConfig = *fragmentConfig;
@@ -296,7 +313,15 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				colorB = config.binding.colorComponentCount > 2 ? color[2] : colorG;
 				colorA = config.binding.colorComponentCount > 3 ? color[3] : 1.0f;
 			}
-			vsOutputs[i] = { position[0], position[1], z, 1.0f, config.pointSize, colorR, colorG, colorB, colorA };
+			float texCoordU = 0.0f;
+			float texCoordV = 0.0f;
+			if(config.binding.texCoordComponentCount != 0)
+			{
+				const float *texCoord = reinterpret_cast<const float *>(config.rawVertexData.data() + i * config.binding.vertexStride + config.binding.texCoordOffset);
+				texCoordU = texCoord[0];
+				texCoordV = config.binding.texCoordComponentCount > 1 ? texCoord[1] : 0.0f;
+			}
+			vsOutputs[i] = { position[0], position[1], z, 1.0f, config.pointSize, colorR, colorG, colorB, colorA, texCoordU, texCoordV };
 		}
 	}
 	else
@@ -304,7 +329,7 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		vsOutputs.resize(config.vertices.size());
 		for(size_t i = 0; i < config.vertices.size(); i++)
 		{
-			vsOutputs[i] = { config.vertices[i].x, config.vertices[i].y, config.vertices[i].z, 1.0f, config.pointSize, 1.0f, 1.0f, 1.0f, 1.0f };
+			vsOutputs[i] = { config.vertices[i].x, config.vertices[i].y, config.vertices[i].z, 1.0f, config.pointSize, 1.0f, 1.0f, 1.0f, 1.0f, 0.0f, 0.0f };
 		}
 	}
 
@@ -476,6 +501,15 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				fragmentConfig.vertexColor2B = triangle[2].colorB;
 				fragmentConfig.vertexColor2A = triangle[2].colorA;
 			}
+			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::Texture2DColor)
+			{
+				fragmentConfig.vertexTexCoord0U = fanVertices[0].u;
+				fragmentConfig.vertexTexCoord0V = fanVertices[0].v;
+				fragmentConfig.vertexTexCoord1U = fanVertices[1].u;
+				fragmentConfig.vertexTexCoord1V = fanVertices[1].v;
+				fragmentConfig.vertexTexCoord2U = fanVertices[2].u;
+				fragmentConfig.vertexTexCoord2V = fanVertices[2].v;
+			}
 			std::vector<uint8_t> triangleColorBuffer;
 			std::vector<float> triangleDepthBuffer;
 			if(!runRasterFragmentBootstrap(runtime, triangle, rasterConfig, fragmentConfig, colorBuffer ? &triangleColorBuffer : nullptr, useDepthCompose ? &triangleDepthBuffer : nullptr))
@@ -508,6 +542,15 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				fragmentConfig.vertexColor2G = triangle[2].colorG;
 				fragmentConfig.vertexColor2B = triangle[2].colorB;
 				fragmentConfig.vertexColor2A = triangle[2].colorA;
+			}
+			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::Texture2DColor)
+			{
+				fragmentConfig.vertexTexCoord0U = stripVertices[0].u;
+				fragmentConfig.vertexTexCoord0V = stripVertices[0].v;
+				fragmentConfig.vertexTexCoord1U = stripVertices[1].u;
+				fragmentConfig.vertexTexCoord1V = stripVertices[1].v;
+				fragmentConfig.vertexTexCoord2U = stripVertices[2].u;
+				fragmentConfig.vertexTexCoord2V = stripVertices[2].v;
 			}
 			std::vector<uint8_t> triangleColorBuffer;
 			std::vector<float> triangleDepthBuffer;
@@ -552,10 +595,10 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	return true;
 }
 
-bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize)
+bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize, const sw::Stream *texCoordStream)
 {
 	TrianglePipelineBootstrapConfig config = {};
-	if(!buildTrianglePipelineBootstrapConfig(positionStream, colorStream, topology, primitiveCount, renderArea, &config, fragmentConfig, indexData, indexType, baseVertex, frontFaceCounterClockwise, pointSize))
+	if(!buildTrianglePipelineBootstrapConfig(positionStream, colorStream, topology, primitiveCount, renderArea, &config, fragmentConfig, indexData, indexType, baseVertex, frontFaceCounterClockwise, pointSize, texCoordStream))
 	{
 		return false;
 	}

@@ -40,6 +40,19 @@ struct BootstrapFsParams
 	float vertexColor2G = 1.0f;
 	float vertexColor2B = 1.0f;
 	float vertexColor2A = 1.0f;
+	float vertexTexCoord0U = 0.0f;
+	float vertexTexCoord0V = 0.0f;
+	float vertexTexCoord1U = 1.0f;
+	float vertexTexCoord1V = 0.0f;
+	float vertexTexCoord2U = 0.0f;
+	float vertexTexCoord2V = 1.0f;
+	const uint8_t *textureData = nullptr;
+	uint32_t textureWidth = 0u;
+	uint32_t textureHeight = 0u;
+	uint32_t textureRowPitchTexels = 0u;
+	uint32_t textureFilterLinear = 0u;
+	uint32_t textureAddressModeU = 0u;
+	uint32_t textureAddressModeV = 0u;
 };
 
 std::string literalFloat(float value)
@@ -105,14 +118,87 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tfloat vertexColor2G;\n"
 	          "\tfloat vertexColor2B;\n"
 	          "\tfloat vertexColor2A;\n"
+	          "\tfloat vertexTexCoord0U;\n"
+	          "\tfloat vertexTexCoord0V;\n"
+	          "\tfloat vertexTexCoord1U;\n"
+	          "\tfloat vertexTexCoord1V;\n"
+	          "\tfloat vertexTexCoord2U;\n"
+	          "\tfloat vertexTexCoord2V;\n"
+	          "\tconst unsigned char *textureData;\n"
+	          "\tunsigned int textureWidth;\n"
+	          "\tunsigned int textureHeight;\n"
+	          "\tunsigned int textureRowPitchTexels;\n"
+	          "\tunsigned int textureFilterLinear;\n"
+	          "\tunsigned int textureAddressModeU;\n"
+	          "\tunsigned int textureAddressModeV;\n"
 	          "};\n\n"
+
 	          "static __device__ unsigned char packColor(float value)\n"
 	          "{\n"
 	          "\tvalue = value < 0.0f ? 0.0f : value;\n"
 	          "\tvalue = value > 1.0f ? 1.0f : value;\n"
 	          "\treturn static_cast<unsigned char>(value * 255.0f + 0.5f);\n"
 	          "}\n\n"
-	          "static __device__ void fs_main(FsParams params, unsigned int invocationIndex, const FragmentInvocation &invocation, unsigned char &outR, unsigned char &outG, unsigned char &outB, unsigned char &outA, float &outDepth)\n"
+	          "static __device__ float applyAddressMode(float coord, unsigned int addressMode)\n"
+          "{\n"
+          "	if(addressMode != 0u)\n"
+          "	{\n"
+          "		coord = coord - floorf(coord);\n"
+          "		if(coord < 0.0f) coord += 1.0f;\n"
+          "		return coord;\n"
+          "	}\n"
+          "	coord = coord < 0.0f ? 0.0f : coord;\n"
+          "	coord = coord > 1.0f ? 1.0f : coord;\n"
+          "	return coord;\n"
+          "}\n\n"
+          "static __device__ void fetchTexel(const FsParams &params, int x, int y, float &r, float &g, float &b, float &a)\n"
+          "{\n"
+          "	unsigned int offset = (static_cast<unsigned int>(y) * params.textureRowPitchTexels + static_cast<unsigned int>(x)) * 4u;\n"
+          "	r = params.textureData[offset + 0] / 255.0f;\n"
+          "	g = params.textureData[offset + 1] / 255.0f;\n"
+          "	b = params.textureData[offset + 2] / 255.0f;\n"
+          "	a = params.textureData[offset + 3] / 255.0f;\n"
+          "}\n\n"
+          "static __device__ void sampleTexture(const FsParams &params, float u, float v, float &r, float &g, float &b, float &a)\n"
+          "{\n"
+          "	u = applyAddressMode(u, params.textureAddressModeU);\n"
+          "	v = applyAddressMode(v, params.textureAddressModeV);\n"
+          "	float fx = u * static_cast<float>(params.textureWidth - 1u);\n"
+          "	float fy = v * static_cast<float>(params.textureHeight - 1u);\n"
+          "	if(params.textureFilterLinear == 0u)\n"
+          "	{\n"
+          "		int x = static_cast<int>(fx + 0.5f);\n"
+          "		int y = static_cast<int>(fy + 0.5f);\n"
+          "		fetchTexel(params, x, y, r, g, b, a);\n"
+          "		return;\n"
+          "	}\n"
+          "	int x0 = static_cast<int>(floorf(fx));\n"
+          "	int y0 = static_cast<int>(floorf(fy));\n"
+          "	int x1 = x0 + 1;\n"
+          "	int y1 = y0 + 1;\n"
+          "	if(x1 >= static_cast<int>(params.textureWidth)) x1 = params.textureAddressModeU != 0u ? 0 : static_cast<int>(params.textureWidth - 1u);\n"
+          "	if(y1 >= static_cast<int>(params.textureHeight)) y1 = params.textureAddressModeV != 0u ? 0 : static_cast<int>(params.textureHeight - 1u);\n"
+          "	float tx = fx - floorf(fx);\n"
+          "	float ty = fy - floorf(fy);\n"
+          "	float r00,g00,b00,a00,r10,g10,b10,a10,r01,g01,b01,a01,r11,g11,b11,a11;\n"
+          "	fetchTexel(params, x0, y0, r00,g00,b00,a00);\n"
+          "	fetchTexel(params, x1, y0, r10,g10,b10,a10);\n"
+          "	fetchTexel(params, x0, y1, r01,g01,b01,a01);\n"
+          "	fetchTexel(params, x1, y1, r11,g11,b11,a11);\n"
+          "	float r0 = r00 + (r10 - r00) * tx;\n"
+          "	float g0 = g00 + (g10 - g00) * tx;\n"
+          "	float b0 = b00 + (b10 - b00) * tx;\n"
+          "	float a0 = a00 + (a10 - a00) * tx;\n"
+          "	float r1 = r01 + (r11 - r01) * tx;\n"
+          "	float g1 = g01 + (g11 - g01) * tx;\n"
+          "	float b1 = b01 + (b11 - b01) * tx;\n"
+          "	float a1 = a01 + (a11 - a01) * tx;\n"
+          "	r = r0 + (r1 - r0) * ty;\n"
+          "	g = g0 + (g1 - g0) * ty;\n"
+          "	b = b0 + (b1 - b0) * ty;\n"
+          "	a = a0 + (a1 - a0) * ty;\n"
+          "}\n\n"
+          "static __device__ void fs_main(FsParams params, unsigned int invocationIndex, const FragmentInvocation &invocation, unsigned char &outR, unsigned char &outG, unsigned char &outB, unsigned char &outA, float &outDepth)\n"
 	          "{\n"
 	          "\t(void)invocationIndex;\n";
 	if(config.shaderKind == FragmentBootstrapShaderKind::FragCoordQuadrants)
@@ -136,6 +222,21 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 		          "\toutG = packColor(colorG);\n"
 		          "\toutB = packColor(colorB);\n"
 		          "\toutA = packColor(colorA);\n";
+	}
+	else if(config.shaderKind == FragmentBootstrapShaderKind::Texture2DColor)
+	{
+		source << "	outDepth = 1.0f;\n"
+		          "	float u = params.vertexTexCoord0U * invocation.barycentric0 + params.vertexTexCoord1U * invocation.barycentric1 + params.vertexTexCoord2U * invocation.barycentric2;\n"
+		          "	float v = params.vertexTexCoord0V * invocation.barycentric0 + params.vertexTexCoord1V * invocation.barycentric1 + params.vertexTexCoord2V * invocation.barycentric2;\n"
+		          "	float colorR;\n"
+		          "	float colorG;\n"
+		          "	float colorB;\n"
+		          "	float colorA;\n"
+		          "	sampleTexture(params, u, v, colorR, colorG, colorB, colorA);\n"
+		          "	outR = packColor(colorR);\n"
+		          "	outG = packColor(colorG);\n"
+		          "	outB = packColor(colorB);\n"
+		          "	outA = packColor(colorA);\n";
 	}
 	else if(config.shaderKind == FragmentBootstrapShaderKind::PointCoordGradient)
 	{
@@ -259,7 +360,8 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	auto invocationMemory = runtime.allocateMemory(invocationBytes);
 	auto colorMemory = runtime.allocateMemory(colorBytes);
 	auto depthMemory = depthBuffer ? runtime.allocateMemory(depthBytes) : DeviceMemoryHandle{};
-	if(!invocationMemory.valid() || !colorMemory.valid() || (depthBuffer && !depthMemory.valid()))
+	auto textureMemory = (!config.textureData.empty()) ? runtime.allocateMemory(config.textureData.size()) : DeviceMemoryHandle{};
+	if(!invocationMemory.valid() || !colorMemory.valid() || (depthBuffer && !depthMemory.valid()) || (!config.textureData.empty() && !textureMemory.valid()))
 	{
 		if(depthMemory.valid())
 		{
@@ -268,6 +370,10 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 		if(colorMemory.valid())
 		{
 			runtime.freeMemory(colorMemory);
+		}
+		if(textureMemory.valid())
+		{
+			runtime.freeMemory(textureMemory);
 		}
 		if(invocationMemory.valid())
 		{
@@ -284,6 +390,10 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	}
 	runtime.copyHostToMemory(invocationMemory, invocations.data(), invocationBytes);
 	runtime.copyHostToMemory(colorMemory, zeroColor.data(), zeroColor.size());
+	if(!config.textureData.empty())
+	{
+		runtime.copyHostToMemory(textureMemory, config.textureData.data(), config.textureData.size());
+	}
 	if(depthBuffer)
 	{
 		runtime.copyHostToMemory(depthMemory, clearDepth.data(), depthBytes);
@@ -318,6 +428,19 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	params.vertexColor2G = config.vertexColor2G;
 	params.vertexColor2B = config.vertexColor2B;
 	params.vertexColor2A = config.vertexColor2A;
+	params.vertexTexCoord0U = config.vertexTexCoord0U;
+	params.vertexTexCoord0V = config.vertexTexCoord0V;
+	params.vertexTexCoord1U = config.vertexTexCoord1U;
+	params.vertexTexCoord1V = config.vertexTexCoord1V;
+	params.vertexTexCoord2U = config.vertexTexCoord2U;
+	params.vertexTexCoord2V = config.vertexTexCoord2V;
+	params.textureData = config.textureData.empty() ? nullptr : reinterpret_cast<const uint8_t *>(static_cast<uintptr_t>(runtime.memoryAddress(textureMemory)));
+	params.textureWidth = config.textureWidth;
+	params.textureHeight = config.textureHeight;
+	params.textureRowPitchTexels = config.textureRowPitchTexels;
+	params.textureFilterLinear = config.textureFilterLinear;
+	params.textureAddressModeU = config.textureAddressModeU;
+	params.textureAddressModeV = config.textureAddressModeV;
 	std::vector<void *> arguments = { &params };
 
 	LaunchRecord record = {};
@@ -344,6 +467,10 @@ bool runFragmentBootstrap(RuntimeAPI &runtime, uint32_t width, uint32_t height, 
 	}
 
 	runtime.freeMemory(colorMemory);
+	if(textureMemory.valid())
+	{
+		runtime.freeMemory(textureMemory);
+	}
 	runtime.freeMemory(invocationMemory);
 	return true;
 }

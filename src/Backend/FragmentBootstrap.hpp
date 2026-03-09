@@ -19,6 +19,7 @@ enum class FragmentBootstrapShaderKind
 	InterpolatedColorBlueNearFragDepth,
 	PointCoordGradient,
 	FlatInterpolatedColor,
+	Texture2DColor,
 };
 
 struct FragmentBootstrapInvocation
@@ -60,6 +61,19 @@ struct FragmentBootstrapConfig
 	float vertexColor2G = 1.0f;
 	float vertexColor2B = 1.0f;
 	float vertexColor2A = 1.0f;
+	float vertexTexCoord0U = 0.0f;
+	float vertexTexCoord0V = 0.0f;
+	float vertexTexCoord1U = 1.0f;
+	float vertexTexCoord1V = 0.0f;
+	float vertexTexCoord2U = 0.0f;
+	float vertexTexCoord2V = 1.0f;
+	uint32_t textureWidth = 0u;
+	uint32_t textureHeight = 0u;
+	uint32_t textureRowPitchTexels = 0u;
+	uint32_t textureFilterLinear = 0u;
+	uint32_t textureAddressModeU = 0u;
+	uint32_t textureAddressModeV = 0u;
+	std::vector<uint8_t> textureData;
 };
 
 std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config = {});
