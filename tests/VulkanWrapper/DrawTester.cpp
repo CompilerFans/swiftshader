@@ -246,6 +246,12 @@ void DrawTester::setLineWidth(float width)
 	lineWidth = width;
 }
 
+void DrawTester::enableColorClear(const std::array<float, 4> &color)
+{
+	colorClearEnabled = true;
+	colorClearValue = color;
+}
+
 void DrawTester::enableDepthTest(bool enableTest, bool enableWrite, vk::CompareOp compareOp)
 {
 	depthTestEnabled = enableTest;
@@ -303,7 +309,7 @@ vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
 	{
 		attachments[0].format = colorFormat;
 		attachments[0].samples = vk::SampleCountFlagBits::e1;
-		attachments[0].loadOp = vk::AttachmentLoadOp::eDontCare;
+		attachments[0].loadOp = colorClearEnabled ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare;
 		attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
 		attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 		attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
@@ -553,7 +559,7 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 		commandBuffers[i].begin(commandBufferBeginInfo);
 
 		std::vector<vk::ClearValue> clearValues(depthTestEnabled ? 2 : 1);
-		clearValues[0].color = vk::ClearColorValue(std::array<float, 4>{ 0.5f, 0.5f, 0.5f, 1.0f });
+		clearValues[0].color = vk::ClearColorValue(colorClearValue);
 		if(depthTestEnabled)
 		{
 			clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0u);

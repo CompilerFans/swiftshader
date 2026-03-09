@@ -53,6 +53,7 @@ public:
 	void setPrimitiveTopology(vk::PrimitiveTopology topology);
 	void setPrimitiveRestartEnable(bool enable);
 	void setLineWidth(float width);
+	void enableColorClear(const std::array<float, 4> &color);
 	void enableDepthTest(bool depthTestEnable, bool depthWriteEnable, vk::CompareOp depthCompareOp);
 	void pumpWindowEvents();
 	void setWindowTitle(const std::string &title);
@@ -169,6 +170,8 @@ private:
 	vk::Format depthFormat = vk::Format::eD32Sfloat;
 	vk::PrimitiveTopology primitiveTopology = vk::PrimitiveTopology::eTriangleList;
 	bool primitiveRestartEnable = false;
+	bool colorClearEnabled = false;
+	std::array<float, 4> colorClearValue = { 0.5f, 0.5f, 0.5f, 1.0f };
 	float lineWidth = 1.0f;
 
 	std::unique_ptr<Window> window;
