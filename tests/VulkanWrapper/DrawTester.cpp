@@ -228,6 +228,11 @@ void DrawTester::setPrimitiveRestartEnable(bool enable)
 	primitiveRestartEnable = enable;
 }
 
+void DrawTester::setLineWidth(float width)
+{
+	lineWidth = width;
+}
+
 void DrawTester::enableDepthTest(bool enableTest, bool enableWrite, vk::CompareOp compareOp)
 {
 	depthTestEnabled = enableTest;
@@ -404,7 +409,7 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass)
 	rasterizationState.cullMode = vk::CullModeFlagBits::eNone;
 	rasterizationState.frontFace = vk::FrontFace::eCounterClockwise;
 	rasterizationState.depthBiasEnable = VK_FALSE;
-	rasterizationState.lineWidth = 1.0f;
+	rasterizationState.lineWidth = lineWidth;
 
 	vk::PipelineColorBlendAttachmentState blendAttachmentState;
 	blendAttachmentState.colorWriteMask = vk::ColorComponentFlagBits::eR | vk::ColorComponentFlagBits::eG | vk::ColorComponentFlagBits::eB | vk::ColorComponentFlagBits::eA;

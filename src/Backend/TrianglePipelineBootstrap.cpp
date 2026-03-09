@@ -38,6 +38,20 @@ bool expandIndexedVertices(const sw::Stream &positionStream, uint32_t vertexCoun
 	return true;
 }
 
+struct ScreenVertex
+{
+	float x;
+	float y;
+};
+
+ScreenVertex projectVertex(const GraphicsBootstrapVertexOutput &output, uint32_t width, uint32_t height)
+{
+	float ndcX = output.x / output.w;
+	float ndcY = output.y / output.w;
+	return { (ndcX * 0.5f + 0.5f) * static_cast<float>(width),
+	         (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(height) };
+}
+
 uint32_t positionComponentCount(VkFormat format)
 {
 	switch(format)
@@ -58,10 +72,9 @@ std::array<RasterBootstrapVertex, 3> toRasterVertices(const std::vector<Graphics
 	std::array<RasterBootstrapVertex, 3> triangle = {};
 	for(size_t i = 0; i < 3 && i < outputs.size(); i++)
 	{
-		float ndcX = outputs[i].x / outputs[i].w;
-		float ndcY = outputs[i].y / outputs[i].w;
-		triangle[i].x = (ndcX * 0.5f + 0.5f) * static_cast<float>(width);
-		triangle[i].y = (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(height);
+		auto projected = projectVertex(outputs[i], width, height);
+		triangle[i].x = projected.x;
+		triangle[i].y = projected.y;
 		triangle[i].z = outputs[i].z;
 		triangle[i].w = outputs[i].w;
 		triangle[i].colorR = outputs[i].colorR;
@@ -78,6 +91,42 @@ std::array<RasterBootstrapVertex, 3> toRasterVertices(const GraphicsBootstrapVer
 	return toRasterVertices(triangleOutputs, width, height);
 }
 
+
+std::array<RasterBootstrapVertex, 4> toLineQuad(const GraphicsBootstrapVertexOutput &v0, const GraphicsBootstrapVertexOutput &v1, uint32_t width, uint32_t height, float lineWidth)
+{
+	auto pa = projectVertex(v0, width, height);
+	auto pb = projectVertex(v1, width, height);
+	RasterBootstrapVertex a = {};
+	a.x = pa.x; a.y = pa.y; a.z = v0.z; a.w = v0.w; a.colorR = v0.colorR; a.colorG = v0.colorG; a.colorB = v0.colorB; a.colorA = v0.colorA;
+	RasterBootstrapVertex b = {};
+	b.x = pb.x; b.y = pb.y; b.z = v1.z; b.w = v1.w; b.colorR = v1.colorR; b.colorG = v1.colorG; b.colorB = v1.colorB; b.colorA = v1.colorA;
+	float dx = b.x - a.x;
+	float dy = b.y - a.y;
+	float length = std::sqrt(dx * dx + dy * dy);
+	if(length == 0.0f)
+	{
+		length = 1.0f;
+	}
+	float nx = -dy / length;
+	float ny = dx / length;
+	float halfWidth = lineWidth * 0.5f;
+	std::array<RasterBootstrapVertex, 4> quad = {};
+	auto fill = [&](RasterBootstrapVertex &out, float x, float y, const GraphicsBootstrapVertexOutput &src) {
+		out.x = x;
+		out.y = y;
+		out.z = src.z;
+		out.w = src.w;
+		out.colorR = src.colorR;
+		out.colorG = src.colorG;
+		out.colorB = src.colorB;
+		out.colorA = src.colorA;
+	};
+	fill(quad[0], a.x - nx * halfWidth, a.y - ny * halfWidth, v0);
+	fill(quad[1], a.x + nx * halfWidth, a.y + ny * halfWidth, v0);
+	fill(quad[2], b.x + nx * halfWidth, b.y + ny * halfWidth, v1);
+	fill(quad[3], b.x - nx * halfWidth, b.y - ny * halfWidth, v1);
+	return quad;
+}
 std::array<RasterBootstrapVertex, 4> toPointQuad(const GraphicsBootstrapVertexOutput &output, uint32_t width, uint32_t height, float pointSize)
 {
 	std::array<RasterBootstrapVertex, 4> quad = {};
@@ -111,7 +160,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 	{
 		return false;
 	}
-	if((topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST && topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) || primitiveCount == 0)
+	if((topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST && topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN && topology != VK_PRIMITIVE_TOPOLOGY_LINE_LIST) || primitiveCount == 0)
 	{
 		return false;
 	}
@@ -129,7 +178,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 	config->width = renderArea.extent.width;
 	config->height = renderArea.extent.height;
 	config->topology = topology;
-	config->vertexCount = topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? primitiveCount : ((topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? primitiveCount + 2u : primitiveCount * 3u);
+	config->vertexCount = topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? primitiveCount : (topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST ? primitiveCount * 2u : ((topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? primitiveCount + 2u : primitiveCount * 3u));
 	if(indexData != nullptr)
 	{
 		switch(indexType)
@@ -285,7 +334,7 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		return false;
 	}
 
-	const size_t primitiveCount = config.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? vsOutputs.size() : ((config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? (vsOutputs.size() - 2) : (vsOutputs.size() / 3));
+	const size_t primitiveCount = config.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? vsOutputs.size() : (config.topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST ? (vsOutputs.size() / 2) : ((config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? (vsOutputs.size() - 2) : (vsOutputs.size() / 3)));
 	std::vector<uint8_t> accumulatedColorBuffer;
 	std::vector<float> accumulatedDepthBuffer;
 	const bool useDepthCompose = (fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth);
@@ -359,6 +408,26 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				return false;
 			}
 			composeColorBuffers(pointColorBuffer, std::vector<float>{});
+			continue;
+		}
+
+		if(config.topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST)
+		{
+			const auto quad = toLineQuad(vsOutputs[primitiveIndex * 2], vsOutputs[primitiveIndex * 2 + 1], config.width, config.height, config.lineWidth);
+			std::array<std::array<RasterBootstrapVertex, 3>, 2> triangles = {{
+				{{ quad[0], quad[1], quad[2] }},
+				{{ quad[0], quad[2], quad[3] }},
+			}};
+			for(const auto &triangle : triangles)
+			{
+				std::vector<uint8_t> triangleColorBuffer;
+				std::vector<float> triangleDepthBuffer;
+				if(!runRasterFragmentBootstrap(runtime, triangle, rasterConfig, fragmentConfig, colorBuffer ? &triangleColorBuffer : nullptr, useDepthCompose ? &triangleDepthBuffer : nullptr))
+				{
+					return false;
+				}
+				composeColorBuffers(triangleColorBuffer, triangleDepthBuffer);
+			}
 			continue;
 		}
 

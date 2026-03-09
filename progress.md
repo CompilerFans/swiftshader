@@ -478,3 +478,12 @@
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromTriangleFanPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersTriangleFanConstantColor')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.TriangleFanConstantColor')` passed
   - `(cd build-benchmark-cpu && ./draw-unittests --gtest_filter='DrawTest.IndexedTriangleStripWithPrimitiveRestart')` failed, confirming the restart blocker exists in the CPU baseline too
+- Line list RED/GREEN:
+  - added failing backend tests for line-list config extraction and constant-color line rendering, plus a Vulkan draw test that renders a thick red horizontal line and saves `line-list-constant-color.bmp`
+  - first verified the original test was invalid because CPU-only baseline with width `1.0` did not hit the chosen sample point, then added a `DrawTester::setLineWidth()` knob to stabilize the baseline before continuing backend work
+  - extended `TrianglePipelineBootstrap` to accept `LINE_LIST` through a host-side line-to-quad expansion that reuses the existing triangle bootstrap chain
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-benchmark-cpu && ./draw-unittests --gtest_filter='DrawTest.LineListConstantColor')` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromLineListPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersLineListConstantColor')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.LineListConstantColor')` passed

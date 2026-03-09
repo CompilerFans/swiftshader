@@ -50,6 +50,7 @@ public:
 	void show();
 	void setPrimitiveTopology(vk::PrimitiveTopology topology);
 	void setPrimitiveRestartEnable(bool enable);
+	void setLineWidth(float width);
 	void enableDepthTest(bool depthTestEnable, bool depthWriteEnable, vk::CompareOp depthCompareOp);
 	void pumpWindowEvents();
 	void setWindowTitle(const std::string &title);
@@ -166,6 +167,7 @@ private:
 	vk::Format depthFormat = vk::Format::eD32Sfloat;
 	vk::PrimitiveTopology primitiveTopology = vk::PrimitiveTopology::eTriangleList;
 	bool primitiveRestartEnable = false;
+	float lineWidth = 1.0f;
 
 	std::unique_ptr<Window> window;
 	std::unique_ptr<Swapchain> swapchain;

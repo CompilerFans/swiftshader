@@ -18,6 +18,7 @@ struct TrianglePipelineBootstrapConfig
 	uint32_t height = 64;
 	VkPrimitiveTopology topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
 	float pointSize = 64.0f;
+	float lineWidth = 16.0f;
 	float colorR = 0.0f;
 	float colorG = 1.0f;
 	float colorB = 0.0f;

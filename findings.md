@@ -100,3 +100,5 @@
 - `IndexedTriangleStripWithPrimitiveRestart` currently fails in the CPU-only baseline as well as the CUDA build, so primitive restart should be tracked as a CPU-reference blocker rather than a CUDA-bootstrap regression until the baseline path is understood.
 - `IndexedTriangleStripWithPrimitiveRestart` currently fails in the CPU-only baseline, so primitive restart remains a CPU-reference blocker and should not be used as a CUDA regression signal yet.
 - `triangle fan` is another good fit for host-side topology expansion: keep the center vertex fixed, expand `(0, i+1, i+2)` per primitive, and reuse the existing triangle bootstrap chain unchanged.
+- `gl_SampleMask` output currently crashes in the CPU-only baseline as well as the CUDA build. Like the earlier `noperspective` case, it should be tracked as a CPU-reference blocker before being used as a CUDA parity milestone.
+- `LineListConstantColor` needed an explicit wide line in the draw harness to become a stable CPU baseline. For topology bring-up, test geometry should be chosen to avoid mistaking thin-line raster rules for backend regressions.

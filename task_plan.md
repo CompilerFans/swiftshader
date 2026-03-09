@@ -131,3 +131,4 @@ Complete
 - Current flat-interpolation milestone: the CUDA bootstrap path now distinguishes `flat` varying color from smooth interpolation and validates it against the default `FIRST_VERTEX` provoking rule.
 - Current triangle-strip milestone: the CUDA bootstrap path now accepts `TRIANGLE_STRIP` draws through host-side strip expansion that follows the CPU default provoking-vertex ordering.
 - Current triangle-fan milestone: the CUDA bootstrap path now accepts `TRIANGLE_FAN` draws through host-side fan expansion, while primitive restart remains tracked separately as a CPU baseline blocker.
+- Current line-list milestone: the CUDA bootstrap path now accepts `LINE_LIST` draws through a temporary host-side line-to-quad expansion, and the draw harness can force a wider line width for stable validation.
