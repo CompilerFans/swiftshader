@@ -108,3 +108,5 @@
 - `gl_PointSize` for the current bootstrap can be brought up with a narrow constant-path extractor: scan the builtin output block for `PointSize`, follow `OpAccessChain` pointers to the matching member, and accept only uniform constant `OpStore` values. That is enough to remove the old hard-coded point-size fallback for simple point shaders.
 
 - The current host-side deindexing step is already general enough to support indexed `LINE_STRIP` and indexed `TRIANGLE_FAN` in the bootstrap path, as long as primitive restart is not enabled. That makes primitive restart the real remaining blocker in this topology family.
+
+- After the `PointSize` bridge landed, indexed `POINT_LIST` required no extra runtime changes: the existing deindex-before-bootstrap path already composes correctly with the point quad expansion and point-fragment payload generation.

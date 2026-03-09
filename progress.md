@@ -514,3 +514,10 @@
 - Validation:
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.CudaRuntimeRendersIndexedLineStripConstantColor:TrianglePipelineBootstrap.CudaRuntimeRendersIndexedTriangleFanConstantColor')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.IndexedLineStripConstantColor:DrawTest.IndexedTriangleFanConstantColor')` passed
+
+## 2026-03-09: Indexed point-list coverage
+- Added backend coverage for `CudaRuntimeRendersIndexedPointListConstantColor`.
+- Added Vulkan draw test `DrawTest.IndexedPointListConstantColor`, with BMP artifact dump to `draw-test-artifacts/indexed-point-list-constant-color.bmp`.
+- Validation:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.CudaRuntimeRendersIndexedPointListConstantColor')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.IndexedPointListConstantColor')` passed
