@@ -128,3 +128,5 @@
 - The initial `linear/repeat` texture assertion failed because the chosen sample point assumed a near-white center mix. Actual CPU/CUDA output is a stable red/blue-heavy blend with low green at the center, so the robust test needs multiple sample points rather than a naive all-channels-high expectation.
 
 - The original CPU-side test harness does not clear the non-multisample color attachment by default: `tests/VulkanWrapper/DrawTester.cpp` uses `AttachmentLoadOp::eDontCare` there. So undefined background is expected unless a test explicitly opts into clearing. The right fix is an opt-in clear path for tests, not changing the default semantics globally.
+
+- For visible benchmarks, explicit clear is necessary for reliable visual output. Unlike unit tests, users interpret the window contents frame-to-frame, so leaving the background undefined makes the benchmark look broken even when draw results are technically valid. This is a harness-level presentation requirement, not a reason to globally change Vulkan clear semantics.

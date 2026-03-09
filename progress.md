@@ -585,3 +585,14 @@
 - Validation:
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleNearest:DrawTest.IndexedTexturedTriangleNearest:DrawTest.TexturedTriangleLinearRepeat:DrawTest.ClearColorBackground')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleNearest:DrawTest.IndexedTexturedTriangleNearest:DrawTest.TexturedTriangleLinearRepeat:DrawTest.ClearColorBackground')` passed
+
+## 2026-03-09: Animated benchmark texture scene
+- Extended `animated-triangle-benchmark` with `--scene=color|texture`.
+- Added a textured animated triangle scene that reuses the narrow texture bootstrap path.
+- Added explicit clear-color for both animated benchmark scenes to avoid undefined-background artifacts in the visible window.
+- Extended `run-animated-triangle-benchmark.sh` to forward `--scene`.
+- Validation:
+  - `timeout 10s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cpu --scene=color --seconds=1` passed
+  - `timeout 10s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cpu --scene=texture --seconds=1` passed
+  - `timeout 10s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --scene=color --seconds=1` passed
+  - `timeout 10s tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --scene=texture --seconds=1` passed
