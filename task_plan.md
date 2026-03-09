@@ -180,3 +180,5 @@ Complete
 - Current sample-gap blocker: `dynamic rendering` is not yet ready for promotion into the committed parity suite and needs a dedicated investigation cycle.
 
 - Current sample-aligned milestone: `MSAA resolve` draw coverage is now present in both CPU and CUDA builds, while `dynamic rendering` remains a separate blocker.
+
+- Current sample-gap blocker: `dynamic uniform buffers` should be treated as a dedicated investigation item rather than part of the immediate low-risk feature path.

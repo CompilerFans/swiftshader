@@ -659,3 +659,7 @@
 - Validation:
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.MultisampleSolidColorTriangle')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.MultisampleSolidColorTriangle')` passed
+
+## 2026-03-10: Dynamic uniform buffer probe
+- Added a local minimal `dynamic uniform buffer` draw probe and ran it in both CPU and CUDA builds.
+- Result: the probe does not produce the expected dynamic-UBO-driven color and is therefore kept out of the committed suite.

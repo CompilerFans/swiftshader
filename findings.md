@@ -154,3 +154,5 @@
 - A minimal `dynamic rendering` draw probe currently crashes in both CPU and CUDA builds. This makes `hello_triangle_1_3` / `dynamic_rendering` a real missing capability, not just an untested path.
 
 - The existing multisample harness path is already strong enough for an initial `msaa` sample-aligned gate. A simple resolved solid triangle passes in both CPU and CUDA builds without requiring new backend work.
+
+- A minimal `dynamic uniform buffer` graphics draw probe currently fails before producing the expected output in both CPU and CUDA builds. This makes `dynamic_uniform_buffers` another real missing capability, not a low-risk extension of the current short-term path.
