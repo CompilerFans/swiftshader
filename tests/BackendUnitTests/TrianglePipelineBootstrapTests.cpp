@@ -783,3 +783,52 @@ TEST(TrianglePipelineBootstrap, CudaRuntimeAppliesFragDepthMode)
 }
 
 #endif
+TEST(TrianglePipelineBootstrap, CudaRuntimeRendersIndexedLineStripConstantColor)
+{
+	struct Vertex { float position[3]; };
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+	const std::array<Vertex, 3> vertices = {{
+		{ { -0.8f, -0.4f, 0.0f } },
+		{ { 0.0f, 0.4f, 0.0f } },
+		{ { 0.8f, -0.4f, 0.0f } },
+	}};
+	const std::array<uint16_t, 3> indices = {{ 0u, 1u, 2u }};
+	sw::Stream positionStream = {};
+	positionStream.buffer = vertices.data();
+	positionStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	positionStream.vertexStride = sizeof(Vertex);
+	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+	std::vector<uint8_t> colorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, positionStream, nullptr, VK_PRIMITIVE_TOPOLOGY_LINE_STRIP, 2u, { { 0, 0 }, { 64, 64 } }, &colorBuffer, nullptr, indices.data(), VK_INDEX_TYPE_UINT16));
+	ASSERT_EQ(colorBuffer.size(), 64u * 64u * 4u);
+	EXPECT_TRUE(std::any_of(colorBuffer.begin(), colorBuffer.end(), [](uint8_t value) {
+		return value != 0u;
+	}));
+}
+
+TEST(TrianglePipelineBootstrap, CudaRuntimeRendersIndexedTriangleFanConstantColor)
+{
+	struct Vertex { float position[3]; };
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+	const std::array<Vertex, 4> vertices = {{
+		{ { 0.0f, 0.8f, 0.0f } },
+		{ { -0.8f, -0.8f, 0.0f } },
+		{ { 0.0f, -0.2f, 0.0f } },
+		{ { 0.8f, -0.8f, 0.0f } },
+	}};
+	const std::array<uint16_t, 4> indices = {{ 0u, 1u, 2u, 3u }};
+	sw::Stream positionStream = {};
+	positionStream.buffer = vertices.data();
+	positionStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	positionStream.vertexStride = sizeof(Vertex);
+	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+	std::vector<uint8_t> colorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, positionStream, nullptr, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN, 2u, { { 0, 0 }, { 64, 64 } }, &colorBuffer, nullptr, indices.data(), VK_INDEX_TYPE_UINT16));
+	ASSERT_EQ(colorBuffer.size(), 64u * 64u * 4u);
+	EXPECT_TRUE(std::any_of(colorBuffer.begin(), colorBuffer.end(), [](uint8_t value) {
+		return value != 0u;
+	}));
+}
+
