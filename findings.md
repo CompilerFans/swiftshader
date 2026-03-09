@@ -118,3 +118,7 @@
 - A minimal `noperspective` varying-color draw case still crashes in both the CPU baseline and the CUDA build before producing a frame. This remains a real blocker and should stay out of committed test suites until the crash is root-caused.
 
 - `indexed POINT_LIST` composes cleanly not only with constant-color output but also with the existing `PointCoordGradient` fragment path; no extra runtime changes were required beyond the earlier deindex + point-size work.
+
+- The repository already contains a real Vulkan textured-triangle setup in `tests/VulkanBenchmarks/TriangleBenchmarks.cpp`; the shortest path for texture support is to reuse that descriptor/image infrastructure instead of inventing a fake texture system.
+
+- The existing Vulkan descriptor payload is sufficient for a narrow bootstrap texture path: `SampledImageDescriptor` already contains prepared `sw::Texture`, dimensions, and `samplerId`, so the bootstrap only needs to copy level-0 texels plus a reduced sampler-state view.

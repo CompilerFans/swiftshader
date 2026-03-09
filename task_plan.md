@@ -146,3 +146,7 @@ Complete
 - Current blocker revalidated: `noperspective` still crashes in both CPU and CUDA draw paths, so it remains outside the committed parity suite until root-caused.
 
 - Current indexed-pointcoord milestone: `indexed point-list` now also has `PointCoord` gradient coverage in both CPU and CUDA draw builds.
+
+- Texture bootstrap planning complete: narrow `combined image sampler + vec2 uv + texture()` design and implementation plan are saved under `docs/plans/2026-03-09-texture-bootstrap-*.md`.
+
+- Texture bootstrap implementation milestone: narrow `combined image sampler + uv + texture()` is now live in both non-indexed and indexed triangle draws.

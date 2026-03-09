@@ -542,3 +542,24 @@
 - Validation:
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.IndexedPointCoordGradient')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.IndexedPointCoordGradient')` passed
+
+## 2026-03-09: Texture bootstrap planning
+- Wrote `docs/plans/2026-03-09-texture-bootstrap-design.md` for a narrow real texture path over the existing bootstrap chain.
+- Wrote `docs/plans/2026-03-09-texture-bootstrap-implementation.md` with TDD-style tasks covering `uv` varying, narrow fragment texture mode, renderer detection, and Vulkan draw coverage.
+
+## 2026-03-09: Texture bootstrap implementation
+- Added `Texture2DColor` to `FragmentBootstrap`, including narrow RGBA8 texture upload plus nearest/linear and clamp/repeat sampling support.
+- Extended `GraphicsBootstrap` with `u/v` varyings and `GraphicsBootstrapBindingConfig` texcoord metadata.
+- Extended `TrianglePipelineBootstrap` to thread `uv` through barycentrics and pass per-triangle texcoords to the fragment texture mode.
+- Added narrow texture-family detection in `Renderer::draw()`, extracting `SampledImageDescriptor` payload and sampler state from prepared descriptor sets.
+- Added tests:
+  - `FragmentBootstrap.CudaRuntimeSamplesTexture2DNearest`
+  - `DrawTest.TexturedTriangleNearest`
+  - `DrawTest.IndexedTexturedTriangleNearest`
+- Added BMP artifacts:
+  - `textured-triangle-nearest.bmp`
+  - `indexed-textured-triangle-nearest.bmp`
+- Validation:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='FragmentBootstrap.CudaRuntimeSamplesTexture2DNearest')` passed
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleNearest:DrawTest.IndexedTexturedTriangleNearest')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleNearest:DrawTest.IndexedTexturedTriangleNearest')` passed
