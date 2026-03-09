@@ -607,3 +607,9 @@
 - Validation:
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.VertexShaderUsesPushConstantOffset:DrawTest.FragmentShaderUsesPushConstantTint')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.VertexShaderUsesPushConstantOffset:DrawTest.FragmentShaderUsesPushConstantTint')` passed
+
+## 2026-03-10: InstanceIndex draw coverage
+- Added `DrawTest.VertexShaderUsesInstanceIndexOffset`, with BMP output to `draw-test-artifacts/instance-index-offset.bmp`.
+- Validation:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.VertexShaderUsesInstanceIndexOffset')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.VertexShaderUsesInstanceIndexOffset')` passed

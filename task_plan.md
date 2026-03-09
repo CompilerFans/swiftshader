@@ -160,3 +160,5 @@ Complete
 - Animated benchmark milestone: `animated-triangle-benchmark` now supports `--scene=color|texture`, and both scenes explicitly clear the background for stable visible output.
 
 - Push-constant milestone: draw harness now supports explicit push constant ranges/data, and narrow VS offset / FS tint cases pass in both CPU and CUDA builds.
+
+- Current instancing milestone: `gl_InstanceIndex` draw coverage is now present in both CPU and CUDA builds.

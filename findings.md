@@ -134,3 +134,5 @@
 - Matching `noperspective` on both VS output and FS input does not unblock the local reproducer. The issue remains inside the renderer/compiler path rather than being explained away by qualifier mismatch alone.
 
 - A narrow push-constant path is low-risk and high-yield for feature expansion: the harness and command buffer path already supported Vulkan push constants, so adding explicit test-side pipeline layout ranges/data was enough to unlock real VS/FS push-constant coverage without touching the `noperspective` blocker.
+
+- `gl_InstanceIndex` is an easy low-risk coverage gain even before custom bootstrap-specific lowering: the existing CPU/CUDA draw paths already render instanced geometry correctly through normal Vulkan command recording.
