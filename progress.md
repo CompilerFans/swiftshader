@@ -453,3 +453,11 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.EmitsPointCoordGradientShaderWhenRequested')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.PointListConstantColor:DrawTest.FragmentShaderUsesPointCoordGradient')` passed
+- Flat interpolation RED/GREEN:
+  - added a failing backend source test for `FlatInterpolatedColor` and a Vulkan draw test that uses `flat` color interpolation with three different vertex colors, dumping `flat-interpolated-color.bmp`
+  - extended `Renderer::draw()` to detect `shader.inputs[0].Flat`, added `FlatInterpolatedColor` to `FragmentBootstrap`, and reused the existing per-triangle vertex-color payload without widening the raster ABI
+  - kept the implementation aligned with the current CPU default `FIRST_VERTEX` provoking mode, which is already the default in `PreRasterizationState`
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.EmitsFlatInterpolatedColorShaderWhenRequested')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFlatInterpolatedColor')` passed

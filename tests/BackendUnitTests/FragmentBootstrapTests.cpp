@@ -40,6 +40,17 @@ TEST(FragmentBootstrap, EmitsPointCoordGradientShaderWhenRequested)
 	EXPECT_NE(source.find("invocation.pointCoordY"), std::string::npos);
 }
 
+TEST(FragmentBootstrap, EmitsFlatInterpolatedColorShaderWhenRequested)
+{
+	backend::FragmentBootstrapConfig config = {};
+	config.shaderKind = backend::FragmentBootstrapShaderKind::FlatInterpolatedColor;
+
+	std::string source = backend::fragmentBootstrapCudaSource(config);
+
+	EXPECT_NE(source.find("params.vertexColor0R"), std::string::npos);
+	EXPECT_EQ(source.find("invocation.barycentric0"), std::string::npos);
+}
+
 TEST(FragmentBootstrap, EmitsInterpolatedColorShaderFromBarycentrics)
 {
 	backend::FragmentBootstrapConfig config = {};

@@ -163,6 +163,12 @@ bool tryBuildBootstrapFragmentConfig(const SpirvShader &shader, backend::Fragmen
 		return true;
 	}
 
+	if(shader.GetNumInputComponents(0) >= 3 && shader.inputs[0].Flat)
+	{
+		config->shaderKind = backend::FragmentBootstrapShaderKind::FlatInterpolatedColor;
+		return true;
+	}
+
 	if(shader.GetNumInputComponents(0) >= 3)
 	{
 		config->shaderKind = backend::FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth;

@@ -359,7 +359,7 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		}
 
 		const auto triangle = toRasterVertices(vsOutputs.data() + primitiveIndex * 3, config.width, config.height);
-		if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth)
+		if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::FlatInterpolatedColor)
 		{
 			fragmentConfig.vertexColor0R = triangle[0].colorR;
 			fragmentConfig.vertexColor0G = triangle[0].colorG;

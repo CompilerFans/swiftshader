@@ -145,6 +145,14 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 		          "\toutB = 0u;\n"
 		          "\toutA = 255u;\n";
 	}
+	else if(config.shaderKind == FragmentBootstrapShaderKind::FlatInterpolatedColor)
+	{
+		source << "\toutDepth = 1.0f;\n"
+		          "\toutR = packColor(params.vertexColor0R);\n"
+		          "\toutG = packColor(params.vertexColor0G);\n"
+		          "\toutB = packColor(params.vertexColor0B);\n"
+		          "\toutA = packColor(params.vertexColor0A);\n";
+	}
 	else if(config.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth)
 	{
 		source << "\tfloat colorR = params.vertexColor0R * invocation.barycentric0 + params.vertexColor1R * invocation.barycentric1 + params.vertexColor2R * invocation.barycentric2;\n"

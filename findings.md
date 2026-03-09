@@ -94,3 +94,4 @@
 - A minimal early `FragDepth` path can be made real without full depth/stencil parity: let `FragmentBootstrap` optionally write a depth buffer, then let `TrianglePipelineBootstrap` perform host-side depth composition while the stage ABI is still narrow.
 - The shortest way to bring up point-list before `PointCoord` is to expand each point into two host-side triangles and reuse the existing triangle raster/bootstrap chain. This is a transitional implementation, but it widens real draw-state coverage immediately.
 - Once point-list bootstrap exists, `PointCoord` becomes a pure fragment-payload problem. The shortest path is to populate `pointCoordX/Y` directly in the point branch and expose a narrow `PointCoordGradient` fragment mode before tackling general point fragment lowering.
+- `flat` 插值在当前 bootstrap 里不需要新的 raster payload；只要在 fragment 侧直接选 provoking vertex 的颜色即可。结合当前默认 `FIRST_VERTEX` 规则，这是一条非常短的 parity 增量路径。
