@@ -832,3 +832,26 @@ TEST(TrianglePipelineBootstrap, CudaRuntimeRendersIndexedTriangleFanConstantColo
 	}));
 }
 
+
+
+TEST(TrianglePipelineBootstrap, CudaRuntimeRendersIndexedPointListConstantColor)
+{
+	struct Vertex { float position[3]; };
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+	const std::array<Vertex, 1> vertices = {{
+		{ { 0.0f, 0.0f, 0.0f } },
+	}};
+	const std::array<uint16_t, 1> indices = {{ 0u }};
+	sw::Stream positionStream = {};
+	positionStream.buffer = vertices.data();
+	positionStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	positionStream.vertexStride = sizeof(Vertex);
+	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+	std::vector<uint8_t> colorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, positionStream, nullptr, VK_PRIMITIVE_TOPOLOGY_POINT_LIST, 1u, { { 0, 0 }, { 64, 64 } }, &colorBuffer, nullptr, indices.data(), VK_INDEX_TYPE_UINT16));
+	ASSERT_EQ(colorBuffer.size(), 64u * 64u * 4u);
+	EXPECT_TRUE(std::any_of(colorBuffer.begin(), colorBuffer.end(), [](uint8_t value) {
+		return value != 0u;
+	}));
+}
