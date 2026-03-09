@@ -24,7 +24,11 @@
 template<typename T>
 static void RunBenchmark(benchmark::State &state, T &tester, const char *caseName, int triangleCount)
 {
+	#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	state.SetLabel(std::string("case=") + caseName + ",backend=cuda,mode=headless");
+#else
 	state.SetLabel(std::string("case=") + caseName + ",backend=cpu,mode=headless");
+#endif
 	state.counters["triangle_count"] = static_cast<double>(triangleCount);
 	state.counters["fps"] = benchmark::Counter(1, benchmark::Counter::kIsRate);
 
@@ -196,7 +200,7 @@ static void TriangleSampleTexture(benchmark::State &state, Multisample multisamp
 
 			layout(location = 0) in vec2 inTexCoord;
 			layout(location = 0) out vec4 outColor;
-			layout(binding = 0) uniform sampler2D texSampler;
+			layout(binding = 1) uniform sampler2D texSampler;
 
 			void main()
 			{
