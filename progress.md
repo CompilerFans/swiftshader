@@ -643,3 +643,9 @@
 ## 2026-03-10: Separate image/sampler blocker formalized
 - The local `separate image + sampler` reproducer crashes in both CPU and CUDA builds.
 - This capability is now explicitly tracked as a blocker and removed from the active short-term path.
+
+## 2026-03-10: FirstInstance draw coverage
+- Added `DrawTest.DrawUsesFirstInstanceOffset`, with BMP output to `draw-test-artifacts/first-instance-offset.bmp`.
+- Validation:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.DrawUsesFirstInstanceOffset')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.DrawUsesFirstInstanceOffset')` passed

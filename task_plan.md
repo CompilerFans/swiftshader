@@ -174,3 +174,5 @@ Complete
 - Current sample-gap blocker: `separate image + sampler` still fails as a real capability gap and should be tracked separately from the already-working combined image sampler path.
 
 - Explicit blocker: `separate image + sampler` is a real capability gap and is now deferred until a dedicated investigation cycle; do not route normal short-term feature work back into it.
+
+- Current firstInstance milestone: `draw(..., firstInstance)` / `gl_InstanceIndex` offset coverage is now present in both CPU and CUDA builds.

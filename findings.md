@@ -148,3 +148,5 @@
 - A minimal `separate image + sampler` draw probe currently crashes in both CPU and CUDA builds, so `separate_image_sampler` remains a real missing capability rather than a bootstrap-only optimization gap.
 
 - `separate image + sampler` has now been explicitly confirmed as a blocker: a minimal local reproducer crashes in both CPU and CUDA builds, so we should not keep circling back to it until it becomes a dedicated investigation item.
+
+- `draw(..., firstInstance)` is another low-risk external-sample-aligned gain: the renderer already honors `gl_InstanceIndex` with non-zero firstInstance, and the only adjustment needed was choosing sample points inside the resulting shifted geometry.
