@@ -461,3 +461,11 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.EmitsFlatInterpolatedColorShaderWhenRequested')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFlatInterpolatedColor')` passed
+- Triangle strip RED/GREEN:
+  - added failing backend tests for triangle-strip config extraction and constant-color strip rendering, plus a Vulkan draw test that renders a simple red strip and saves `triangle-strip-constant-color.bmp`
+  - extended `TrianglePipelineBootstrap` to accept `VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP`, copying `primitiveCount + 2` vertices and expanding each strip primitive to a triangle on the host side using the CPU default `FIRST_VERTEX` ordering
+  - reused the existing barycentric + fragment bootstrap path after that host-side topology expansion, keeping the runtime ABI unchanged
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromTriangleStripPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersTriangleStripConstantColor')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.TriangleStripConstantColor')` passed

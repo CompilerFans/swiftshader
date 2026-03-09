@@ -111,6 +111,32 @@ TEST(TrianglePipelineBootstrap, BuildsConfigFromMultipleTrianglesPositionStream)
 }
 
 
+TEST(TrianglePipelineBootstrap, BuildsConfigFromTriangleStripPositionStream)
+{
+	struct Vertex
+	{
+		float position[3];
+	};
+
+	const std::array<Vertex, 4> vertices = {{
+		{ { -0.8f, -0.8f, 0.0f } },
+		{ { -0.2f, 0.8f, 0.0f } },
+		{ { 0.2f, -0.8f, 0.0f } },
+		{ { 0.8f, 0.8f, 0.0f } },
+	}};
+
+	sw::Stream positionStream = {};
+	positionStream.buffer = vertices.data();
+	positionStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	positionStream.vertexStride = sizeof(Vertex);
+	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, nullptr, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP, 2u, { { 0, 0 }, { 64, 64 } }, &config));
+	EXPECT_EQ(config.topology, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP);
+	EXPECT_EQ(config.vertexCount, 4u);
+}
+
 TEST(TrianglePipelineBootstrap, BuildsConfigFromPointPositionStream)
 {
 	struct Vertex
@@ -214,6 +240,45 @@ TEST(TrianglePipelineBootstrap, BuildsConfigFromIndexedPositionStream)
 }
 
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+
+
+TEST(TrianglePipelineBootstrap, CudaRuntimeRendersTriangleStripConstantColor)
+{
+	struct Vertex
+	{
+		float position[3];
+	};
+
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	const std::array<Vertex, 4> vertices = {{
+		{ { -0.8f, -0.8f, 0.0f } },
+		{ { -0.2f, 0.8f, 0.0f } },
+		{ { 0.2f, -0.8f, 0.0f } },
+		{ { 0.8f, 0.8f, 0.0f } },
+	}};
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	config.width = 64u;
+	config.height = 64u;
+	config.topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP;
+	config.colorR = 1.0f;
+	config.colorG = 0.0f;
+	config.colorB = 0.0f;
+	config.colorA = 1.0f;
+	config.rawVertexData.resize(sizeof(Vertex) * vertices.size());
+	std::memcpy(config.rawVertexData.data(), vertices.data(), config.rawVertexData.size());
+	config.vertexCount = 4u;
+	config.binding.vertexStride = sizeof(Vertex);
+	config.binding.positionOffset = 0u;
+	config.binding.positionComponentCount = 3u;
+
+	std::vector<uint8_t> colorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, config, &colorBuffer));
+	ASSERT_EQ(colorBuffer.size(), 64u * 64u * 4u);
+	EXPECT_EQ(colorBuffer[((32u * 64u) + 32u) * 4u + 0], 255u);
+}
 
 TEST(TrianglePipelineBootstrap, CudaRuntimeRendersPointListConstantColor)
 {

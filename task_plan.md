@@ -129,3 +129,4 @@ Complete
 - Current point-list milestone: the CUDA bootstrap path now accepts `POINT_LIST` draws through a temporary host-side point-to-quad expansion, and the draw harness can configure point topology for focused tests.
 - Current PointCoord milestone: the CUDA bootstrap path now carries `pointCoordX/Y` for point-list draws and validates a minimal `PointCoordGradient` fragment mode end-to-end.
 - Current flat-interpolation milestone: the CUDA bootstrap path now distinguishes `flat` varying color from smooth interpolation and validates it against the default `FIRST_VERTEX` provoking rule.
+- Current triangle-strip milestone: the CUDA bootstrap path now accepts `TRIANGLE_STRIP` draws through host-side strip expansion that follows the CPU default provoking-vertex ordering.
