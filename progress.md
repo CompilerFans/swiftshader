@@ -600,3 +600,10 @@
 ## 2026-03-09: NoPerspective recheck with matched qualifiers
 - Re-ran the local `noperspective` reproducer after also marking the VS output as `noperspective`.
 - Result: the case still does not complete in either CPU or CUDA builds, so the issue is not just a VS/FS qualifier mismatch.
+
+## 2026-03-09: Push constant draw coverage
+- Added `DrawTester` support for explicit push constant ranges and data upload into graphics command buffers.
+- Added `DrawTest.VertexShaderUsesPushConstantOffset` and `DrawTest.FragmentShaderUsesPushConstantTint`, both with BMP output.
+- Validation:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.VertexShaderUsesPushConstantOffset:DrawTest.FragmentShaderUsesPushConstantTint')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.VertexShaderUsesPushConstantOffset:DrawTest.FragmentShaderUsesPushConstantTint')` passed

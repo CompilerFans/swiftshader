@@ -132,3 +132,5 @@
 - For visible benchmarks, explicit clear is necessary for reliable visual output. Unlike unit tests, users interpret the window contents frame-to-frame, so leaving the background undefined makes the benchmark look broken even when draw results are technically valid. This is a harness-level presentation requirement, not a reason to globally change Vulkan clear semantics.
 
 - Matching `noperspective` on both VS output and FS input does not unblock the local reproducer. The issue remains inside the renderer/compiler path rather than being explained away by qualifier mismatch alone.
+
+- A narrow push-constant path is low-risk and high-yield for feature expansion: the harness and command buffer path already supported Vulkan push constants, so adding explicit test-side pipeline layout ranges/data was enough to unlock real VS/FS push-constant coverage without touching the `noperspective` blocker.

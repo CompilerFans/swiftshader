@@ -158,3 +158,5 @@ Complete
 - Clear-background harness milestone: `DrawTester` now has an explicit opt-in color clear path for tests that need stable backgrounds, while the default non-MSAA path remains `eDontCare` to match the original CPU behavior.
 
 - Animated benchmark milestone: `animated-triangle-benchmark` now supports `--scene=color|texture`, and both scenes explicitly clear the background for stable visible output.
+
+- Push-constant milestone: draw harness now supports explicit push constant ranges/data, and narrow VS offset / FS tint cases pass in both CPU and CUDA builds.
