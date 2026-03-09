@@ -166,3 +166,7 @@ Complete
 - Current indexed-baseVertex milestone: `drawIndexed(..., vertexOffset, ...)` coverage is now present in both CPU and CUDA builds.
 
 - Vulkan Samples compatibility roadmap added: the current sample ladder now explicitly highlights missing capabilities such as separate image/sampler, mipmap generation, dynamic uniform buffers, dynamic rendering, dynamic blending, vertex dynamic state, and full instancing input-rate coverage.
+
+- Current blocker confirmed: `separate image + sampler` is not yet safe to promote into the committed parity suite; it needs separate investigation from the already-working combined image sampler path.
+
+- Current per-instance-input milestone: `VK_VERTEX_INPUT_RATE_INSTANCE` draw coverage is now present in both CPU and CUDA builds.

@@ -107,6 +107,13 @@ public:
 		addVertexBuffer(vertexBufferData, vertexBufferDataSize, sizeof(VertexType), std::move(inputAttributes));
 	}
 
+
+	template<typename VertexType>
+	void addInstanceBuffer(VertexType *vertexBufferData, size_t vertexBufferDataSize, std::vector<vk::VertexInputAttributeDescription> inputAttributes)
+	{
+		addInstanceBuffer(vertexBufferData, vertexBufferDataSize, sizeof(VertexType), std::move(inputAttributes));
+	}
+
 	template<typename IndexType>
 	void addIndexBuffer(IndexType *indexBufferData, size_t indexBufferDataSize, vk::IndexType indexType)
 	{
@@ -152,6 +159,7 @@ private:
 	vk::RenderPass createRenderPass(vk::Format colorFormat);
 	vk::Pipeline createGraphicsPipeline(vk::RenderPass renderPass);
 	void addVertexBuffer(void *vertexBufferData, size_t vertexBufferDataSize, size_t vertexSize, std::vector<vk::VertexInputAttributeDescription> inputAttributes);
+	void addInstanceBuffer(void *vertexBufferData, size_t vertexBufferDataSize, size_t vertexSize, std::vector<vk::VertexInputAttributeDescription> inputAttributes);
 	void addIndexBuffer(void *indexBufferData, size_t indexBufferDataSize, vk::IndexType indexType);
 
 	struct Hook
@@ -199,6 +207,8 @@ private:
 
 		uint32_t numVertices = 0;
 	} vertices;
+
+	VertexBuffer instances;
 
 	struct IndexBuffer
 	{

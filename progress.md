@@ -624,3 +624,14 @@
 - Scanned the local `~/gfx/Vulkan-Samples` tree for the requested VS/PS-focused samples.
 - Wrote `docs/plans/2026-03-10-vulkan-samples-compat-roadmap.md`.
 - Recorded which sample families are already covered, partially covered, or still missing from the current plan.
+
+## 2026-03-10: Separate image/sampler probe
+- Added a local minimal `separate image + sampler` draw probe and ran it in both CPU and CUDA builds.
+- Result: both paths crashed before frame completion. The probe was removed from the committed suite so the tree stays green.
+
+## 2026-03-10: Per-instance vertex input coverage
+- Extended `DrawTester` with a narrow second vertex buffer path for binding 1 / `VK_VERTEX_INPUT_RATE_INSTANCE`.
+- Added `DrawTest.VertexInputRateInstanceOffsets`, with BMP output to `draw-test-artifacts/instance-input-rate-offsets.bmp`.
+- Validation:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.VertexInputRateInstanceOffsets')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.VertexInputRateInstanceOffsets')` passed

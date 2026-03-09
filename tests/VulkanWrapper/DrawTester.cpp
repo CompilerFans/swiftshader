@@ -435,6 +435,24 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass)
 	pipelineCreateInfo.layout = pipelineLayout;
 	pipelineCreateInfo.renderPass = renderPass;
 
+	std::vector<vk::VertexInputBindingDescription> bindingDescriptions;
+	std::vector<vk::VertexInputAttributeDescription> attributeDescriptions;
+	if(vertices.buffer)
+	{
+		bindingDescriptions.push_back(vertices.inputBinding);
+		attributeDescriptions.insert(attributeDescriptions.end(), vertices.inputAttributes.begin(), vertices.inputAttributes.end());
+	}
+	if(instances.buffer)
+	{
+		bindingDescriptions.push_back(instances.inputBinding);
+		attributeDescriptions.insert(attributeDescriptions.end(), instances.inputAttributes.begin(), instances.inputAttributes.end());
+	}
+	vk::PipelineVertexInputStateCreateInfo vertexInputState;
+	vertexInputState.vertexBindingDescriptionCount = static_cast<uint32_t>(bindingDescriptions.size());
+	vertexInputState.pVertexBindingDescriptions = bindingDescriptions.data();
+	vertexInputState.vertexAttributeDescriptionCount = static_cast<uint32_t>(attributeDescriptions.size());
+	vertexInputState.pVertexAttributeDescriptions = attributeDescriptions.data();
+
 	vk::PipelineInputAssemblyStateCreateInfo inputAssemblyState;
 	inputAssemblyState.topology = primitiveTopology;
 	inputAssemblyState.primitiveRestartEnable = primitiveRestartEnable ? VK_TRUE : VK_FALSE;
@@ -499,7 +517,7 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass)
 
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
-	pipelineCreateInfo.pVertexInputState = &vertices.inputState;
+	pipelineCreateInfo.pVertexInputState = &vertexInputState;
 	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
 	pipelineCreateInfo.pColorBlendState = &colorBlendState;
@@ -609,8 +627,16 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 		if(vertices.numVertices > 0)
 		{
 			commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-			VULKAN_HPP_NAMESPACE::DeviceSize offset = 0;
-			commandBuffers[i].bindVertexBuffers(0, 1, &vertices.buffer, &offset);
+			std::vector<vk::Buffer> vertexBuffers;
+			std::vector<VULKAN_HPP_NAMESPACE::DeviceSize> offsets;
+			vertexBuffers.push_back(vertices.buffer);
+			offsets.push_back(0);
+			if(instances.buffer)
+			{
+				vertexBuffers.push_back(instances.buffer);
+				offsets.push_back(0);
+			}
+			commandBuffers[i].bindVertexBuffers(0, static_cast<uint32_t>(vertexBuffers.size()), vertexBuffers.data(), offsets.data());
 			if(pushConstantEnabled)
 			{
 				commandBuffers[i].pushConstants(pipelineLayout, pushConstantStages, 0, pushConstantSize, pushConstantData.data());
@@ -664,6 +690,34 @@ void DrawTester::addVertexBuffer(void *vertexBufferData, size_t vertexBufferData
 
 	// Note that we assume data is tightly packed
 	vertices.numVertices = static_cast<uint32_t>(vertexBufferDataSize / vertexSize);
+}
+
+void DrawTester::addInstanceBuffer(void *vertexBufferData, size_t vertexBufferDataSize, size_t vertexSize, std::vector<vk::VertexInputAttributeDescription> inputAttributes)
+{
+	assert(!instances.buffer);
+
+	vk::BufferCreateInfo vertexBufferInfo;
+	vertexBufferInfo.size = vertexBufferDataSize;
+	vertexBufferInfo.usage = vk::BufferUsageFlagBits::eVertexBuffer;
+	instances.buffer = device.createBuffer(vertexBufferInfo);
+	instances.size = vertexBufferDataSize;
+
+	vk::MemoryAllocateInfo memoryAllocateInfo;
+	vk::MemoryRequirements memoryRequirements = device.getBufferMemoryRequirements(instances.buffer);
+	memoryAllocateInfo.allocationSize = memoryRequirements.size;
+	memoryAllocateInfo.memoryTypeIndex = Util::getMemoryTypeIndex(physicalDevice, memoryRequirements.memoryTypeBits, vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+	instances.memory = device.allocateMemory(memoryAllocateInfo);
+
+	void *data = device.mapMemory(instances.memory, 0, VK_WHOLE_SIZE);
+	memcpy(data, vertexBufferData, vertexBufferDataSize);
+	device.unmapMemory(instances.memory);
+	device.bindBufferMemory(instances.buffer, instances.memory, 0);
+
+	instances.inputBinding.binding = 1;
+	instances.inputBinding.stride = static_cast<uint32_t>(vertexSize);
+	instances.inputBinding.inputRate = vk::VertexInputRate::eInstance;
+	instances.inputAttributes = std::move(inputAttributes);
+	instances.numVertices = static_cast<uint32_t>(vertexBufferDataSize / vertexSize);
 }
 
 void DrawTester::addIndexBuffer(void *indexBufferData, size_t indexBufferDataSize, vk::IndexType indexType)

@@ -140,3 +140,7 @@
 - `drawIndexed(..., vertexOffset, ...)` is another low-risk coverage gain: the existing CPU/CUDA draw paths already honor `baseVertex`, and the only real work needed here was choosing sample points inside the shifted triangle.
 
 - The local sample scan revealed that `hello_triangle_1_3` already depends on dynamic rendering (`vkCmdBeginRendering`), so it should not be grouped with plain `hello_triangle` in planning. That makes dynamic rendering a higher-priority missing capability than the previous rough roadmap suggested.
+
+- A minimal `separate image + sampler` draw case currently crashes in both CPU and CUDA builds. That makes `separate_image_sampler` a real missing capability rather than just an unimplemented bootstrap optimization.
+
+- `VK_VERTEX_INPUT_RATE_INSTANCE` is another low-risk compatibility gain: the underlying renderer already handles the Vulkan path correctly, and the main work was extending the test harness from one vertex buffer to a narrow two-binding case.
