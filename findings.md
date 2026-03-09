@@ -122,3 +122,7 @@
 - The repository already contains a real Vulkan textured-triangle setup in `tests/VulkanBenchmarks/TriangleBenchmarks.cpp`; the shortest path for texture support is to reuse that descriptor/image infrastructure instead of inventing a fake texture system.
 
 - The existing Vulkan descriptor payload is sufficient for a narrow bootstrap texture path: `SampledImageDescriptor` already contains prepared `sw::Texture`, dimensions, and `samplerId`, so the bootstrap only needs to copy level-0 texels plus a reduced sampler-state view.
+
+- The texture benchmark already existed, but its fragment shader and descriptor write path used different binding numbers. Aligning both to binding 1 makes the benchmark exercise the same narrow texture path used by the new draw tests.
+
+- The initial `linear/repeat` texture assertion failed because the chosen sample point assumed a near-white center mix. Actual CPU/CUDA output is a stable red/blue-heavy blend with low green at the center, so the robust test needs multiple sample points rather than a naive all-channels-high expectation.

@@ -563,3 +563,16 @@
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='FragmentBootstrap.CudaRuntimeSamplesTexture2DNearest')` passed
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleNearest:DrawTest.IndexedTexturedTriangleNearest')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleNearest:DrawTest.IndexedTexturedTriangleNearest')` passed
+
+## 2026-03-09: Texture follow-up coverage
+- Added `DrawTest.TexturedTriangleLinearRepeat` with BMP dump to validate the current linear/repeat texture bootstrap path using multi-point assertions.
+- Fixed the texture benchmark shader/layout binding mismatch in `tests/VulkanBenchmarks/TriangleBenchmarks.cpp` by aligning the fragment shader sampler binding with the descriptor write path.
+
+## 2026-03-09: Texture follow-up coverage
+- Added `DrawTest.TexturedTriangleLinearRepeat`, with BMP dump to `draw-test-artifacts/textured-triangle-linear-repeat.bmp`.
+- The test now uses multi-point assertions that match the actual `linear + repeat` sample pattern seen in both CPU and CUDA builds.
+- Fixed the texture benchmark shader/layout binding mismatch in `tests/VulkanBenchmarks/TriangleBenchmarks.cpp` by aligning the fragment shader sampler binding with the descriptor write path.
+- Validation:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleLinearRepeat')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.TexturedTriangleLinearRepeat')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./VulkanBenchmarks --benchmark_filter='TriangleSampleTexture' --benchmark_min_time=0.01s)` ran successfully

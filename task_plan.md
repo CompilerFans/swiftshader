@@ -150,3 +150,7 @@ Complete
 - Texture bootstrap planning complete: narrow `combined image sampler + vec2 uv + texture()` design and implementation plan are saved under `docs/plans/2026-03-09-texture-bootstrap-*.md`.
 
 - Texture bootstrap implementation milestone: narrow `combined image sampler + uv + texture()` is now live in both non-indexed and indexed triangle draws.
+
+- Current texture-followup milestone: `linear/repeat` textured draw coverage and texture benchmark integration are now in progress.
+
+- Current texture-followup milestone: `linear/repeat` textured draw coverage is now green, and the texture benchmark shader/descriptors are binding-aligned.
