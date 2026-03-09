@@ -54,6 +54,8 @@ public:
 	void setPrimitiveRestartEnable(bool enable);
 	void setLineWidth(float width);
 	void enableColorClear(const std::array<float, 4> &color);
+	void enablePushConstantRange(vk::ShaderStageFlags stageFlags, uint32_t size);
+	void setPushConstantData(vk::ShaderStageFlags stageFlags, const void *data, uint32_t size);
 	void enableDepthTest(bool depthTestEnable, bool depthWriteEnable, vk::CompareOp depthCompareOp);
 	void pumpWindowEvents();
 	void setWindowTitle(const std::string &title);
@@ -172,6 +174,10 @@ private:
 	bool primitiveRestartEnable = false;
 	bool colorClearEnabled = false;
 	std::array<float, 4> colorClearValue = { 0.5f, 0.5f, 0.5f, 1.0f };
+	bool pushConstantEnabled = false;
+	vk::ShaderStageFlags pushConstantStages = {};
+	uint32_t pushConstantSize = 0;
+	std::array<uint8_t, 128> pushConstantData = {};
 	float lineWidth = 1.0f;
 
 	std::unique_ptr<Window> window;

@@ -252,6 +252,24 @@ void DrawTester::enableColorClear(const std::array<float, 4> &color)
 	colorClearValue = color;
 }
 
+void DrawTester::enablePushConstantRange(vk::ShaderStageFlags stageFlags, uint32_t size)
+{
+	assert(size <= vk::MAX_PUSH_CONSTANT_SIZE);
+	pushConstantEnabled = true;
+	pushConstantStages = stageFlags;
+	pushConstantSize = size;
+}
+
+void DrawTester::setPushConstantData(vk::ShaderStageFlags stageFlags, const void *data, uint32_t size)
+{
+	assert(data != nullptr);
+	assert(size <= vk::MAX_PUSH_CONSTANT_SIZE);
+	pushConstantEnabled = true;
+	pushConstantStages = stageFlags;
+	pushConstantSize = size;
+	std::memcpy(pushConstantData.data(), data, size);
+}
+
 void DrawTester::enableDepthTest(bool enableTest, bool enableWrite, vk::CompareOp compareOp)
 {
 	depthTestEnabled = enableTest;
@@ -593,6 +611,10 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 			commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
 			VULKAN_HPP_NAMESPACE::DeviceSize offset = 0;
 			commandBuffers[i].bindVertexBuffers(0, 1, &vertices.buffer, &offset);
+			if(pushConstantEnabled)
+			{
+				commandBuffers[i].pushConstants(pipelineLayout, pushConstantStages, 0, pushConstantSize, pushConstantData.data());
+			}
 			if(hooks.recordDrawCommands)
 			{
 				hooks.recordDrawCommands(*this, commandBuffers[i]);
