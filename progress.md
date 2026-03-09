@@ -639,3 +639,7 @@
 ## 2026-03-10: Separate image/sampler probe
 - Added a local minimal `separate image + sampler` draw probe and ran it in both CPU and CUDA builds.
 - Result: both paths crashed before frame completion. The probe was intentionally removed from the committed suite so the tree stays green.
+
+## 2026-03-10: Separate image/sampler blocker formalized
+- The local `separate image + sampler` reproducer crashes in both CPU and CUDA builds.
+- This capability is now explicitly tracked as a blocker and removed from the active short-term path.

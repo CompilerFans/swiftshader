@@ -146,3 +146,5 @@
 - `VK_VERTEX_INPUT_RATE_INSTANCE` is another low-risk compatibility gain: the underlying renderer already handles the Vulkan path correctly, and the main work was extending the test harness from one vertex buffer to a narrow two-binding case.
 
 - A minimal `separate image + sampler` draw probe currently crashes in both CPU and CUDA builds, so `separate_image_sampler` remains a real missing capability rather than a bootstrap-only optimization gap.
+
+- `separate image + sampler` has now been explicitly confirmed as a blocker: a minimal local reproducer crashes in both CPU and CUDA builds, so we should not keep circling back to it until it becomes a dedicated investigation item.

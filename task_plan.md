@@ -172,3 +172,5 @@ Complete
 - Current per-instance-input milestone: `VK_VERTEX_INPUT_RATE_INSTANCE` draw coverage is now present in both CPU and CUDA builds.
 
 - Current sample-gap blocker: `separate image + sampler` still fails as a real capability gap and should be tracked separately from the already-working combined image sampler path.
+
+- Explicit blocker: `separate image + sampler` is a real capability gap and is now deferred until a dedicated investigation cycle; do not route normal short-term feature work back into it.
