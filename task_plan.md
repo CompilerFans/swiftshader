@@ -140,3 +140,7 @@ Complete
 - Current indexed-topology milestone: `indexed line-strip` and `indexed triangle-fan` are now covered by backend and Vulkan draw tests, confirming that the existing host-side deindex + topology expansion path already handles these two shapes.
 
 - Current indexed-point milestone: `indexed point-list` is now covered by backend and Vulkan draw tests, confirming that the existing host-side deindexing path already composes with the point-list bootstrap and `PointSize` bridge.
+
+- Current primitive-restart draw milestone: `IndexedTriangleStripWithPrimitiveRestart` is now covered in the draw harness and passes in both CPU and CUDA builds; the earlier failure was a bad sample point, not a renderer defect.
+
+- Current blocker revalidated: `noperspective` still crashes in both CPU and CUDA draw paths, so it remains outside the committed parity suite until root-caused.

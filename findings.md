@@ -112,3 +112,7 @@
 - After the `PointSize` bridge landed, indexed `POINT_LIST` required no extra runtime changes: the existing deindex-before-bootstrap path already composes correctly with the point quad expansion and point-fragment payload generation.
 
 - `IndexedTriangleStripWithPrimitiveRestart` was not a real renderer blocker in the current draw harness: the initial failure came from sampling below the actual covered region. After correcting the sample points, the case passes in the CPU baseline.
+
+- `IndexedTriangleStripWithPrimitiveRestart` is currently covered at the draw-harness level and passes in both CPU and CUDA builds; the previously observed failure was caused by sampling below the actual covered region, not by primitive restart semantics being broken in the renderer path.
+
+- A minimal `noperspective` varying-color draw case still crashes in both the CPU baseline and the CUDA build before producing a frame. This remains a real blocker and should stay out of committed test suites until the crash is root-caused.
