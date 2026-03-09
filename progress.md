@@ -420,3 +420,11 @@
   - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='RasterBootstrap.CpuReferenceSetsFrontFacingFlag:FragmentBootstrap.EmitsFrontFacingBinaryShaderWhenRequested:FragmentBootstrap.CudaRuntimeWritesFrontFacingBinaryColors')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFrontFacingColors')` passed
+- FragCoord discard RED/GREEN:
+  - added failing backend tests for a `FragCoordDiscardLeftConstantColor` fragment mode and a Vulkan draw test that discards the left half of a fullscreen triangle based on `gl_FragCoord.x`
+  - extended `FragmentBootstrap` with a narrow discard mode and taught `Renderer::draw()` to select it when the fragment shader uses `FragCoord` and analysis reports `ContainsDiscard`
+  - kept the implementation intentionally narrow: the bootstrap mode models the exact left-half discard case used by the validation shader, which is sufficient to exercise a first real discard path without widening the stage ABI again
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.EmitsFragCoordDiscardLeftShaderWhenRequested:FragmentBootstrap.CudaRuntimeDiscardsLeftHalfForFragCoordMode')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderDiscardsLeftHalfByFragCoord')` passed

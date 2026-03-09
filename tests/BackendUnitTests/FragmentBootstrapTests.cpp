@@ -55,6 +55,18 @@ TEST(FragmentBootstrap, EmitsFrontFacingBinaryShaderWhenRequested)
 	EXPECT_NE(source.find("params.colorR"), std::string::npos);
 }
 
+
+TEST(FragmentBootstrap, EmitsFragCoordDiscardLeftShaderWhenRequested)
+{
+	backend::FragmentBootstrapConfig config = {};
+	config.shaderKind = backend::FragmentBootstrapShaderKind::FragCoordDiscardLeftConstantColor;
+
+	std::string source = backend::fragmentBootstrapCudaSource(config);
+
+	EXPECT_NE(source.find("invocation.x * 2u < params.width"), std::string::npos);
+	EXPECT_NE(source.find("outA = 0u;"), std::string::npos);
+}
+
 TEST(FragmentBootstrap, LaunchUsesSingleFsParamsArgument)
 {
 	backend::FakeRuntimeAPI runtime;
@@ -156,6 +168,38 @@ TEST(FragmentBootstrap, CudaRuntimeWritesFragCoordQuadrantColors)
 	EXPECT_EQ(colorBuffer[bottomRight + 1], 255u);
 	EXPECT_EQ(colorBuffer[bottomRight + 2], 0u);
 	EXPECT_EQ(colorBuffer[bottomRight + 3], 255u);
+}
+
+
+TEST(FragmentBootstrap, CudaRuntimeDiscardsLeftHalfForFragCoordMode)
+{
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	std::vector<backend::FragmentBootstrapInvocation> invocations = {
+		{ 1u, 1u, 1u, 0u, 1u },
+		{ 6u, 1u, 1u, 0u, 1u },
+	};
+	backend::FragmentBootstrapConfig config = {};
+	config.shaderKind = backend::FragmentBootstrapShaderKind::FragCoordDiscardLeftConstantColor;
+	config.colorR = 1.0f;
+	config.colorG = 0.0f;
+	config.colorB = 0.0f;
+	config.colorA = 1.0f;
+	std::vector<uint8_t> colorBuffer;
+
+	ASSERT_TRUE(backend::runFragmentBootstrap(runtime, 8u, 8u, invocations, config, &colorBuffer));
+	ASSERT_EQ(colorBuffer.size(), 8u * 8u * 4u);
+
+	size_t left = ((1u * 8u) + 1u) * 4u;
+	EXPECT_EQ(colorBuffer[left + 0], 0u);
+	EXPECT_EQ(colorBuffer[left + 3], 0u);
+
+	size_t right = ((1u * 8u) + 6u) * 4u;
+	EXPECT_EQ(colorBuffer[right + 0], 255u);
+	EXPECT_EQ(colorBuffer[right + 1], 0u);
+	EXPECT_EQ(colorBuffer[right + 2], 0u);
+	EXPECT_EQ(colorBuffer[right + 3], 255u);
 }
 
 TEST(FragmentBootstrap, CudaRuntimeWritesFrontFacingBinaryColors)

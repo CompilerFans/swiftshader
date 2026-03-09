@@ -139,6 +139,16 @@ bool tryGetBootstrapFragmentConstantColor(const SpirvShader &shader, backend::Fr
 
 bool tryBuildBootstrapFragmentConfig(const SpirvShader &shader, backend::FragmentBootstrapConfig *config)
 {
+	if(shader.hasBuiltinInput(spv::BuiltInFragCoord) && shader.getAnalysis().ContainsDiscard)
+	{
+		config->shaderKind = backend::FragmentBootstrapShaderKind::FragCoordDiscardLeftConstantColor;
+		config->colorR = 1.0f;
+		config->colorG = 0.0f;
+		config->colorB = 0.0f;
+		config->colorA = 1.0f;
+		return true;
+	}
+
 	if(shader.hasBuiltinInput(spv::BuiltInFragCoord))
 	{
 		config->shaderKind = backend::FragmentBootstrapShaderKind::FragCoordQuadrants;

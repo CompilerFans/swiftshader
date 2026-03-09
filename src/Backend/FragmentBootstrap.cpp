@@ -139,6 +139,21 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 		          "\toutB = packColor(colorB);\n"
 		          "\toutA = packColor(colorA);\n";
 	}
+	else if(config.shaderKind == FragmentBootstrapShaderKind::FragCoordDiscardLeftConstantColor)
+	{
+		source << "\tif(invocation.x * 2u < params.width)\n"
+		          "\t{\n"
+		          "\t\toutR = 0u;\n"
+		          "\t\toutG = 0u;\n"
+		          "\t\toutB = 0u;\n"
+		          "\t\toutA = 0u;\n"
+		          "\t\treturn;\n"
+		          "\t}\n"
+		          "\toutR = packColor(params.colorR);\n"
+		          "\toutG = packColor(params.colorG);\n"
+		          "\toutB = packColor(params.colorB);\n"
+		          "\toutA = packColor(params.colorA);\n";
+	}
 	else
 	{
 		source << "\t(void)params;\n"

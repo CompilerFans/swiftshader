@@ -15,6 +15,7 @@ enum class FragmentBootstrapShaderKind
 	FragCoordQuadrants,
 	InterpolatedColor,
 	FrontFacingBinaryColors,
+	FragCoordDiscardLeftConstantColor,
 };
 
 struct FragmentBootstrapInvocation
