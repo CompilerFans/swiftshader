@@ -635,3 +635,7 @@
 - Validation:
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.VertexInputRateInstanceOffsets')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.VertexInputRateInstanceOffsets')` passed
+
+## 2026-03-10: Separate image/sampler probe
+- Added a local minimal `separate image + sampler` draw probe and ran it in both CPU and CUDA builds.
+- Result: both paths crashed before frame completion. The probe was intentionally removed from the committed suite so the tree stays green.

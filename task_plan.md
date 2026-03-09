@@ -170,3 +170,5 @@ Complete
 - Current blocker confirmed: `separate image + sampler` is not yet safe to promote into the committed parity suite; it needs separate investigation from the already-working combined image sampler path.
 
 - Current per-instance-input milestone: `VK_VERTEX_INPUT_RATE_INSTANCE` draw coverage is now present in both CPU and CUDA builds.
+
+- Current sample-gap blocker: `separate image + sampler` still fails as a real capability gap and should be tracked separately from the already-working combined image sampler path.
