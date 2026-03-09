@@ -613,3 +613,9 @@
 - Validation:
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.VertexShaderUsesInstanceIndexOffset')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.VertexShaderUsesInstanceIndexOffset')` passed
+
+## 2026-03-10: BaseVertex draw coverage
+- Added `DrawTest.IndexedDrawUsesBaseVertexOffset`, with BMP output to `draw-test-artifacts/indexed-base-vertex-offset.bmp`.
+- Validation:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.IndexedDrawUsesBaseVertexOffset')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.IndexedDrawUsesBaseVertexOffset')` passed

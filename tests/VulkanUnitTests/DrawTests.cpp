@@ -2598,3 +2598,73 @@ TEST_F(DrawTest, VertexShaderUsesInstanceIndexOffset)
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
 #endif
 }
+
+
+TEST_F(DrawTest, IndexedDrawUsesBaseVertexOffset)
+{
+	auto artifactPath = makeDrawArtifactPath("indexed-base-vertex-offset.bmp");
+	std::filesystem::remove(artifactPath);
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	auto stampPath = makeCudaLaunchStampPath("indexed-base-vertex-offset");
+	std::filesystem::remove(stampPath);
+	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
+#endif
+
+	DrawTester tester;
+	tester.enableColorClear({ 0.5f, 0.5f, 0.5f, 1.0f });
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex { float position[3]; };
+		Vertex vertexBufferData[] = {
+			{ { -0.95f, -0.85f, 0.5f } },
+			{ { -0.75f,  0.15f, 0.5f } },
+			{ { -0.55f, -0.85f, 0.5f } },
+			{ {  0.05f, -0.85f, 0.5f } },
+			{ {  0.45f,  0.15f, 0.5f } },
+			{ {  0.85f, -0.85f, 0.5f } },
+		};
+		uint16_t indexBufferData[] = { 0u, 1u, 2u };
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
+		tester.addIndexBuffer(indexBufferData, sizeof(indexBufferData), vk::IndexType::eUint16);
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 310 es
+			layout(location = 0) in vec3 inPos;
+			void main() { gl_Position = vec4(inPos, 1.0); })";
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 310 es
+			precision highp float;
+			layout(location = 0) out vec4 outColor;
+			void main() { outColor = vec4(1.0, 0.0, 0.0, 1.0); })";
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.onRecordDrawCommands([](DrawTester &tester, vk::CommandBuffer &commandBuffer) {
+		tester.bindIndexBuffer(commandBuffer);
+		commandBuffer.drawIndexed(3, 1, 0, 3, 0);
+	});
+
+	tester.initialize();
+	tester.renderFrame();
+	tester.saveFrame(artifactPath);
+	auto rightPixel = tester.readbackPixel(900, 240);
+	auto leftBackground = tester.readbackPixel(260, 280);
+	EXPECT_GT(rightPixel[0], 200);
+	EXPECT_LT(rightPixel[1], 80);
+	EXPECT_LT(rightPixel[2], 80);
+	EXPECT_NEAR(leftBackground[0], 128, 4);
+	EXPECT_NEAR(leftBackground[1], 128, 4);
+	EXPECT_NEAR(leftBackground[2], 128, 4);
+	EXPECT_TRUE(std::filesystem::exists(artifactPath));
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
+#endif
+}
