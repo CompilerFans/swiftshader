@@ -126,3 +126,4 @@ Complete
 - Current FrontFacing milestone: the CUDA bootstrap path now carries a per-triangle `frontFacing` flag from raster to fragment, `Renderer::draw()` detects `BuiltInFrontFacing`, and a minimal binary-colors fragment mode validates the end-to-end path against the CPU renderer.
 - Current discard milestone: the CUDA bootstrap path now recognizes a narrow `FragCoord + discard` fragment family, emits a left-half discard mode, and validates it end-to-end against the CPU renderer.
 - Current FragDepth milestone: the CUDA bootstrap path now supports a narrow interpolated-color-driven `FragDepth` mode, optional fragment depth-buffer output, and host-side depth composition across overlapping triangles.
+- Current point-list milestone: the CUDA bootstrap path now accepts `POINT_LIST` draws through a temporary host-side point-to-quad expansion, and the draw harness can configure point topology for focused tests.

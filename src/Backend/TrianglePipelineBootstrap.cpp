@@ -77,6 +77,31 @@ std::array<RasterBootstrapVertex, 3> toRasterVertices(const GraphicsBootstrapVer
 	return toRasterVertices(triangleOutputs, width, height);
 }
 
+std::array<RasterBootstrapVertex, 4> toPointQuad(const GraphicsBootstrapVertexOutput &output, uint32_t width, uint32_t height, float pointSize)
+{
+	std::array<RasterBootstrapVertex, 4> quad = {};
+	float ndcX = output.x / output.w;
+	float ndcY = output.y / output.w;
+	float centerX = (ndcX * 0.5f + 0.5f) * static_cast<float>(width);
+	float centerY = (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(height);
+	float halfSize = pointSize * 0.5f;
+	auto fill = [&](RasterBootstrapVertex &vertex, float x, float y) {
+		vertex.x = x;
+		vertex.y = y;
+		vertex.z = output.z;
+		vertex.w = output.w;
+		vertex.colorR = output.colorR;
+		vertex.colorG = output.colorG;
+		vertex.colorB = output.colorB;
+		vertex.colorA = output.colorA;
+	};
+	fill(quad[0], centerX - halfSize, centerY - halfSize);
+	fill(quad[1], centerX + halfSize, centerY - halfSize);
+	fill(quad[2], centerX + halfSize, centerY + halfSize);
+	fill(quad[3], centerX - halfSize, centerY + halfSize);
+	return quad;
+}
+
 }  // namespace
 
 bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise)
@@ -85,7 +110,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 	{
 		return false;
 	}
-	if(topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST || primitiveCount == 0)
+	if((topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST && topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST) || primitiveCount == 0)
 	{
 		return false;
 	}
@@ -102,7 +127,8 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 
 	config->width = renderArea.extent.width;
 	config->height = renderArea.extent.height;
-	config->vertexCount = primitiveCount * 3;
+	config->topology = topology;
+	config->vertexCount = primitiveCount * (topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? 1u : 3u);
 	if(indexData != nullptr)
 	{
 		switch(indexType)
@@ -245,12 +271,16 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		fragmentConfig.colorA = config.colorA;
 	}
 
-	if(vsOutputs.empty() || (vsOutputs.size() % 3) != 0)
+	if(vsOutputs.empty())
+	{
+		return false;
+	}
+	if(config.topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST && (vsOutputs.size() % 3) != 0)
 	{
 		return false;
 	}
 
-	const size_t triangleCount = vsOutputs.size() / 3;
+	const size_t primitiveCount = config.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? vsOutputs.size() : (vsOutputs.size() / 3);
 	std::vector<uint8_t> accumulatedColorBuffer;
 	std::vector<float> accumulatedDepthBuffer;
 	const bool useDepthCompose = (fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth);
@@ -263,9 +293,56 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		accumulatedDepthBuffer.assign(static_cast<size_t>(config.width) * config.height, 1.0f);
 	}
 
-	for(size_t triangleIndex = 0; triangleIndex < triangleCount; triangleIndex++)
+	auto composeColorBuffers = [&](const std::vector<uint8_t> &triangleColorBuffer, const std::vector<float> &triangleDepthBuffer) {
+		if(!colorBuffer)
+		{
+			return;
+		}
+		for(size_t i = 0; i < triangleColorBuffer.size(); i += 4)
+		{
+			if(triangleColorBuffer[i + 3] == 0u)
+			{
+				continue;
+			}
+			if(useDepthCompose)
+			{
+				size_t pixelIndex = i / 4;
+				if(triangleDepthBuffer[pixelIndex] >= accumulatedDepthBuffer[pixelIndex])
+				{
+					continue;
+				}
+				accumulatedDepthBuffer[pixelIndex] = triangleDepthBuffer[pixelIndex];
+			}
+			accumulatedColorBuffer[i + 0] = triangleColorBuffer[i + 0];
+			accumulatedColorBuffer[i + 1] = triangleColorBuffer[i + 1];
+			accumulatedColorBuffer[i + 2] = triangleColorBuffer[i + 2];
+			accumulatedColorBuffer[i + 3] = triangleColorBuffer[i + 3];
+		}
+	};
+
+	for(size_t primitiveIndex = 0; primitiveIndex < primitiveCount; primitiveIndex++)
 	{
-		const auto triangle = toRasterVertices(vsOutputs.data() + triangleIndex * 3, config.width, config.height);
+		if(config.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
+		{
+			const auto quad = toPointQuad(vsOutputs[primitiveIndex], config.width, config.height, config.pointSize);
+			std::array<std::array<RasterBootstrapVertex, 3>, 2> triangles = {{
+				{{ quad[0], quad[1], quad[2] }},
+				{{ quad[0], quad[2], quad[3] }},
+			}};
+			for(const auto &triangle : triangles)
+			{
+				std::vector<uint8_t> triangleColorBuffer;
+				std::vector<float> triangleDepthBuffer;
+				if(!runRasterFragmentBootstrap(runtime, triangle, rasterConfig, fragmentConfig, colorBuffer ? &triangleColorBuffer : nullptr, useDepthCompose ? &triangleDepthBuffer : nullptr))
+				{
+					return false;
+				}
+				composeColorBuffers(triangleColorBuffer, triangleDepthBuffer);
+			}
+			continue;
+		}
+
+		const auto triangle = toRasterVertices(vsOutputs.data() + primitiveIndex * 3, config.width, config.height);
 		if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth)
 		{
 			fragmentConfig.vertexColor0R = triangle[0].colorR;
@@ -287,30 +364,7 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		{
 			return false;
 		}
-
-		if(colorBuffer)
-		{
-			for(size_t i = 0; i < triangleColorBuffer.size(); i += 4)
-			{
-				if(triangleColorBuffer[i + 3] == 0u)
-				{
-					continue;
-				}
-				if(useDepthCompose)
-				{
-					size_t pixelIndex = i / 4;
-					if(triangleDepthBuffer[pixelIndex] >= accumulatedDepthBuffer[pixelIndex])
-					{
-						continue;
-					}
-					accumulatedDepthBuffer[pixelIndex] = triangleDepthBuffer[pixelIndex];
-				}
-				accumulatedColorBuffer[i + 0] = triangleColorBuffer[i + 0];
-				accumulatedColorBuffer[i + 1] = triangleColorBuffer[i + 1];
-				accumulatedColorBuffer[i + 2] = triangleColorBuffer[i + 2];
-				accumulatedColorBuffer[i + 3] = triangleColorBuffer[i + 3];
-			}
-		}
+		composeColorBuffers(triangleColorBuffer, triangleDepthBuffer);
 	}
 
 	if(colorBuffer)

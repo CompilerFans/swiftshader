@@ -436,3 +436,11 @@
   - `cmake --build build-cuda-bootstrap --target draw-unittests backend-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.EmitsInterpolatedColorFragDepthShaderWhenRequested:TrianglePipelineBootstrap.CudaRuntimeAppliesFragDepthMode')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.FragmentShaderUsesFragDepthFromInterpolatedColor')` passed
+- Point-list bootstrap RED/GREEN:
+  - added failing backend tests for point-list config extraction and constant-color point rendering, plus a Vulkan draw test that renders a single red point with `gl_PointSize = 64.0`
+  - extended `DrawTester` with primitive-topology control and widened `TrianglePipelineBootstrap` to accept `POINT_LIST`, using a narrow host-side point-to-quad expansion into two triangles so the existing raster/fragment bootstrap can be reused unchanged
+  - deliberately kept this as a transitional path so `PointCoord` can be layered on top next without blocking current draw-state coverage expansion
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests backend-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromPointPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersPointListConstantColor')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.PointListConstantColor')` passed
