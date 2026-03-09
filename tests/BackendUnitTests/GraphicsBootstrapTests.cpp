@@ -260,3 +260,34 @@ TEST(GraphicsBootstrap, CudaRuntimeExecutesInstanceIndexShift)
 	}
 }
 #endif
+
+TEST(GraphicsBootstrap, EmitsPointSizeShaderBody)
+{
+	backend::GraphicsBootstrapShaderConfig config = {};
+	config.pointSize = 16.0f;
+
+	std::string source = backend::graphicsBootstrapCudaSource(config);
+
+	EXPECT_NE(source.find("float pointSize;"), std::string::npos);
+	EXPECT_NE(source.find("outVertex.pointSize = 16.0f;"), std::string::npos);
+}
+
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+TEST(GraphicsBootstrap, CudaRuntimeExecutesPointSizeOutput)
+{
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	std::vector<backend::GraphicsBootstrapVertexInput> inputs = {
+		{ 0.0f, 0.0f, 0.0f },
+	};
+	std::vector<backend::GraphicsBootstrapVertexOutput> outputs;
+
+	backend::GraphicsBootstrapShaderConfig config = {};
+	config.pointSize = 16.0f;
+
+	ASSERT_TRUE(backend::runGraphicsBootstrap(runtime, inputs, config, &outputs));
+	ASSERT_EQ(outputs.size(), 1u);
+	EXPECT_FLOAT_EQ(outputs[0].pointSize, 16.0f);
+}
+#endif

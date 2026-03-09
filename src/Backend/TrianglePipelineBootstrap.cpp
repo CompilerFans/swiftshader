@@ -154,7 +154,7 @@ std::array<RasterBootstrapVertex, 4> toPointQuad(const GraphicsBootstrapVertexOu
 
 }  // namespace
 
-bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise)
+bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize)
 {
 	if(config == nullptr || positionStream.buffer == nullptr)
 	{
@@ -178,6 +178,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 	config->width = renderArea.extent.width;
 	config->height = renderArea.extent.height;
 	config->topology = topology;
+	config->pointSize = pointSize;
 	config->vertexCount = topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? primitiveCount : ((topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST) ? primitiveCount * 2u : ((topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? primitiveCount + (topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP ? 1u : 2u) : primitiveCount * 3u));
 	if(indexData != nullptr)
 	{
@@ -295,7 +296,7 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				colorB = config.binding.colorComponentCount > 2 ? color[2] : colorG;
 				colorA = config.binding.colorComponentCount > 3 ? color[3] : 1.0f;
 			}
-			vsOutputs[i] = { position[0], position[1], z, 1.0f, colorR, colorG, colorB, colorA };
+			vsOutputs[i] = { position[0], position[1], z, 1.0f, config.pointSize, colorR, colorG, colorB, colorA };
 		}
 	}
 	else
@@ -303,7 +304,7 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		vsOutputs.resize(config.vertices.size());
 		for(size_t i = 0; i < config.vertices.size(); i++)
 		{
-			vsOutputs[i] = { config.vertices[i].x, config.vertices[i].y, config.vertices[i].z, 1.0f, 1.0f, 1.0f, 1.0f, 1.0f };
+			vsOutputs[i] = { config.vertices[i].x, config.vertices[i].y, config.vertices[i].z, 1.0f, config.pointSize, 1.0f, 1.0f, 1.0f, 1.0f };
 		}
 	}
 
@@ -378,7 +379,8 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	{
 		if(config.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
 		{
-			const auto quad = toPointQuad(vsOutputs[primitiveIndex], config.width, config.height, config.pointSize);
+			const float pointSize = vsOutputs[primitiveIndex].pointSize > 0.0f ? vsOutputs[primitiveIndex].pointSize : config.pointSize;
+			const auto quad = toPointQuad(vsOutputs[primitiveIndex], config.width, config.height, pointSize);
 			float minX = quad[0].x;
 			float minY = quad[0].y;
 			float maxX = quad[2].x;
@@ -397,8 +399,8 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 					invocation.x = x;
 					invocation.y = y;
 					invocation.exportMask = 1u;
-					invocation.pointCoordX = (static_cast<float>(x) + 0.5f - minX) / config.pointSize;
-					invocation.pointCoordY = (static_cast<float>(y) + 0.5f - minY) / config.pointSize;
+					invocation.pointCoordX = (static_cast<float>(x) + 0.5f - minX) / pointSize;
+					invocation.pointCoordY = (static_cast<float>(y) + 0.5f - minY) / pointSize;
 					invocations.push_back(invocation);
 				}
 			}
@@ -550,10 +552,10 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	return true;
 }
 
-bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise)
+bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize)
 {
 	TrianglePipelineBootstrapConfig config = {};
-	if(!buildTrianglePipelineBootstrapConfig(positionStream, colorStream, topology, primitiveCount, renderArea, &config, fragmentConfig, indexData, indexType, baseVertex, frontFaceCounterClockwise))
+	if(!buildTrianglePipelineBootstrapConfig(positionStream, colorStream, topology, primitiveCount, renderArea, &config, fragmentConfig, indexData, indexType, baseVertex, frontFaceCounterClockwise, pointSize))
 	{
 		return false;
 	}

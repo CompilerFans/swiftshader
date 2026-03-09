@@ -39,6 +39,8 @@
 #include "marl/defer.h"
 #include "marl/trace.h"
 
+#include <unordered_set>
+
 #undef max
 
 #ifndef NDEBUG
@@ -48,6 +50,83 @@ unsigned int maxPrimitives = 1 << 21;
 
 namespace sw {
 namespace {
+
+bool tryGetBootstrapVertexPointSizeConstant(const SpirvShader &shader, float *pointSize)
+{
+	if(pointSize == nullptr)
+	{
+		return false;
+	}
+	auto builtinIt = shader.outputBuiltins.find(spv::BuiltInPointSize);
+	if(builtinIt == shader.outputBuiltins.end())
+	{
+		return false;
+	}
+
+	auto builtinId = builtinIt->second.Id;
+	auto objectType = shader.getObjectType(builtinId);
+	std::unordered_set<uint32_t> candidatePointers = { builtinId.value() };
+	if(objectType.isBuiltInBlock)
+	{
+		auto memberIt = shader.memberDecorations.find(objectType.element);
+		if(memberIt == shader.memberDecorations.end())
+		{
+			return false;
+		}
+		int pointSizeMember = -1;
+		for(size_t memberIndex = 0; memberIndex < memberIt->second.size(); memberIndex++)
+		{
+			if(memberIt->second[memberIndex].HasBuiltIn && memberIt->second[memberIndex].BuiltIn == spv::BuiltInPointSize)
+			{
+				pointSizeMember = static_cast<int>(memberIndex);
+				break;
+			}
+		}
+		if(pointSizeMember < 0)
+		{
+			return false;
+		}
+		for(auto insn : shader)
+		{
+			if((insn.opcode() == spv::OpAccessChain || insn.opcode() == spv::OpInBoundsAccessChain) && insn.word(3) == builtinId.value() && insn.wordCount() >= 5)
+			{
+				auto indexObject = shader.getObject(Spirv::Object::ID(insn.word(4)));
+				if(indexObject.kind == Spirv::Object::Kind::Constant && !indexObject.constantValue.empty() && static_cast<int>(indexObject.constantValue[0]) == pointSizeMember)
+				{
+					candidatePointers.insert(insn.word(2));
+				}
+			}
+		}
+	}
+
+	bool sawConstantStore = false;
+	float constantPointSize = 0.0f;
+	for(auto insn : shader)
+	{
+		if(insn.opcode() != spv::OpStore || candidatePointers.count(insn.word(1)) == 0)
+		{
+			continue;
+		}
+		auto valueObject = shader.getObject(Spirv::Object::ID(insn.word(2)));
+		if(valueObject.kind != Spirv::Object::Kind::Constant || valueObject.constantValue.empty())
+		{
+			return false;
+		}
+		float storedPointSize = bit_cast<float>(valueObject.constantValue[0]);
+		if(sawConstantStore && constantPointSize != storedPointSize)
+		{
+			return false;
+		}
+		constantPointSize = storedPointSize;
+		sawConstantStore = true;
+	}
+	if(!sawConstantStore)
+	{
+		return false;
+	}
+	*pointSize = constantPointSize;
+	return true;
+}
 
 bool tryGetBootstrapFragmentConstantColor(const SpirvShader &shader, backend::FragmentBootstrapConfig *config)
 {
@@ -517,8 +596,14 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 				colorStream = &inputs.getStream(1);
 			}
 
+			float bootstrapPointSize = 64.0f;
+			if(const sw::SpirvShader *bootstrapVertexShader = pipeline->getShader(VK_SHADER_STAGE_VERTEX_BIT).get())
+			{
+				tryGetBootstrapVertexPointSizeConstant(*bootstrapVertexShader, &bootstrapPointSize);
+			}
+
 			if(runtime->isHardwareBacked() &&
-			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE))
+			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE, bootstrapPointSize))
 			{
 				customGraphicsBootstrapDone = true;
 			}

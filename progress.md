@@ -487,3 +487,22 @@
   - `(cd build-benchmark-cpu && ./draw-unittests --gtest_filter='DrawTest.LineListConstantColor')` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromLineListPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersLineListConstantColor')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.LineListConstantColor')` passed
+
+## 2026-03-09: LINE_LIST / LINE_STRIP bootstrap
+- Added `VK_PRIMITIVE_TOPOLOGY_LINE_STRIP` support to `TrianglePipelineBootstrap` by expanding each segment into a quad and reusing the existing triangle bootstrap chain.
+- Added backend tests for `BuildsConfigFromLineStripPositionStream` and `CudaRuntimeRendersLineStripConstantColor`, alongside the already-added `LINE_LIST` coverage.
+- Added `DrawTest.LineStripConstantColor`, with mandatory BMP dump to `draw-test-artifacts/line-strip-constant-color.bmp`.
+- Added `DrawTester::readbackFrameRgba()` to make wide-line verification stable without relying on one fragile sample point.
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromLineListPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersLineListConstantColor:TrianglePipelineBootstrap.BuildsConfigFromLineStripPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersLineStripConstantColor')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle:DrawTest.LineListConstantColor:DrawTest.LineStripConstantColor')` passed
+
+## 2026-03-09: PointSize bootstrap bridge
+- Added `pointSize` to `GraphicsBootstrapVertexOutput` and emitted it from generated `vs_main`, making `PointSize` part of the bootstrap VS contract.
+- Extended point-list bootstrap to consume per-vertex `pointSize` when expanding points to quads and generating `PointCoord` payloads.
+- Added a minimal `SpirvShader` extraction path for constant `gl_PointSize` stores through the builtin output block and threaded that value from `Renderer::draw()` into `runTrianglePipelineBootstrap()`.
+- Added backend coverage for emitted/runtime point-size outputs and a Vulkan draw test `DrawTest.PointListUsesVertexPointSize`, with BMP dump to `draw-test-artifacts/point-list-vertex-point-size.bmp`.
+- Validation:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='GraphicsBootstrap.EmitsPointSizeShaderBody:GraphicsBootstrap.CudaRuntimeExecutesPointSizeOutput')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.PointListUsesVertexPointSize:DrawTest.PointListConstantColor:DrawTest.FragmentShaderUsesPointCoordGradient')` passed

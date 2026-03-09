@@ -102,3 +102,7 @@
 - `triangle fan` is another good fit for host-side topology expansion: keep the center vertex fixed, expand `(0, i+1, i+2)` per primitive, and reuse the existing triangle bootstrap chain unchanged.
 - `gl_SampleMask` output currently crashes in the CPU-only baseline as well as the CUDA build. Like the earlier `noperspective` case, it should be tracked as a CPU-reference blocker before being used as a CUDA parity milestone.
 - `LineListConstantColor` needed an explicit wide line in the draw harness to become a stable CPU baseline. For topology bring-up, test geometry should be chosen to avoid mistaking thin-line raster rules for backend regressions.
+
+- `LINE_STRIP` needed a frame-level readback assertion instead of a single hard-coded sample point. The rendered V-shape leaves the screen center empty, so stable verification should count red pixels across the dumped frame rather than assume one interior pixel is covered.
+
+- `gl_PointSize` for the current bootstrap can be brought up with a narrow constant-path extractor: scan the builtin output block for `PointSize`, follow `OpAccessChain` pointers to the matching member, and accept only uniform constant `OpStore` values. That is enough to remove the old hard-coded point-size fallback for simple point shaders.

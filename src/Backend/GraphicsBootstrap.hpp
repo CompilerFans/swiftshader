@@ -27,6 +27,7 @@ struct GraphicsBootstrapVertexOutput
 	float y = 0.0f;
 	float z = 0.0f;
 	float w = 0.0f;
+	float pointSize = 64.0f;
 	float colorR = 1.0f;
 	float colorG = 1.0f;
 	float colorB = 1.0f;
@@ -38,6 +39,7 @@ struct GraphicsBootstrapShaderConfig
 	float offsetX = 0.0f;
 	float offsetY = 0.0f;
 	float offsetZ = 0.0f;
+	float pointSize = 64.0f;
 	float vertexIndexScaleX = 0.0f;
 	float instanceIndexScaleY = 0.0f;
 };

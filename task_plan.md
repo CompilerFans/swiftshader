@@ -132,3 +132,7 @@ Complete
 - Current triangle-strip milestone: the CUDA bootstrap path now accepts `TRIANGLE_STRIP` draws through host-side strip expansion that follows the CPU default provoking-vertex ordering.
 - Current triangle-fan milestone: the CUDA bootstrap path now accepts `TRIANGLE_FAN` draws through host-side fan expansion, while primitive restart remains tracked separately as a CPU baseline blocker.
 - Current line-list milestone: the CUDA bootstrap path now accepts `LINE_LIST` draws through a temporary host-side line-to-quad expansion, and the draw harness can force a wider line width for stable validation.
+
+- Current topology-breadth milestone: `LINE_LIST` and `LINE_STRIP` now run through the CUDA bootstrap path via host-side line-to-quad expansion, with dedicated backend coverage and draw tests that dump BMP artifacts.
+
+- Current VS builtin milestone: the CUDA bootstrap path now carries a minimal constant `gl_PointSize` from `SpirvShader` into point-list rendering, so point coverage no longer relies on the previous hard-coded 64-pixel fallback.
