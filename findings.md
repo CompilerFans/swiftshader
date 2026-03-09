@@ -138,3 +138,5 @@
 - `gl_InstanceIndex` is an easy low-risk coverage gain even before custom bootstrap-specific lowering: the existing CPU/CUDA draw paths already render instanced geometry correctly through normal Vulkan command recording.
 
 - `drawIndexed(..., vertexOffset, ...)` is another low-risk coverage gain: the existing CPU/CUDA draw paths already honor `baseVertex`, and the only real work needed here was choosing sample points inside the shifted triangle.
+
+- The local sample scan revealed that `hello_triangle_1_3` already depends on dynamic rendering (`vkCmdBeginRendering`), so it should not be grouped with plain `hello_triangle` in planning. That makes dynamic rendering a higher-priority missing capability than the previous rough roadmap suggested.

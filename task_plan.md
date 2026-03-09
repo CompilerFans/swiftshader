@@ -164,3 +164,5 @@ Complete
 - Current instancing milestone: `gl_InstanceIndex` draw coverage is now present in both CPU and CUDA builds.
 
 - Current indexed-baseVertex milestone: `drawIndexed(..., vertexOffset, ...)` coverage is now present in both CPU and CUDA builds.
+
+- Vulkan Samples compatibility roadmap added: the current sample ladder now explicitly highlights missing capabilities such as separate image/sampler, mipmap generation, dynamic uniform buffers, dynamic rendering, dynamic blending, vertex dynamic state, and full instancing input-rate coverage.

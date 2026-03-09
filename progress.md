@@ -619,3 +619,8 @@
 - Validation:
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.IndexedDrawUsesBaseVertexOffset')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.IndexedDrawUsesBaseVertexOffset')` passed
+
+## 2026-03-10: Vulkan Samples compatibility planning
+- Scanned the local `~/gfx/Vulkan-Samples` tree for the requested VS/PS-focused samples.
+- Wrote `docs/plans/2026-03-10-vulkan-samples-compat-roadmap.md`.
+- Recorded which sample families are already covered, partially covered, or still missing from the current plan.
