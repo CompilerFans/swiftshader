@@ -136,3 +136,5 @@ Complete
 - Current topology-breadth milestone: `LINE_LIST` and `LINE_STRIP` now run through the CUDA bootstrap path via host-side line-to-quad expansion, with dedicated backend coverage and draw tests that dump BMP artifacts.
 
 - Current VS builtin milestone: the CUDA bootstrap path now carries a minimal constant `gl_PointSize` from `SpirvShader` into point-list rendering, so point coverage no longer relies on the previous hard-coded 64-pixel fallback.
+
+- Current indexed-topology milestone: `indexed line-strip` and `indexed triangle-fan` are now covered by backend and Vulkan draw tests, confirming that the existing host-side deindex + topology expansion path already handles these two shapes.

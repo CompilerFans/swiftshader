@@ -506,3 +506,11 @@
 - Validation:
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='GraphicsBootstrap.EmitsPointSizeShaderBody:GraphicsBootstrap.CudaRuntimeExecutesPointSizeOutput')` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.PointListUsesVertexPointSize:DrawTest.PointListConstantColor:DrawTest.FragmentShaderUsesPointCoordGradient')` passed
+
+## 2026-03-09: Indexed line-strip / triangle-fan coverage
+- Added backend tests for `CudaRuntimeRendersIndexedLineStripConstantColor` and `CudaRuntimeRendersIndexedTriangleFanConstantColor`.
+- Added Vulkan draw tests `DrawTest.IndexedLineStripConstantColor` and `DrawTest.IndexedTriangleFanConstantColor`, both with BMP artifact dumps.
+- These tests passed without runtime-side implementation changes, confirming that the existing deindex-before-bootstrap path already supports indexed strip/fan when primitive restart is not involved.
+- Validation:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.CudaRuntimeRendersIndexedLineStripConstantColor:TrianglePipelineBootstrap.CudaRuntimeRendersIndexedTriangleFanConstantColor')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.IndexedLineStripConstantColor:DrawTest.IndexedTriangleFanConstantColor')` passed
