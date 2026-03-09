@@ -17,6 +17,7 @@ enum class FragmentBootstrapShaderKind
 	FrontFacingBinaryColors,
 	FragCoordDiscardLeftConstantColor,
 	InterpolatedColorBlueNearFragDepth,
+	PointCoordGradient,
 };
 
 struct FragmentBootstrapInvocation
@@ -26,6 +27,8 @@ struct FragmentBootstrapInvocation
 	uint32_t exportMask = 1;
 	uint32_t helperInvocation = 0;
 	uint32_t frontFacing = 1;
+	float pointCoordX = 0.0f;
+	float pointCoordY = 0.0f;
 	float barycentric0 = 0.0f;
 	float barycentric1 = 0.0f;
 	float barycentric2 = 0.0f;

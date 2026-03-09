@@ -5,6 +5,7 @@
 #include "RasterBootstrap.hpp"
 
 #include <array>
+#include <cmath>
 #include <cstring>
 #include <vector>
 
@@ -325,20 +326,35 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		if(config.topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)
 		{
 			const auto quad = toPointQuad(vsOutputs[primitiveIndex], config.width, config.height, config.pointSize);
-			std::array<std::array<RasterBootstrapVertex, 3>, 2> triangles = {{
-				{{ quad[0], quad[1], quad[2] }},
-				{{ quad[0], quad[2], quad[3] }},
-			}};
-			for(const auto &triangle : triangles)
+			float minX = quad[0].x;
+			float minY = quad[0].y;
+			float maxX = quad[2].x;
+			float maxY = quad[2].y;
+			uint32_t x0 = static_cast<uint32_t>(std::max(0.0f, std::floor(minX)));
+			uint32_t y0 = static_cast<uint32_t>(std::max(0.0f, std::floor(minY)));
+			uint32_t x1 = static_cast<uint32_t>(std::min(static_cast<float>(config.width - 1), std::ceil(maxX) - 1.0f));
+			uint32_t y1 = static_cast<uint32_t>(std::min(static_cast<float>(config.height - 1), std::ceil(maxY) - 1.0f));
+			std::vector<FragmentBootstrapInvocation> invocations;
+			invocations.reserve((x1 - x0 + 1) * (y1 - y0 + 1));
+			for(uint32_t y = y0; y <= y1; y++)
 			{
-				std::vector<uint8_t> triangleColorBuffer;
-				std::vector<float> triangleDepthBuffer;
-				if(!runRasterFragmentBootstrap(runtime, triangle, rasterConfig, fragmentConfig, colorBuffer ? &triangleColorBuffer : nullptr, useDepthCompose ? &triangleDepthBuffer : nullptr))
+				for(uint32_t x = x0; x <= x1; x++)
 				{
-					return false;
+					FragmentBootstrapInvocation invocation = {};
+					invocation.x = x;
+					invocation.y = y;
+					invocation.exportMask = 1u;
+					invocation.pointCoordX = (static_cast<float>(x) + 0.5f - minX) / config.pointSize;
+					invocation.pointCoordY = (static_cast<float>(y) + 0.5f - minY) / config.pointSize;
+					invocations.push_back(invocation);
 				}
-				composeColorBuffers(triangleColorBuffer, triangleDepthBuffer);
 			}
+			std::vector<uint8_t> pointColorBuffer;
+			if(!runFragmentBootstrap(runtime, config.width, config.height, invocations, fragmentConfig, colorBuffer ? &pointColorBuffer : nullptr, nullptr))
+			{
+				return false;
+			}
+			composeColorBuffers(pointColorBuffer, std::vector<float>{});
 			continue;
 		}
 

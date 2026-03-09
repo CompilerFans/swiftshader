@@ -127,3 +127,4 @@ Complete
 - Current discard milestone: the CUDA bootstrap path now recognizes a narrow `FragCoord + discard` fragment family, emits a left-half discard mode, and validates it end-to-end against the CPU renderer.
 - Current FragDepth milestone: the CUDA bootstrap path now supports a narrow interpolated-color-driven `FragDepth` mode, optional fragment depth-buffer output, and host-side depth composition across overlapping triangles.
 - Current point-list milestone: the CUDA bootstrap path now accepts `POINT_LIST` draws through a temporary host-side point-to-quad expansion, and the draw harness can configure point topology for focused tests.
+- Current PointCoord milestone: the CUDA bootstrap path now carries `pointCoordX/Y` for point-list draws and validates a minimal `PointCoordGradient` fragment mode end-to-end.

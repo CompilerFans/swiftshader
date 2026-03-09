@@ -16,5 +16,7 @@ C++ 代码遵循根目录 `.clang-format`：4 列缩进，允许使用制表符�
 ## 测试指南
 单元测试基于 GoogleTest；新增功能或修复应优先补到对应模块旁边的测试目录。测试名使用 `TEST(SuiteName, CaseName)`，`SuiteName` 应体现子系统。涉及 Vulkan 行为或一致性时，补充 `vk-unittests` 或参考 `docs/dEQP.md` 的 dEQP 验证流程。
 
+新增或扩展图形绘制相关 case 时，默认需要保存一张可检查结果的图片产物；优先复用 `DrawTester::saveFrame()`，并把产物写到构建目录下的 `draw-test-artifacts/`。除非测试本身不产生可视结果，否则不要省略图片 dump。
+
 ## 提交与评审要求
 提交信息应简短、祈使句风格，可带模块前缀，如 `Vulkan:`、`Regres:`。本仓库通过 Gerrit 评审，不走 GitHub Pull Request：提交前安装 `commit-msg` hook 生成 `Change-Id`，然后使用 `git push origin HEAD:refs/for/master` 上传。变更说明应写清动机、主要实现和已运行测试；较大改动建议先在 issue tracker 沟通，并确保已签署 CLA。

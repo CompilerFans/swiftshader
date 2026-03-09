@@ -69,6 +69,8 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 	          "\tunsigned int exportMask;\n"
 	          "\tunsigned int helperInvocation;\n"
 	          "\tunsigned int frontFacing;\n"
+	          "\tfloat pointCoordX;\n"
+	          "\tfloat pointCoordY;\n"
 	          "\tfloat barycentric0;\n"
 	          "\tfloat barycentric1;\n"
 	          "\tfloat barycentric2;\n"
@@ -134,6 +136,14 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 		          "\toutG = packColor(colorG);\n"
 		          "\toutB = packColor(colorB);\n"
 		          "\toutA = packColor(colorA);\n";
+	}
+	else if(config.shaderKind == FragmentBootstrapShaderKind::PointCoordGradient)
+	{
+		source << "\toutDepth = 1.0f;\n"
+		          "\toutR = packColor(invocation.pointCoordX);\n"
+		          "\toutG = packColor(invocation.pointCoordY);\n"
+		          "\toutB = 0u;\n"
+		          "\toutA = 255u;\n";
 	}
 	else if(config.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth)
 	{

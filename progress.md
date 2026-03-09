@@ -444,3 +444,12 @@
   - `cmake --build build-cuda-bootstrap --target draw-unittests backend-unittests --parallel $(nproc)` passed
   - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromPointPositionStream:TrianglePipelineBootstrap.CudaRuntimeRendersPointListConstantColor')` passed
   - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.PointListConstantColor')` passed
+- PointCoord RED/GREEN:
+  - added a failing fragment source test for `PointCoordGradient` plus a Vulkan draw test that renders a single point with `gl_PointCoord.xy` as the output gradient and saves the BMP artifact
+  - added the requested development rule to `AGENTS.md`: new or expanded graphics draw cases must dump a visual artifact under `draw-test-artifacts/` unless the test has no visual output
+  - extended `FragmentBootstrapInvocation` with `pointCoordX/Y`, added `PointCoordGradient` to `FragmentBootstrap`, and taught the point-list bootstrap branch to generate point invocations directly on the host with normalized point coordinates
+  - kept the implementation narrow on purpose: point-list still uses the temporary host-side point expansion path, but `PointCoord` is now validated end-to-end on top of it
+- Validation:
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests --parallel $(nproc)` passed
+  - `(cd build-cuda-bootstrap && ./backend-unittests --gtest_filter='FragmentBootstrap.EmitsPointCoordGradientShaderWhenRequested')` passed
+  - `(cd build-cuda-bootstrap && ./draw-unittests --gtest_filter='DrawTest.PointListConstantColor:DrawTest.FragmentShaderUsesPointCoordGradient')` passed
