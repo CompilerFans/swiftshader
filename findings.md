@@ -174,3 +174,5 @@
 - Depth-aspect `vkCmdClearAttachments` is another stable low-risk `render_passes` building block: in the current harness it cleanly gates later draw calls through depth test in both CPU and CUDA builds.
 
 - The current harness now confirms that `baseVertex`, `firstInstance`, and `VK_VERTEX_INPUT_RATE_INSTANCE` compose correctly together in a single indexed instanced draw on both CPU and CUDA paths; the earlier failure was only a bad sample point.
+
+- A narrow two-subpass render pass is still a low-risk addition in the current harness: reusing the same shaders/state with a second subpass-specific pipeline is enough to validate `vkCmdNextSubpass` sequencing in both CPU and CUDA builds.

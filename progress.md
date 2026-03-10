@@ -681,3 +681,5 @@
 - Added `DrawTest.ClearAttachmentsDepthEnablesFarTriangleInRect`, a BMP-producing render-pass case that clears the depth attachment in a rect and verifies a farther green triangle only passes there, in both CPU and CUDA builds.
 
 - Added `DrawTest.IndexedInstancedDrawUsesBaseVertexAndFirstInstance`, a BMP-producing instancing case that combines indexed drawing, `baseVertex`, `firstInstance`, and `VK_VERTEX_INPUT_RATE_INSTANCE` in both CPU and CUDA builds.
+
+- Added `DrawTest.TwoSubpassesOverlayGreenTriangleOnRedBackground`, a BMP-producing two-subpass case that draws a fullscreen red triangle in subpass 0, then overlays a green triangle in subpass 1, passing in both CPU and CUDA builds.

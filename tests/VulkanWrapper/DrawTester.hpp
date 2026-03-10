@@ -55,6 +55,7 @@ public:
 	void setLineWidth(float width);
 	void enableColorClear(const std::array<float, 4> &color);
 	void enableColorLoad();
+	void enableSecondSubpass();
 	void enableVertexInputDynamicState();
 	void enablePushConstantRange(vk::ShaderStageFlags stageFlags, uint32_t size);
 	void setPushConstantData(vk::ShaderStageFlags stageFlags, const void *data, uint32_t size);
@@ -93,6 +94,7 @@ public:
 	// Callback may record one or more draw commands. If unset, DrawTester records a single draw
 	// covering all uploaded vertices.
 	void onRecordDrawCommands(std::function<void(ThisType &tester, vk::CommandBuffer &commandBuffer)> callback);
+	void onRecordSecondSubpassCommands(std::function<void(ThisType &tester, vk::CommandBuffer &commandBuffer)> callback);
 
 	/////////////////////////
 	// Resource Management
@@ -159,7 +161,7 @@ private:
 	void prepareVertices();
 	void createFramebuffers(vk::RenderPass renderPass);
 	vk::RenderPass createRenderPass(vk::Format colorFormat);
-	vk::Pipeline createGraphicsPipeline(vk::RenderPass renderPass);
+	vk::Pipeline createGraphicsPipeline(vk::RenderPass renderPass, uint32_t subpassIndex = 0);
 	void addVertexBuffer(void *vertexBufferData, size_t vertexBufferDataSize, size_t vertexSize, std::vector<vk::VertexInputAttributeDescription> inputAttributes);
 	void addInstanceBuffer(void *vertexBufferData, size_t vertexBufferDataSize, size_t vertexSize, std::vector<vk::VertexInputAttributeDescription> inputAttributes);
 	void addIndexBuffer(void *indexBufferData, size_t indexBufferDataSize, vk::IndexType indexType);
@@ -172,6 +174,7 @@ private:
 		std::function<vk::ShaderModule(ThisType &tester)> createFragmentShader = [](auto &) { return vk::ShaderModule{}; };
 		std::function<void(ThisType &tester, vk::CommandPool &commandPool, vk::DescriptorSet &descriptorSet)> updateDescriptorSet = [](auto &, auto &, auto &) {};
 		std::function<void(ThisType &tester, vk::CommandBuffer &commandBuffer)> recordDrawCommands;
+		std::function<void(ThisType &tester, vk::CommandBuffer &commandBuffer)> recordSecondSubpassCommands;
 	} hooks;
 
 	const vk::Extent2D windowSize = { 1280, 720 };
@@ -183,6 +186,7 @@ private:
 	vk::PrimitiveTopology primitiveTopology = vk::PrimitiveTopology::eTriangleList;
 	bool primitiveRestartEnable = false;
 	bool colorClearEnabled = false;
+	bool secondSubpassEnabled = false;
 	vk::AttachmentLoadOp colorLoadOp = vk::AttachmentLoadOp::eDontCare;
 	std::array<float, 4> colorClearValue = { 0.5f, 0.5f, 0.5f, 1.0f };
 	bool pushConstantEnabled = false;
@@ -225,6 +229,7 @@ private:
 	vk::DescriptorSetLayout descriptorSetLayout;  // Owning handle
 	vk::PipelineLayout pipelineLayout;            // Owning handle
 	vk::Pipeline pipeline;                        // Owning handle
+	vk::Pipeline secondSubpassPipeline;           // Owning handle
 
 	vk::Semaphore presentCompleteSemaphore;  // Owning handle
 	vk::Semaphore renderCompleteSemaphore;   // Owning handle
@@ -268,6 +273,11 @@ inline void DrawTester::onUpdateDescriptorSet(std::function<void(ThisType &teste
 inline void DrawTester::onRecordDrawCommands(std::function<void(ThisType &tester, vk::CommandBuffer &commandBuffer)> callback)
 {
 	hooks.recordDrawCommands = std::move(callback);
+}
+
+inline void DrawTester::onRecordSecondSubpassCommands(std::function<void(ThisType &tester, vk::CommandBuffer &commandBuffer)> callback)
+{
+	hooks.recordSecondSubpassCommands = std::move(callback);
 }
 
 #endif  // DRAW_TESTER_HPP_

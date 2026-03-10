@@ -46,6 +46,10 @@ DrawTester::~DrawTester()
 	device.destroySemaphore(renderCompleteSemaphore, nullptr);
 	device.destroySemaphore(presentCompleteSemaphore, nullptr);
 
+	if(secondSubpassPipeline)
+	{
+		device.destroyPipeline(secondSubpassPipeline);
+	}
 	device.destroyPipeline(pipeline);
 	device.destroyPipelineLayout(pipelineLayout, nullptr);
 	device.destroyDescriptorSetLayout(descriptorSetLayout);
@@ -85,7 +89,11 @@ void DrawTester::initialize()
 
 	prepareVertices();
 
-	pipeline = createGraphicsPipeline(renderPass);
+	pipeline = createGraphicsPipeline(renderPass, 0);
+	if(secondSubpassEnabled)
+	{
+		secondSubpassPipeline = createGraphicsPipeline(renderPass, 1);
+	}
 
 	createSynchronizationPrimitives();
 
@@ -259,6 +267,11 @@ void DrawTester::enableColorLoad()
 	colorLoadOp = vk::AttachmentLoadOp::eLoad;
 }
 
+void DrawTester::enableSecondSubpass()
+{
+	secondSubpassEnabled = true;
+}
+
 void DrawTester::enableVertexInputDynamicState()
 {
 	vertexInputDynamicStateEnabled = true;
@@ -372,14 +385,18 @@ vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
 		depth.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 	}
 
-	vk::SubpassDescription subpassDescription;
-	subpassDescription.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
-	subpassDescription.colorAttachmentCount = 1;
-	subpassDescription.pResolveAttachments = multisample ? &attachment1 : nullptr;
-	subpassDescription.pColorAttachments = &attachment0;
-	subpassDescription.pDepthStencilAttachment = depthTestEnabled ? &depthAttachment : nullptr;
+	vk::SubpassDescription subpassDescriptions[2] = {};
+	for(uint32_t subpassIndex = 0; subpassIndex < (secondSubpassEnabled ? 2u : 1u); subpassIndex++)
+	{
+		subpassDescriptions[subpassIndex].pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
+		subpassDescriptions[subpassIndex].colorAttachmentCount = 1;
+		subpassDescriptions[subpassIndex].pResolveAttachments = multisample ? &attachment1 : nullptr;
+		subpassDescriptions[subpassIndex].pColorAttachments = &attachment0;
+		subpassDescriptions[subpassIndex].pDepthStencilAttachment = depthTestEnabled ? &depthAttachment : nullptr;
+	}
 
-	std::array<vk::SubpassDependency, 2> dependencies;
+	std::vector<vk::SubpassDependency> dependencies;
+	dependencies.resize(secondSubpassEnabled ? 3 : 2);
 
 	dependencies[0].srcSubpass = VK_SUBPASS_EXTERNAL;
 	dependencies[0].dstSubpass = 0;
@@ -389,19 +406,35 @@ vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
 	dependencies[0].dstAccessMask = vk::AccessFlagBits::eMemoryRead | vk::AccessFlagBits::eMemoryWrite;
 	dependencies[0].dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
-	dependencies[1].srcSubpass = 0;
-	dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
-	dependencies[1].srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
-	dependencies[1].dstStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
-	dependencies[1].srcAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
-	dependencies[1].dstAccessMask = vk::AccessFlagBits::eMemoryRead;
-	dependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion;
+	if(secondSubpassEnabled)
+	{
+		dependencies[1].srcSubpass = 0;
+		dependencies[1].dstSubpass = 1;
+		dependencies[1].srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+		dependencies[1].dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+		dependencies[1].srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+		dependencies[1].dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+		dependencies[1].dependencyFlags = vk::DependencyFlagBits::eByRegion;
+
+		dependencies[2].srcSubpass = 1;
+		dependencies[2].dstSubpass = VK_SUBPASS_EXTERNAL;
+	}
+	else
+	{
+		dependencies[1].srcSubpass = 0;
+		dependencies[1].dstSubpass = VK_SUBPASS_EXTERNAL;
+	}
+	dependencies.back().srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+	dependencies.back().dstStageMask = vk::PipelineStageFlagBits::eBottomOfPipe;
+	dependencies.back().srcAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+	dependencies.back().dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+	dependencies.back().dependencyFlags = vk::DependencyFlagBits::eByRegion;
 
 	vk::RenderPassCreateInfo renderPassInfo;
 	renderPassInfo.attachmentCount = static_cast<uint32_t>(attachments.size());
 	renderPassInfo.pAttachments = attachments.data();
-	renderPassInfo.subpassCount = 1;
-	renderPassInfo.pSubpasses = &subpassDescription;
+	renderPassInfo.subpassCount = secondSubpassEnabled ? 2u : 1u;
+	renderPassInfo.pSubpasses = subpassDescriptions;
 	renderPassInfo.dependencyCount = static_cast<uint32_t>(dependencies.size());
 	renderPassInfo.pDependencies = dependencies.data();
 
@@ -423,7 +456,7 @@ void DrawTester::prepareVertices()
 	hooks.createVertexBuffers(*this);
 }
 
-vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass)
+vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass, uint32_t subpassIndex)
 {
 	auto setLayoutBindings = hooks.createDescriptorSetLayout(*this);
 
@@ -446,6 +479,7 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass)
 	vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
 	pipelineCreateInfo.layout = pipelineLayout;
 	pipelineCreateInfo.renderPass = renderPass;
+	pipelineCreateInfo.subpass = subpassIndex;
 
 	std::vector<vk::VertexInputBindingDescription> bindingDescriptions;
 	std::vector<vk::VertexInputAttributeDescription> attributeDescriptions;
@@ -542,6 +576,7 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass)
 	pipelineCreateInfo.pViewportState = &viewportState;
 	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
 	pipelineCreateInfo.renderPass = renderPass;
+	pipelineCreateInfo.subpass = subpassIndex;
 	pipelineCreateInfo.pDynamicState = &dynamicState;
 
 	auto pipeline = device.createGraphicsPipeline(nullptr, pipelineCreateInfo).value;
@@ -643,49 +678,53 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 		// Draw
 		if(vertices.numVertices > 0)
 		{
-			commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, pipeline);
-			std::vector<vk::Buffer> vertexBuffers;
-			std::vector<VULKAN_HPP_NAMESPACE::DeviceSize> offsets;
-			vertexBuffers.push_back(vertices.buffer);
-			offsets.push_back(0);
-			if(instances.buffer)
-			{
-				vertexBuffers.push_back(instances.buffer);
+			auto bindCommonGraphicsState = [&](vk::Pipeline boundPipeline) {
+				commandBuffers[i].bindPipeline(vk::PipelineBindPoint::eGraphics, boundPipeline);
+				std::vector<vk::Buffer> vertexBuffers;
+				std::vector<VULKAN_HPP_NAMESPACE::DeviceSize> offsets;
+				vertexBuffers.push_back(vertices.buffer);
 				offsets.push_back(0);
-			}
-			commandBuffers[i].bindVertexBuffers(0, static_cast<uint32_t>(vertexBuffers.size()), vertexBuffers.data(), offsets.data());
-			if(vertexInputDynamicStateEnabled)
-			{
-				std::vector<vk::VertexInputBindingDescription2EXT> bindingDescriptions;
-				std::vector<vk::VertexInputAttributeDescription2EXT> attributeDescriptions;
-				auto appendBinding = [&](const VertexBuffer &buffer) {
-					vk::VertexInputBindingDescription2EXT binding;
-					binding.binding = buffer.inputBinding.binding;
-					binding.stride = buffer.inputBinding.stride;
-					binding.inputRate = buffer.inputBinding.inputRate;
-					binding.divisor = 1;
-					bindingDescriptions.push_back(binding);
-					for(const auto &attribute : buffer.inputAttributes)
-					{
-						vk::VertexInputAttributeDescription2EXT attr;
-						attr.location = attribute.location;
-						attr.binding = attribute.binding;
-						attr.format = attribute.format;
-						attr.offset = attribute.offset;
-						attributeDescriptions.push_back(attr);
-					}
-				};
-				appendBinding(vertices);
 				if(instances.buffer)
 				{
-					appendBinding(instances);
+					vertexBuffers.push_back(instances.buffer);
+					offsets.push_back(0);
 				}
-				commandBuffers[i].setVertexInputEXT(bindingDescriptions, attributeDescriptions);
-			}
-			if(pushConstantEnabled)
-			{
-				commandBuffers[i].pushConstants(pipelineLayout, pushConstantStages, 0, pushConstantSize, pushConstantData.data());
-			}
+				commandBuffers[i].bindVertexBuffers(0, static_cast<uint32_t>(vertexBuffers.size()), vertexBuffers.data(), offsets.data());
+				if(vertexInputDynamicStateEnabled)
+				{
+					std::vector<vk::VertexInputBindingDescription2EXT> bindingDescriptions;
+					std::vector<vk::VertexInputAttributeDescription2EXT> attributeDescriptions;
+					auto appendBinding = [&](const VertexBuffer &buffer) {
+						vk::VertexInputBindingDescription2EXT binding;
+						binding.binding = buffer.inputBinding.binding;
+						binding.stride = buffer.inputBinding.stride;
+						binding.inputRate = buffer.inputBinding.inputRate;
+						binding.divisor = 1;
+						bindingDescriptions.push_back(binding);
+						for(const auto &attribute : buffer.inputAttributes)
+						{
+							vk::VertexInputAttributeDescription2EXT attr;
+							attr.location = attribute.location;
+							attr.binding = attribute.binding;
+							attr.format = attribute.format;
+							attr.offset = attribute.offset;
+							attributeDescriptions.push_back(attr);
+						}
+					};
+					appendBinding(vertices);
+					if(instances.buffer)
+					{
+						appendBinding(instances);
+					}
+					commandBuffers[i].setVertexInputEXT(bindingDescriptions, attributeDescriptions);
+				}
+				if(pushConstantEnabled)
+				{
+					commandBuffers[i].pushConstants(pipelineLayout, pushConstantStages, 0, pushConstantSize, pushConstantData.data());
+				}
+			};
+
+			bindCommonGraphicsState(pipeline);
 			if(hooks.recordDrawCommands)
 			{
 				hooks.recordDrawCommands(*this, commandBuffers[i]);
@@ -693,6 +732,16 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 			else
 			{
 				commandBuffers[i].draw(vertices.numVertices, 1, 0, 0);
+			}
+
+			if(secondSubpassEnabled)
+			{
+				commandBuffers[i].nextSubpass(vk::SubpassContents::eInline);
+				bindCommonGraphicsState(secondSubpassPipeline);
+				if(hooks.recordSecondSubpassCommands)
+				{
+					hooks.recordSecondSubpassCommands(*this, commandBuffers[i]);
+				}
 			}
 		}
 

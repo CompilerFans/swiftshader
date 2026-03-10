@@ -200,3 +200,5 @@ Complete
 - Current sample-aligned milestone: `render_passes` now also covers depth-aspect `vkCmdClearAttachments`, not just color clears and `loadOp = LOAD` preservation.
 
 - Current sample-aligned milestone: `instancing` now also has repo-local coverage for the combined `drawIndexed + baseVertex + firstInstance + instance-rate` path, not just the simpler individual pieces.
+
+- Current sample-aligned milestone: `render_passes` now also has a repo-local two-subpass overlay case, so the local ladder no longer stops at single-subpass attachment operations.
