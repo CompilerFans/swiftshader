@@ -693,3 +693,5 @@
 - Added `DrawTest.TwoSubpassesDepthBlocksFarTriangle`, a BMP-producing two-subpass render-pass case that draws a fullscreen red near triangle in subpass 0, then verifies a farther green triangle remains blocked by preserved depth in subpass 1, in both CPU and CUDA builds.
 
 - Added `DrawTest.MultisampleDepthBlocksFarTriangle`, and fixed the harness bug where multisample+depth render passes wrote the depth clear value into the wrong `pClearValues` slot. CPU and CUDA builds now pass the solid-color, interpolated-color, and depth-tested MSAA cases.
+
+- Added `DrawTest.SwapchainTripleBufferedColorCycle`, a BMP-producing swapchain case that requests triple buffering, renders red/green/blue across successive frames, and verifies the final presented frame is blue in both CPU and CUDA builds.

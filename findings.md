@@ -186,3 +186,5 @@
 - The current harness confirms that depth attachment contents persist correctly across subpasses: a nearer triangle written in subpass 0 still blocks a farther triangle drawn in subpass 1 on both CPU and CUDA paths.
 
 - The root cause of the initial MSAA+depth failure was in the test harness, not the renderer: `beginRenderPass` used a too-short `clearValues` array and placed the depth clear value in the wrong slot when both resolve and depth attachments were present.
+
+- The current triple-buffered swapchain path remains stable across successive presents: after requesting `minImageCount = 3`, both CPU and CUDA builds correctly present updated contents over multiple frames rather than only the first frame.
