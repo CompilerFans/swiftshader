@@ -198,3 +198,5 @@ Complete
 - Current sample-aligned milestone: `render_passes` now also has a repo-local `loadOp = LOAD` preservation test on swapchain images, strengthening attachment load semantics before subpass work.
 
 - Current sample-aligned milestone: `render_passes` now also covers depth-aspect `vkCmdClearAttachments`, not just color clears and `loadOp = LOAD` preservation.
+
+- Current sample-aligned milestone: `instancing` now also has repo-local coverage for the combined `drawIndexed + baseVertex + firstInstance + instance-rate` path, not just the simpler individual pieces.

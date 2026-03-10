@@ -3146,6 +3146,86 @@ TEST_F(DrawTest, ClearAttachmentsDepthEnablesFarTriangleInRect)
 }
 
 
+TEST_F(DrawTest, IndexedInstancedDrawUsesBaseVertexAndFirstInstance)
+{
+	auto artifactPath = makeDrawArtifactPath("indexed-instanced-base-vertex-first-instance.bmp");
+	std::filesystem::remove(artifactPath);
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	auto stampPath = makeCudaLaunchStampPath("indexed-instanced-base-vertex-first-instance");
+	std::filesystem::remove(stampPath);
+	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
+#endif
+
+	DrawTester tester;
+	tester.enableColorClear({ 0.5f, 0.5f, 0.5f, 1.0f });
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex { float position[3]; };
+		struct Instance { float offset[2]; };
+		Vertex vertexBufferData[] = {
+			{ { -0.95f, -0.85f, 0.5f } },
+			{ { -0.75f,  0.15f, 0.5f } },
+			{ { -0.55f, -0.85f, 0.5f } },
+			{ { -0.20f, -0.45f, 0.5f } },
+			{ {  0.00f,  0.05f, 0.5f } },
+			{ {  0.20f, -0.45f, 0.5f } },
+		};
+		uint16_t indexBufferData[] = { 0u, 1u, 2u };
+		Instance instanceBufferData[] = {
+			{ { -0.65f, 0.0f } },
+			{ { -0.20f, 0.0f } },
+			{ {  0.45f, 0.0f } },
+		};
+		std::vector<vk::VertexInputAttributeDescription> vertexAttributes;
+		vertexAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(vertexAttributes));
+		std::vector<vk::VertexInputAttributeDescription> instanceAttributes;
+		instanceAttributes.push_back(vk::VertexInputAttributeDescription(1, 1, vk::Format::eR32G32Sfloat, offsetof(Instance, offset)));
+		tester.addInstanceBuffer(instanceBufferData, sizeof(instanceBufferData), std::move(instanceAttributes));
+		tester.addIndexBuffer(indexBufferData, sizeof(indexBufferData), vk::IndexType::eUint16);
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 310 es
+			layout(location = 0) in vec3 inPos;
+			layout(location = 1) in vec2 inOffset;
+			void main() { gl_Position = vec4(inPos.xy + inOffset, inPos.z, 1.0); })";
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 310 es
+			precision highp float;
+			layout(location = 0) out vec4 outColor;
+			void main() { outColor = vec4(1.0, 0.0, 0.0, 1.0); })";
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.onRecordDrawCommands([](DrawTester &tester, vk::CommandBuffer &commandBuffer) {
+		tester.bindIndexBuffer(commandBuffer);
+		commandBuffer.drawIndexed(3, 2, 0, 3, 1);
+	});
+
+	tester.initialize();
+	tester.renderFrame();
+	tester.saveFrame(artifactPath);
+	auto leftPixel = tester.readbackPixel(500, 260);
+	auto rightPixel = tester.readbackPixel(980, 300);
+	EXPECT_GT(leftPixel[0], 200);
+	EXPECT_LT(leftPixel[1], 80);
+	EXPECT_LT(leftPixel[2], 80);
+	EXPECT_GT(rightPixel[0], 200);
+	EXPECT_LT(rightPixel[1], 80);
+	EXPECT_LT(rightPixel[2], 80);
+	EXPECT_TRUE(std::filesystem::exists(artifactPath));
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
+#endif
+}
+
+
 
 TEST_F(DrawTest, DrawUsesFirstInstanceOffset)
 {

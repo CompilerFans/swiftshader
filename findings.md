@@ -172,3 +172,5 @@
 - `loadOp = LOAD` on swapchain-backed color attachments is another practical low-risk entry point for the `render_passes` sample family; in the current harness it works cleanly in both CPU and CUDA builds when the images are explicitly initialized first.
 
 - Depth-aspect `vkCmdClearAttachments` is another stable low-risk `render_passes` building block: in the current harness it cleanly gates later draw calls through depth test in both CPU and CUDA builds.
+
+- The current harness now confirms that `baseVertex`, `firstInstance`, and `VK_VERTEX_INPUT_RATE_INSTANCE` compose correctly together in a single indexed instanced draw on both CPU and CUDA paths; the earlier failure was only a bad sample point.

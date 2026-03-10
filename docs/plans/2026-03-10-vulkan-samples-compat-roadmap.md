@@ -16,8 +16,8 @@
   - narrow combined-image-sampler path is already implemented and validated with draw tests.
   - 窄 `combined image sampler` 路径已经实现并通过 draw tests 验证。
 - `instancing`
-  - `gl_InstanceIndex` and `VK_VERTEX_INPUT_RATE_INSTANCE` draw coverage already exist.
-  - `gl_InstanceIndex` 和 `VK_VERTEX_INPUT_RATE_INSTANCE` 的 draw 覆盖已经存在。
+  - `gl_InstanceIndex`, `VK_VERTEX_INPUT_RATE_INSTANCE`, and a combined `indexed + baseVertex + firstInstance` draw path now all have repo-local coverage.
+  - `gl_InstanceIndex`、`VK_VERTEX_INPUT_RATE_INSTANCE`，以及组合了 `indexed + baseVertex + firstInstance` 的 draw 路径现在都已有仓库内覆盖。
 - `swapchain_images`
   - swapchain/image-count visible paths are already partially exercised by benchmark windows.
   - swapchain/image-count 的可见路径已经被 benchmark 窗口部分覆盖。
