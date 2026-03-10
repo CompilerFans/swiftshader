@@ -29,6 +29,13 @@ DrawTester::DrawTester(Multisample multisample)
 
 DrawTester::~DrawTester()
 {
+	if(!device)
+	{
+		return;
+	}
+
+	device.waitIdle();
+
 	device.freeCommandBuffers(commandPool, commandBuffers);
 
 	device.destroyDescriptorPool(descriptorPool);
@@ -105,7 +112,7 @@ void DrawTester::initialize()
 	createCommandBuffers(renderPass);
 }
 
-void DrawTester::renderFrame()
+void DrawTester::submitFrame(bool present)
 {
 	swapchain->acquireNextImage(presentCompleteSemaphore, currentFrameBuffer);
 
@@ -125,7 +132,24 @@ void DrawTester::renderFrame()
 
 	queue.submit(1, &submitInfo, waitFences[currentFrameBuffer]);
 
-	swapchain->queuePresent(queue, currentFrameBuffer, renderCompleteSemaphore);
+	if(present)
+	{
+		swapchain->queuePresent(queue, currentFrameBuffer, renderCompleteSemaphore);
+	}
+	else
+	{
+		device.waitForFences(1, &waitFences[currentFrameBuffer], VK_TRUE, UINT64_MAX);
+	}
+}
+
+void DrawTester::renderFrame()
+{
+	submitFrame(true);
+}
+
+void DrawTester::renderFrameWithoutPresent()
+{
+	submitFrame(false);
 }
 
 std::vector<uint8_t> DrawTester::readbackFrameRgba()

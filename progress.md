@@ -787,3 +787,29 @@
   - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./vk-unittests --gtest_filter='ComputeBackendPipelineTest.BuildBackendExecutableWithoutDispatch:ComputeBackendPipelineTest.DispatchUsesFakeRuntimeWhenCustomBackendEnabled'` ran with 2 skips and no failures
   - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./vk-unittests --gtest_filter='DrawTest.VertexColorTriangleInterpolation:DrawTest.FragmentShaderUsesNoPerspectiveColor:DrawTest.VertexInputDynamicStateVertexColorTriangleInterpolation:DrawTest.FragmentShaderDiscardsLeftHalfByFragCoord'` passed
 - Remaining issue: full `vk-unittests` in the CUDA build still hits a later `SIGSEGV` after the early DrawTests prefix, so another failure cluster remains to be isolated.
+
+## 2026-03-10: Draw lifecycle isolation
+- Hardened the Vulkan draw harness so explicit construct/destruct-only coverage is valid:
+  - `DrawTester::~DrawTester()` now returns early when no Vulkan device was created, and otherwise performs a `device.waitIdle()` before destroying owned draw resources.
+  - `VulkanTester::~VulkanTester()` now guards `device` / `instance` teardown so `initialize()` is no longer a prerequisite for safe destruction.
+- Added two focused lifecycle tests in `tests/VulkanUnitTests/DrawTests.cpp`:
+  - `DrawTest.ConstructThenDestroyWithoutInitialize`
+  - `DrawTest.InitializeThenDestroyWithoutRender`
+- Reused a small helper for the existing red triangle pipeline setup so the init-only test exercises the same basic pipeline/shader creation path as `DrawTest.SolidColorTriangle`.
+- Verification:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.ConstructThenDestroyWithoutInitialize' --gtest_repeat=100)` passed
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.InitializeThenDestroyWithoutRender' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.ConstructThenDestroyWithoutInitialize' --gtest_repeat=100)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.InitializeThenDestroyWithoutRender' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.VertexShaderNoPositionOutput' --gtest_repeat=25)` still crashes with `139`
+- Current conclusion: the remaining CUDA-only repeat crash requires a real `renderFrame()` submit/present cycle. Plain tester construction and pipeline initialization are not sufficient to trigger it.
+
+## 2026-03-10: No-present draw isolation
+- Extended the harness with `DrawTester::renderFrameWithoutPresent()` and added `DrawTest.RenderWithoutPresentThenDestroy` to separate real draw submit from `queuePresent()`.
+- Verification:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.RenderWithoutPresentThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithoutPresentThenDestroy' --gtest_repeat=25)` still crashes with `139`
+- Additional launch-count probe:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/... ./draw-unittests --gtest_filter='DrawTest.InitializeThenDestroyWithoutRender')` produced `1` stamped launch
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/... ./draw-unittests --gtest_filter='DrawTest.VertexShaderNoPositionOutput')` produced `4` stamped launches
+- Current conclusion: the remaining repeat crash is no longer best explained by presentation. Warmup-only initialization is stable; the unstable path requires the extra real draw-stage launches that happen during an actual submitted frame.

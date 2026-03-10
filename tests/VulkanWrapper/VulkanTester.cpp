@@ -249,10 +249,16 @@ VulkanTester::VulkanTester() = default;
 
 VulkanTester::~VulkanTester()
 {
-	device.waitIdle();
-	device.destroy(nullptr);
-	if(debugReport) instance.destroy(debugReport);
-	instance.destroy(nullptr);
+	if(device)
+	{
+		device.waitIdle();
+		device.destroy(nullptr);
+	}
+	if(instance)
+	{
+		if(debugReport) instance.destroy(debugReport);
+		instance.destroy(nullptr);
+	}
 }
 
 void VulkanTester::initialize()

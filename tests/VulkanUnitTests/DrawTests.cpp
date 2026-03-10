@@ -69,7 +69,59 @@ std::string readTextFile(const std::filesystem::path &path)
 }
 
 #endif
+
+void configureSolidColorTriangleDraw(DrawTester &tester)
+{
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex
+		{
+			float position[3];
+		};
+
+		Vertex vertexBufferData[] = {
+			{ { 1.0f, 1.0f, 0.5f } },
+			{ { -1.0f, 1.0f, 0.5f } },
+			{ { 0.0f, -1.0f, 0.5f } }
+		};
+
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 310 es
+			layout(location = 0) in vec3 inPos;
+
+			void main()
+			{
+				gl_Position = vec4(inPos.xyz, 1.0);
+			})";
+
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 310 es
+			precision highp float;
+
+			layout(location = 0) out vec4 outColor;
+
+			void main()
+			{
+				outColor = vec4(1.0, 0.0, 0.0, 1.0);
+			})";
+
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+}
 }  // namespace
+
+TEST_F(DrawTest, ConstructThenDestroyWithoutInitialize)
+{
+	DrawTester tester;
+}
 
 // Test that a vertex shader with no gl_Position works.
 // This was fixed in swiftshader-cl/51808
@@ -510,49 +562,7 @@ TEST_F(DrawTest, SolidColorTriangle)
 	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
 #endif
 	DrawTester tester;
-	tester.onCreateVertexBuffers([](DrawTester &tester) {
-		struct Vertex
-		{
-			float position[3];
-		};
-
-		Vertex vertexBufferData[] = {
-			{ { 1.0f, 1.0f, 0.5f } },
-			{ { -1.0f, 1.0f, 0.5f } },
-			{ { 0.0f, -1.0f, 0.5f } }
-		};
-
-		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
-		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
-
-		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
-	});
-
-	tester.onCreateVertexShader([](DrawTester &tester) {
-		const char *vertexShader = R"(#version 310 es
-			layout(location = 0) in vec3 inPos;
-
-			void main()
-			{
-				gl_Position = vec4(inPos.xyz, 1.0);
-			})";
-
-		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
-	});
-
-	tester.onCreateFragmentShader([](DrawTester &tester) {
-		const char *fragmentShader = R"(#version 310 es
-			precision highp float;
-
-			layout(location = 0) out vec4 outColor;
-
-			void main()
-			{
-				outColor = vec4(1.0, 0.0, 0.0, 1.0);
-			})";
-
-		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
-	});
+	configureSolidColorTriangleDraw(tester);
 
 	tester.initialize();
 	tester.renderFrame();
@@ -573,6 +583,21 @@ TEST_F(DrawTest, SolidColorTriangle)
 	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
 #endif
+}
+
+TEST_F(DrawTest, InitializeThenDestroyWithoutRender)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+}
+
+TEST_F(DrawTest, RenderWithoutPresentThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+	tester.renderFrameWithoutPresent();
 }
 
 TEST_F(DrawTest, DynamicRenderingSolidColorTriangle)

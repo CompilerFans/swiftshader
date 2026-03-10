@@ -46,6 +46,7 @@ public:
 
 	void initialize();
 	void renderFrame();
+	void renderFrameWithoutPresent();
 	std::vector<uint8_t> readbackFrameRgba();
 	std::array<uint8_t, 4> readbackPixel(uint32_t x, uint32_t y);
 	void saveFrame(const std::filesystem::path &path);
@@ -163,6 +164,7 @@ public:
 	}
 
 private:
+	void submitFrame(bool present);
 	void createSynchronizationPrimitives();
 	void createCommandBuffers(vk::RenderPass renderPass);
 	void prepareVertices();

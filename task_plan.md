@@ -62,6 +62,9 @@ Phase 4: Verification
 - 2026-03-10 first stabilization result: the initial failing family in `backend-unittests` was fixed by restoring layout parity between the raster CUDA kernel's invocation struct and host-side `FragmentBootstrapInvocation`.
 - 2026-03-10 second stabilization result: `draw-unittests` has no concrete failing CUDA case when sharded, while `vk-unittests` yielded three selection/smoke expectation fixes, one compute-fixture skip fix, and one discard-test stability fix.
 - Current next blocker: full `vk-unittests` in the CUDA build still reaches a later `SIGSEGV` after the early DrawTests prefix, so the next cycle should continue isolating that remaining crash window.
+- 2026-03-10 lifecycle isolation update: in both CPU and CUDA builds, `DrawTest.ConstructThenDestroyWithoutInitialize` and `DrawTest.InitializeThenDestroyWithoutRender` repeat cleanly; the remaining CUDA-only crash still requires `renderFrame()`, so the active root-cause search is now narrowed to submit/present or post-submit teardown rather than plain tester construction/initialization.
+- 2026-03-10 no-present update: `DrawTest.RenderWithoutPresentThenDestroy` also reproduces the CUDA-only repeat crash, so `queuePresent()` / surface presentation is no longer the leading suspect; the remaining search narrows further to the real draw submit path after swapchain acquire.
+- 2026-03-10 launch-shape update: `InitializeThenDestroyWithoutRender` still performs the expected single CUDA warmup launch and remains stable, while real draw tests perform additional stage launches and are the ones that crash. The active search is therefore inside the actual draw bootstrap/submit path, not generic CUDA runtime bring-up.
 - Historical milestones below remain useful as implementation context, but they are no longer the active phase tracker for this turn.
 - Task 1: backend build skeleton complete.
 - Task 2 complete: backend-neutral queue seam added with CPU default backend.

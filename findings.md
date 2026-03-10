@@ -228,3 +228,17 @@
 - The `vk-unittests` failure in `DrawTest.FragmentShaderDiscardsLeftHalfByFragCoord` is a test-stability bug, not a discard implementation regression. The left half of the frame is discarded and therefore preserves the color attachment's prior contents; with the default non-MSAA `eDontCare` load path, that background is undefined and can drift above the old `< 180` threshold after earlier tests.
 
 - A stable fix for the discard case is to opt into an explicit color clear for that test and assert the known clear color on the discarded half. This matches the repository's existing `DrawTester::enableColorClear()` pattern and removes the sequence dependence.
+
+- The CPU and CUDA draw tests use the same `DrawTester` / `VulkanTester` lifecycle harness; the CUDA-only repeat crash is therefore not explained by a different top-level test framework.
+
+- Before this cycle, plain `DrawTester tester;` destruction was not safe because `DrawTester::~DrawTester()` and `VulkanTester::~VulkanTester()` unconditionally called Vulkan device methods even when `initialize()` had never run. Guarding those destructors is a valid harness hardening change and enables explicit construct/destruct-only coverage.
+
+- The remaining CUDA repeat crash now has a tighter boundary:
+  - `DrawTest.ConstructThenDestroyWithoutInitialize` repeats cleanly in both CPU and CUDA builds.
+  - `DrawTest.InitializeThenDestroyWithoutRender` repeats cleanly in both CPU and CUDA builds.
+  - `DrawTest.VertexShaderNoPositionOutput` and `DrawTest.SolidColorTriangle` still crash under CUDA repeats once `renderFrame()` is involved.
+  - Therefore the active fault is in the draw submit/present path or post-submit teardown after a real frame, not in plain construction or initialization.
+
+- `DrawTest.RenderWithoutPresentThenDestroy` also crashes under CUDA repeats while passing on CPU, so `queuePresent()` / surface presentation is not the leading suspect anymore. The remaining fault boundary is “real frame submit after swapchain acquire”, not “presentation only”.
+
+- `DrawTest.InitializeThenDestroyWithoutRender` still triggers one CUDA launch in the current CUDA build, which is consistent with the existing runtime warmup path. That warmup-only launch is stable across repeats; the crashing cases trigger additional real draw-stage launches. So the remaining bug is not “any CUDA launch”, but something specific to the actual draw bootstrap/submit path.
