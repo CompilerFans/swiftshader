@@ -256,3 +256,14 @@
 - `DrawTest.DrawDegenerateTriangleThenDestroy` still crashes under CUDA repeats even though the triangle has zero area and should not produce meaningful covered fragments; the same case repeats cleanly on CPU.
   - A one-shot launch stamp probe with `SWIFTSHADER_CUDA_DISABLE_WARMUP=1` shows `DrawTest.DrawTwoVerticesThenDestroy` produces `0` stamped launches, while `DrawTest.DrawDegenerateTriangleThenDestroy` produces `3`.
   - Therefore the current boundary is narrower than “actual fragment coverage”: the first complete 3-vertex triangle primitive is enough to trigger the CUDA bootstrap launches and the later repeat crash, even when the primitive is degenerate.
+
+- Root cause of the backend degenerate-triangle bug is now confirmed in `RasterBootstrap`:
+  - CPU reference happened to return zero coverage for zero-area triangles because the computed bounding box collapses (`bboxMin > bboxMax`) and the coverage loops do not execute.
+  - The CUDA raster path had no degenerate-triangle guard, so it launched over the full render target, `pointInsideTriangle()` treated the zero-area triangle as inside everywhere, and barycentric interpolation divided by zero denominators.
+  - A dedicated backend test now reproduced that mismatch directly: `RasterBootstrap.CudaRuntimeRejectsDegenerateTriangleLikeCpuReference` failed before the fix and passes after adding an explicit zero-area early return in `runRasterBootstrap()`.
+
+- After the degenerate-raster fix, the draw crash landscape changed:
+  - `DrawTest.RenderWithoutPresentThenDestroy` now repeats cleanly for 25 iterations in the CUDA build.
+  - `DrawTest.DrawDegenerateTriangleThenDestroy` still crashes under CUDA repeats, but its warmup-disabled launch count dropped from `3` to `1`, confirming the raster/fragment degenerate path is no longer being launched.
+  - `DrawTest.SolidColorTriangle` still crashes under CUDA repeats (iteration 18 in the latest run).
+  - `DrawTest.VertexShaderNoPositionOutput` still crashes under CUDA repeats and now emits repeated `Unsupported Descriptor Type` warnings from `VkDescriptorSetLayout.cpp`, which is a strong hint that a separate descriptor-layout / lifetime corruption issue remains.

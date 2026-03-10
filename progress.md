@@ -847,3 +847,21 @@
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=... ./draw-unittests --gtest_filter='DrawTest.DrawTwoVerticesThenDestroy')` produced `0` stamped launches
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=... ./draw-unittests --gtest_filter='DrawTest.DrawDegenerateTriangleThenDestroy')` produced `3` stamped launches
 - Current conclusion: actual covered fragments are not required to trigger the CUDA-only repeat crash. The fault boundary is now “first complete 3-vertex primitive triggers the triangle bootstrap launches”, even when the primitive is degenerate and should rasterize to no useful coverage.
+
+## 2026-03-10: Degenerate raster bootstrap fix
+- Added backend regression coverage in `tests/BackendUnitTests/RasterBootstrapTests.cpp`:
+  - `RasterBootstrap.CpuReferenceProducesNoCoverageForDegenerateTriangle`
+  - `RasterBootstrap.CudaRuntimeRejectsDegenerateTriangleLikeCpuReference`
+- Verified RED first in the CUDA build:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='RasterBootstrap.CpuReferenceProducesNoCoverageForDegenerateTriangle:RasterBootstrap.CudaRuntimeRejectsDegenerateTriangleLikeCpuReference')`
+  - Result before fix: CPU reference test passed, CUDA degenerate match test failed because `output.invocations.empty()` was false.
+- Fixed `src/Backend/RasterBootstrap.cpp` by adding a shared zero-area triangle check and an early return in `runRasterBootstrap()` / `rasterBootstrapCpuReference()` before the CUDA raster kernel can run divide-by-zero barycentric interpolation.
+- Verification after fix:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='RasterBootstrap.CpuReferenceProducesNoCoverageForDegenerateTriangle:RasterBootstrap.CudaRuntimeRejectsDegenerateTriangleLikeCpuReference:RasterBootstrap.CudaRuntimeMatchesCpuReference:RasterBootstrap.RasterFeedsFragmentBootstrap')` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithoutPresentThenDestroy' --gtest_repeat=25)` passed
+- Follow-up observations after the fix:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=... ./draw-unittests --gtest_filter='DrawTest.DrawDegenerateTriangleThenDestroy')` now produces `1` stamped launch instead of `3`
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.DrawDegenerateTriangleThenDestroy' --gtest_repeat=25)` still crashes with `139` during iteration 19
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle' --gtest_repeat=25)` still crashes with `139` during iteration 18
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.VertexShaderNoPositionOutput' --gtest_repeat=25)` still crashes with `139` and emits repeated `Unsupported Descriptor Type` warnings from `src/Vulkan/VkDescriptorSetLayout.cpp`
+- Current conclusion: the degenerate raster bug was real and is fixed, but a second CUDA-only repeat crash family remains. The new leading clue is descriptor-layout corruption during repeated draw teardown or pipeline destruction, not the old triangle-bootstrap raster path alone.

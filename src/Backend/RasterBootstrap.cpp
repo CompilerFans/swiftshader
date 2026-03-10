@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <cstring>
 #include <cmath>
+#include <limits>
 #include <sstream>
 #include <vector>
 
@@ -27,6 +28,16 @@ float edgeFunction(const RasterBootstrapVertex &a, const RasterBootstrapVertex &
 	return (px - a.x) * (b.y - a.y) - (py - a.y) * (b.x - a.x);
 }
 
+float triangleArea(const std::array<RasterBootstrapVertex, 3> &triangle)
+{
+	return edgeFunction(triangle[0], triangle[1], triangle[2].x, triangle[2].y);
+}
+
+bool isDegenerateTriangle(const std::array<RasterBootstrapVertex, 3> &triangle)
+{
+	return std::abs(triangleArea(triangle)) <= std::numeric_limits<float>::epsilon();
+}
+
 bool pointInsideTriangle(const std::array<RasterBootstrapVertex, 3> &triangle, float px, float py)
 {
 	float e0 = edgeFunction(triangle[0], triangle[1], px, py);
@@ -40,7 +51,7 @@ bool pointInsideTriangle(const std::array<RasterBootstrapVertex, 3> &triangle, f
 
 bool computeFrontFacing(const std::array<RasterBootstrapVertex, 3> &triangle, bool frontFaceCounterClockwise)
 {
-	float area = edgeFunction(triangle[0], triangle[1], triangle[2].x, triangle[2].y);
+	float area = triangleArea(triangle);
 	return frontFaceCounterClockwise ? (area >= 0.0f) : (area <= 0.0f);
 }
 
@@ -164,6 +175,12 @@ RasterBootstrapOutput rasterBootstrapCpuReference(const std::array<RasterBootstr
 		return output;
 	}
 
+	output.valid = true;
+	if(isDegenerateTriangle(triangle))
+	{
+		return output;
+	}
+
 	float minX = std::min({ triangle[0].x, triangle[1].x, triangle[2].x });
 	float minY = std::min({ triangle[0].y, triangle[1].y, triangle[2].y });
 	float maxX = std::max({ triangle[0].x, triangle[1].x, triangle[2].x });
@@ -174,7 +191,6 @@ RasterBootstrapOutput rasterBootstrapCpuReference(const std::array<RasterBootstr
 	uint32_t bboxMaxX = static_cast<uint32_t>(std::min(static_cast<float>(config.width - 1), std::ceil(maxX) - 1.0f));
 	uint32_t bboxMaxY = static_cast<uint32_t>(std::min(static_cast<float>(config.height - 1), std::ceil(maxY) - 1.0f));
 
-	output.valid = true;
 	output.bboxMinX = bboxMinX;
 	bool frontFacing = computeFrontFacing(triangle, config.frontFaceCounterClockwise);
 	output.bboxMinY = bboxMinY;
@@ -212,6 +228,24 @@ RasterBootstrapOutput rasterBootstrapCpuReference(const std::array<RasterBootstr
 
 bool runRasterBootstrap(RuntimeAPI &runtime, const std::array<RasterBootstrapVertex, 3> &triangle, const RasterBootstrapConfig &config, RasterBootstrapOutput *output)
 {
+	if(config.width == 0 || config.height == 0)
+	{
+		if(output)
+		{
+			*output = RasterBootstrapOutput{};
+		}
+		return false;
+	}
+
+	if(isDegenerateTriangle(triangle))
+	{
+		if(output)
+		{
+			*output = rasterBootstrapCpuReference(triangle, config);
+		}
+		return true;
+	}
+
 	auto module = runtime.createModule(rasterBootstrapCudaSource(), "raster_entry");
 	if(!module.valid())
 	{

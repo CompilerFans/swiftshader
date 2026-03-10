@@ -97,6 +97,24 @@ TEST(RasterBootstrap, CpuReferenceSetsFrontFacingFlag)
 	EXPECT_EQ(front.invocations.front().frontFacing, 1u);
 }
 
+TEST(RasterBootstrap, CpuReferenceProducesNoCoverageForDegenerateTriangle)
+{
+	std::array<backend::RasterBootstrapVertex, 3> triangle = {{
+		backend::RasterBootstrapVertex{ 4.0f, 4.0f, 0.0f, 1.0f },
+		backend::RasterBootstrapVertex{ 4.0f, 4.0f, 0.0f, 1.0f },
+		backend::RasterBootstrapVertex{ 4.0f, 4.0f, 0.0f, 1.0f },
+	}};
+
+	backend::RasterBootstrapConfig config = {};
+	config.width = 8u;
+	config.height = 8u;
+
+	backend::RasterBootstrapOutput output = backend::rasterBootstrapCpuReference(triangle, config);
+
+	EXPECT_TRUE(output.valid);
+	EXPECT_TRUE(output.invocations.empty());
+}
+
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 TEST(RasterBootstrap, CudaRuntimeMatchesCpuReference)
 {
@@ -129,6 +147,29 @@ TEST(RasterBootstrap, CudaRuntimeMatchesCpuReference)
 		EXPECT_EQ(output.invocations[i].y, reference.invocations[i].y);
 		EXPECT_EQ(output.invocations[i].exportMask, reference.invocations[i].exportMask);
 	}
+}
+
+TEST(RasterBootstrap, CudaRuntimeRejectsDegenerateTriangleLikeCpuReference)
+{
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	std::array<backend::RasterBootstrapVertex, 3> triangle = {{
+		backend::RasterBootstrapVertex{ 4.0f, 4.0f, 0.0f, 1.0f },
+		backend::RasterBootstrapVertex{ 4.0f, 4.0f, 0.0f, 1.0f },
+		backend::RasterBootstrapVertex{ 4.0f, 4.0f, 0.0f, 1.0f },
+	}};
+
+	backend::RasterBootstrapConfig config = {};
+	config.width = 8u;
+	config.height = 8u;
+
+	backend::RasterBootstrapOutput reference = backend::rasterBootstrapCpuReference(triangle, config);
+	backend::RasterBootstrapOutput output = {};
+
+	ASSERT_TRUE(reference.invocations.empty());
+	ASSERT_TRUE(backend::runRasterBootstrap(runtime, triangle, config, &output));
+	EXPECT_TRUE(output.invocations.empty());
 }
 
 TEST(RasterBootstrap, RasterFeedsFragmentBootstrap)
