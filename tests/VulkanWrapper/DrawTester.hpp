@@ -50,6 +50,8 @@ public:
 	void saveFrame(const std::filesystem::path &path);
 	void updateVertexBufferData(const void *vertexBufferData, size_t vertexBufferDataSize);
 	void show();
+	void setSwapchainMinImageCount(uint32_t minImageCount);
+	size_t getSwapchainImageCount() const;
 	void setPrimitiveTopology(vk::PrimitiveTopology topology);
 	void setPrimitiveRestartEnable(bool enable);
 	void setLineWidth(float width);
@@ -195,6 +197,7 @@ private:
 	uint32_t pushConstantSize = 0;
 	std::array<uint8_t, 128> pushConstantData = {};
 	float lineWidth = 1.0f;
+	uint32_t swapchainMinImageCount = 2;
 
 	std::unique_ptr<Window> window;
 	std::unique_ptr<Swapchain> swapchain;

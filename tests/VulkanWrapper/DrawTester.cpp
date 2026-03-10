@@ -14,6 +14,7 @@
 
 #include "DrawTester.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cstring>
 #include <cstdint>
@@ -82,7 +83,7 @@ void DrawTester::initialize()
 	VulkanTester::initialize();
 
 	window.reset(new Window(instance, windowSize));
-	swapchain.reset(new Swapchain(physicalDevice, device, *window));
+	swapchain.reset(new Swapchain(physicalDevice, device, *window, swapchainMinImageCount));
 
 	renderPass = createRenderPass(swapchain->colorFormat);
 	createFramebuffers(renderPass);
@@ -237,6 +238,16 @@ void DrawTester::updateVertexBufferData(const void *vertexBufferData, size_t ver
 void DrawTester::show()
 {
 	window->show();
+}
+
+void DrawTester::setSwapchainMinImageCount(uint32_t minImageCount)
+{
+	swapchainMinImageCount = std::max(2u, minImageCount);
+}
+
+size_t DrawTester::getSwapchainImageCount() const
+{
+	return swapchain ? swapchain->imageCount() : 0;
 }
 
 void DrawTester::setPrimitiveTopology(vk::PrimitiveTopology topology)

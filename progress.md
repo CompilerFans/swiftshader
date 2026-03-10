@@ -685,3 +685,5 @@
 - Added `DrawTest.TwoSubpassesOverlayGreenTriangleOnRedBackground`, a BMP-producing two-subpass case that draws a fullscreen red triangle in subpass 0, then overlays a green triangle in subpass 1, passing in both CPU and CUDA builds.
 
 - Added `DrawTest.VertexInputDynamicStateIndexedInstancedDrawUsesBaseVertexAndFirstInstance`, a BMP-producing dynamic-vertex-input case that combines indexed drawing, `baseVertex`, `firstInstance`, and `VK_VERTEX_INPUT_RATE_INSTANCE` in both CPU and CUDA builds.
+
+- Added `DrawTest.SwapchainMinImageCountTripleBufferedTriangle`, a BMP-producing swapchain case that requests `minImageCount = 3`, verifies the created swapchain has at least 3 images, and renders correctly in both CPU and CUDA builds.

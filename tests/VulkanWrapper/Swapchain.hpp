@@ -23,7 +23,7 @@ class Window;
 class Swapchain
 {
 public:
-	Swapchain(vk::PhysicalDevice physicalDevice, vk::Device device, Window &window);
+	Swapchain(vk::PhysicalDevice physicalDevice, vk::Device device, Window &window, uint32_t requestedMinImageCount = 2);
 	~Swapchain();
 
 	void acquireNextImage(vk::Semaphore presentCompleteSemaphore, uint32_t &imageIndex);

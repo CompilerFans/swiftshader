@@ -19,8 +19,8 @@
   - `gl_InstanceIndex`, `VK_VERTEX_INPUT_RATE_INSTANCE`, and a combined `indexed + baseVertex + firstInstance` draw path now all have repo-local coverage.
   - `gl_InstanceIndex`、`VK_VERTEX_INPUT_RATE_INSTANCE`，以及组合了 `indexed + baseVertex + firstInstance` 的 draw 路径现在都已有仓库内覆盖。
 - `swapchain_images`
-  - swapchain/image-count visible paths are already partially exercised by benchmark windows.
-  - swapchain/image-count 的可见路径已经被 benchmark 窗口部分覆盖。
+  - swapchain/image-count visible paths are exercised by benchmark windows, and repo-local draw coverage now includes a configurable `minImageCount` case that requests triple buffering and renders successfully.
+  - swapchain/image-count 的可见路径已被 benchmark 窗口覆盖，且仓库内 draw 覆盖现在包含一个可配置 `minImageCount` 的三缓冲用例。
 
 ### Partial / 部分覆盖
 - `vertex_dynamic_state`

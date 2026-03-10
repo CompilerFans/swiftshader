@@ -204,3 +204,5 @@ Complete
 - Current sample-aligned milestone: `render_passes` now also has a repo-local two-subpass overlay case, so the local ladder no longer stops at single-subpass attachment operations.
 
 - Current sample-aligned milestone: `vertex_dynamic_state` now also covers the combined indexed instancing path with `baseVertex` and `firstInstance`, not just the simpler dynamic vertex-input cases.
+
+- Current sample-aligned milestone: `swapchain_images` now has repo-local coverage for configurable `minImageCount`, not just the fixed double-buffered default path.

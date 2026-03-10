@@ -15,7 +15,9 @@
 #include "Swapchain.hpp"
 #include "Window.hpp"
 
-Swapchain::Swapchain(vk::PhysicalDevice physicalDevice, vk::Device device, Window &window)
+#include <algorithm>
+
+Swapchain::Swapchain(vk::PhysicalDevice physicalDevice, vk::Device device, Window &window, uint32_t requestedMinImageCount)
     : device(device)
 {
 	vk::SurfaceKHR surface = window.getSurface();
@@ -26,7 +28,11 @@ Swapchain::Swapchain(vk::PhysicalDevice physicalDevice, vk::Device device, Windo
 
 	vk::SwapchainCreateInfoKHR swapchainCreateInfo;
 	swapchainCreateInfo.surface = surface;
-	swapchainCreateInfo.minImageCount = 2;  // double-buffered
+	swapchainCreateInfo.minImageCount = std::max(requestedMinImageCount, surfaceCapabilities.minImageCount);
+	if(surfaceCapabilities.maxImageCount != 0)
+	{
+		swapchainCreateInfo.minImageCount = std::min(swapchainCreateInfo.minImageCount, surfaceCapabilities.maxImageCount);
+	}
 	swapchainCreateInfo.imageFormat = colorFormat;
 	swapchainCreateInfo.imageColorSpace = vk::ColorSpaceKHR::eSrgbNonlinear;
 	swapchainCreateInfo.imageExtent = extent;

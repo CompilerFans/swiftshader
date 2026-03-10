@@ -178,3 +178,5 @@
 - A narrow two-subpass render pass is still a low-risk addition in the current harness: reusing the same shaders/state with a second subpass-specific pipeline is enough to validate `vkCmdNextSubpass` sequencing in both CPU and CUDA builds.
 
 - `vkCmdSetVertexInputEXT` composes cleanly with the existing indexed-instancing path: the current harness passes the combined `indexed + baseVertex + firstInstance + instance-rate` scenario in both CPU and CUDA builds.
+
+- Configurable `minImageCount` is a low-risk way to strengthen the `swapchain_images` sample line: the current harness can request triple buffering cleanly and still render/present correctly in both CPU and CUDA builds.
