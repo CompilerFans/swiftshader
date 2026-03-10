@@ -2897,6 +2897,80 @@ TEST_F(DrawTest, VertexInputDynamicStateInstanceRateOffsets)
 }
 
 
+TEST_F(DrawTest, ClearAttachmentsOverridesTriangleRegion)
+{
+	auto artifactPath = makeDrawArtifactPath("clear-attachments-overrides-triangle.bmp");
+	std::filesystem::remove(artifactPath);
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	auto stampPath = makeCudaLaunchStampPath("clear-attachments-overrides-triangle");
+	std::filesystem::remove(stampPath);
+	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
+#endif
+
+	DrawTester tester;
+	tester.enableColorClear({ 0.5f, 0.5f, 0.5f, 1.0f });
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex { float position[3]; };
+		Vertex vertexBufferData[] = {
+			{ { -0.95f, -0.85f, 0.5f } },
+			{ { -0.20f,  0.95f, 0.5f } },
+			{ {  0.95f, -0.85f, 0.5f } },
+		};
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 310 es
+			layout(location = 0) in vec3 inPos;
+			void main() { gl_Position = vec4(inPos, 1.0); })";
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 310 es
+			precision highp float;
+			layout(location = 0) out vec4 outColor;
+			void main() { outColor = vec4(1.0, 0.0, 0.0, 1.0); })";
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.onRecordDrawCommands([](DrawTester &tester, vk::CommandBuffer &commandBuffer) {
+		commandBuffer.draw(3, 1, 0, 0);
+		vk::ClearAttachment attachment;
+		attachment.aspectMask = vk::ImageAspectFlagBits::eColor;
+		attachment.colorAttachment = 0;
+		attachment.clearValue.color = vk::ClearColorValue(std::array<float, 4>{ 0.0f, 0.0f, 1.0f, 1.0f });
+		vk::ClearRect rect;
+		rect.rect.offset = vk::Offset2D{ 520, 240 };
+		rect.rect.extent = vk::Extent2D{ 240, 180 };
+		rect.baseArrayLayer = 0;
+		rect.layerCount = 1;
+		commandBuffer.clearAttachments(1, &attachment, 1, &rect);
+	});
+
+	tester.initialize();
+	tester.renderFrame();
+	tester.saveFrame(artifactPath);
+	auto clearedPixel = tester.readbackPixel(640, 300);
+	auto unclearedTrianglePixel = tester.readbackPixel(420, 300);
+	EXPECT_LT(clearedPixel[0], 80);
+	EXPECT_LT(clearedPixel[1], 80);
+	EXPECT_GT(clearedPixel[2], 200);
+	EXPECT_GT(unclearedTrianglePixel[0], 200);
+	EXPECT_LT(unclearedTrianglePixel[1], 80);
+	EXPECT_LT(unclearedTrianglePixel[2], 80);
+	EXPECT_TRUE(std::filesystem::exists(artifactPath));
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
+#endif
+}
+
+
 
 TEST_F(DrawTest, DrawUsesFirstInstanceOffset)
 {

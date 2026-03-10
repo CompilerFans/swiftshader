@@ -671,3 +671,5 @@
 - Probed a narrow `texture_mipmap_generation` path using `textureLod(..., 1.0)` plus a two-level mip texture; the draw did not produce the expected level-1 color in either CPU or CUDA builds, so the probe was discarded rather than committed.
 
 - Extended `vertex_dynamic_state` coverage with `DrawTest.VertexInputDynamicStateInstanceRateOffsets`, which verifies `vkCmdSetVertexInputEXT` together with `VK_VERTEX_INPUT_RATE_INSTANCE` in both CPU and CUDA builds and dumps a BMP artifact.
+
+- Added `DrawTest.ClearAttachmentsOverridesTriangleRegion`, a BMP-producing render-pass coverage case that draws a red triangle and then uses `vkCmdClearAttachments` to override a blue region in both CPU and CUDA builds.

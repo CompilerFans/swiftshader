@@ -164,3 +164,5 @@
 - A local `textureLod(..., 1.0)` + two-level mip draw probe does not produce the expected level-1 color even in the CPU baseline. That makes `texture_mipmap_generation` more than a simple bootstrap gap, and not part of the current low-risk feature lane.
 
 - `vertex_dynamic_state` combines cleanly with `VK_VERTEX_INPUT_RATE_INSTANCE` in the current harness: the same dynamic binding/attribute path works for both per-vertex and per-instance inputs in CPU and CUDA builds.
+
+- `vkCmdClearAttachments` is a good low-risk entry point for the `render_passes` sample family: it exercises in-render-pass attachment manipulation without immediately needing the harder subpass/lifecycle cases.

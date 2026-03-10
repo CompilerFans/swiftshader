@@ -30,8 +30,8 @@
   - Source scan shows it uses `vkCmdBeginRendering`, so it is not just “hello_triangle with Vulkan 1.3 headers”; it depends on dynamic rendering coverage.
   - 源码扫描显示它使用 `vkCmdBeginRendering`，因此并不只是“1.3 头文件版本的 hello_triangle”，而是依赖 dynamic rendering。
 - `render_passes`
-  - Render pass basics exist, but sample-driven validation for attachment load/store, subpass dependency, and layout transitions is missing from the current plan.
-  - render pass 基础已有，但 attachment load/store、subpass 依赖、layout 转换的样例驱动验证仍缺失。
+  - Render pass basics exist, and repo-local coverage now includes `vkCmdClearAttachments` overriding a region inside an active render pass; broader sample-driven validation for attachment load/store, subpass dependency, and layout transitions is still missing.
+  - render pass 基础已有，且仓库内已经覆盖了活动 render pass 内用 `vkCmdClearAttachments` 覆盖局部区域；但 attachment load/store、subpass 依赖、layout 转换的样例驱动验证仍缺失。
 - `msaa`
   - multisample paths exist in harnesses/benchmarks, but sample-grade coverage for resolve attachments is not yet in the current roadmap.
   - multisample 路径在 harness/benchmark 中存在，但 resolve attachment 的样例级覆盖尚未进入当前路线图。
