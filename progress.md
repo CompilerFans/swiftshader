@@ -691,3 +691,5 @@
 - Added `DrawTest.DepthLoadOpLoadPreservesPreviousDepth`, a BMP-producing render-pass case that initializes swapchain/depth attachments, then verifies a farther triangle stays blocked when depth `loadOp = LOAD` preserves prior depth contents in both CPU and CUDA builds.
 
 - Added `DrawTest.TwoSubpassesDepthBlocksFarTriangle`, a BMP-producing two-subpass render-pass case that draws a fullscreen red near triangle in subpass 0, then verifies a farther green triangle remains blocked by preserved depth in subpass 1, in both CPU and CUDA builds.
+
+- Added `DrawTest.MultisampleDepthBlocksFarTriangle`, and fixed the harness bug where multisample+depth render passes wrote the depth clear value into the wrong `pClearValues` slot. CPU and CUDA builds now pass the solid-color, interpolated-color, and depth-tested MSAA cases.

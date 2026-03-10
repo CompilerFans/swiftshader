@@ -210,3 +210,5 @@ Complete
 - Current sample-aligned milestone: `render_passes` now also has repo-local depth `loadOp = LOAD` coverage, not just color LOAD and subpass sequencing.
 
 - Current sample-aligned milestone: `render_passes` now also has a repo-local two-subpass depth-blocking case, strengthening subpass/depth interaction coverage alongside the existing color overlay case.
+
+- Current sample-aligned milestone: `msaa` now also covers a depth-tested case, not just resolved color output, and the multisample clear-value indexing bug in the harness has been fixed.

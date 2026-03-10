@@ -184,3 +184,5 @@
 - Depth `loadOp = LOAD` is stable in the current harness when images are initialized first: both CPU and CUDA builds preserve prior depth values strongly enough to reject a farther triangle on later frames.
 
 - The current harness confirms that depth attachment contents persist correctly across subpasses: a nearer triangle written in subpass 0 still blocks a farther triangle drawn in subpass 1 on both CPU and CUDA paths.
+
+- The root cause of the initial MSAA+depth failure was in the test harness, not the renderer: `beginRenderPass` used a too-short `clearValues` array and placed the depth clear value in the wrong slot when both resolve and depth attachments were present.

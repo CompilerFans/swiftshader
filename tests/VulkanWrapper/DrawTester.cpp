@@ -662,11 +662,12 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 		vk::CommandBufferBeginInfo commandBufferBeginInfo;
 		commandBuffers[i].begin(commandBufferBeginInfo);
 
-		std::vector<vk::ClearValue> clearValues(depthTestEnabled ? 2 : 1);
+		uint32_t clearValueCount = multisample ? (depthTestEnabled ? 3u : 2u) : (depthTestEnabled ? 2u : 1u);
+		std::vector<vk::ClearValue> clearValues(clearValueCount);
 		clearValues[0].color = vk::ClearColorValue(colorClearValue);
 		if(depthTestEnabled)
 		{
-			clearValues[1].depthStencil = vk::ClearDepthStencilValue(1.0f, 0u);
+			clearValues[multisample ? 2u : 1u].depthStencil = vk::ClearDepthStencilValue(1.0f, 0u);
 		}
 
 		vk::RenderPassBeginInfo renderPassBeginInfo;
