@@ -85,14 +85,18 @@ void DrawTester::initialize()
 	window.reset(new Window(instance, windowSize));
 	swapchain.reset(new Swapchain(physicalDevice, device, *window, swapchainMinImageCount));
 
-	renderPass = createRenderPass(swapchain->colorFormat);
-	createFramebuffers(renderPass);
+	if(!dynamicRenderingEnabled)
+	{
+		renderPass = createRenderPass(swapchain->colorFormat);
+		createFramebuffers(renderPass);
+	}
 
 	prepareVertices();
 
 	pipeline = createGraphicsPipeline(renderPass, 0);
 	if(secondSubpassEnabled)
 	{
+		assert(!dynamicRenderingEnabled);
 		secondSubpassPipeline = createGraphicsPipeline(renderPass, 1);
 	}
 
@@ -316,6 +320,11 @@ void DrawTester::setPushConstantData(vk::ShaderStageFlags stageFlags, const void
 	std::memcpy(pushConstantData.data(), data, size);
 }
 
+void DrawTester::enableDynamicRendering()
+{
+	dynamicRenderingEnabled = true;
+}
+
 void DrawTester::enableDepthTest(bool enableTest, bool enableWrite, vk::CompareOp compareOp)
 {
 	depthTestEnabled = enableTest;
@@ -342,6 +351,36 @@ void DrawTester::bindIndexBuffer(vk::CommandBuffer &commandBuffer)
 {
 	assert(indices.buffer);
 	commandBuffer.bindIndexBuffer(indices.buffer, 0, indices.type);
+}
+
+void DrawTester::bindDescriptorSet(vk::CommandBuffer &commandBuffer, std::initializer_list<uint32_t> dynamicOffsets)
+{
+	if(descriptorSets.empty())
+	{
+		return;
+	}
+
+	uint32_t expectedDynamicOffsetCount = 0;
+	for(const auto &binding : descriptorSetLayoutBindings)
+	{
+		if(binding.descriptorType == vk::DescriptorType::eUniformBufferDynamic ||
+		   binding.descriptorType == vk::DescriptorType::eStorageBufferDynamic)
+		{
+			expectedDynamicOffsetCount += binding.descriptorCount;
+		}
+	}
+
+	if(dynamicOffsets.size() == 0 && expectedDynamicOffsetCount > 0)
+	{
+		std::vector<uint32_t> zeros(expectedDynamicOffsetCount, 0u);
+		commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, 1, &descriptorSets[0],
+		                                expectedDynamicOffsetCount, zeros.data());
+		return;
+	}
+
+	assert(dynamicOffsets.size() == expectedDynamicOffsetCount);
+	commandBuffer.bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, 1, &descriptorSets[0],
+	                                expectedDynamicOffsetCount, dynamicOffsets.begin());
 }
 
 vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
@@ -485,6 +524,7 @@ void DrawTester::prepareVertices()
 vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass, uint32_t subpassIndex)
 {
 	auto setLayoutBindings = hooks.createDescriptorSetLayout(*this);
+	descriptorSetLayoutBindings = setLayoutBindings;
 
 	std::vector<vk::DescriptorSetLayout> setLayouts;
 	if(!setLayoutBindings.empty())
@@ -504,8 +544,6 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass, uint3
 
 	vk::GraphicsPipelineCreateInfo pipelineCreateInfo;
 	pipelineCreateInfo.layout = pipelineLayout;
-	pipelineCreateInfo.renderPass = renderPass;
-	pipelineCreateInfo.subpass = subpassIndex;
 
 	std::vector<vk::VertexInputBindingDescription> bindingDescriptions;
 	std::vector<vk::VertexInputAttributeDescription> attributeDescriptions;
@@ -601,8 +639,23 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass, uint3
 	pipelineCreateInfo.pMultisampleState = &multisampleState;
 	pipelineCreateInfo.pViewportState = &viewportState;
 	pipelineCreateInfo.pDepthStencilState = &depthStencilState;
-	pipelineCreateInfo.renderPass = renderPass;
-	pipelineCreateInfo.subpass = subpassIndex;
+	vk::PipelineRenderingCreateInfo pipelineRenderingInfo;
+	vk::Format colorAttachmentFormat = swapchain->colorFormat;
+	if(dynamicRenderingEnabled)
+	{
+		assert(subpassIndex == 0);
+		pipelineRenderingInfo.colorAttachmentCount = 1;
+		pipelineRenderingInfo.pColorAttachmentFormats = &colorAttachmentFormat;
+		pipelineCreateInfo.pNext = &pipelineRenderingInfo;
+		pipelineCreateInfo.renderPass = vk::RenderPass{};
+		pipelineCreateInfo.subpass = 0;
+	}
+	else
+	{
+		pipelineCreateInfo.pNext = nullptr;
+		pipelineCreateInfo.renderPass = renderPass;
+		pipelineCreateInfo.subpass = subpassIndex;
+	}
 	pipelineCreateInfo.pDynamicState = &dynamicState;
 
 	auto pipeline = device.createGraphicsPipeline(nullptr, pipelineCreateInfo).value;
@@ -638,9 +691,27 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 	descriptorSets.clear();
 	if(descriptorSetLayout)
 	{
-		std::array<vk::DescriptorPoolSize, 1> poolSizes = {};
-		poolSizes[0].type = vk::DescriptorType::eCombinedImageSampler;
-		poolSizes[0].descriptorCount = 1;
+		std::vector<vk::DescriptorPoolSize> poolSizes;
+		poolSizes.reserve(descriptorSetLayoutBindings.size());
+		for(const auto &binding : descriptorSetLayoutBindings)
+		{
+			if(binding.descriptorCount == 0)
+			{
+				continue;
+			}
+
+			auto found = std::find_if(poolSizes.begin(), poolSizes.end(), [&](const vk::DescriptorPoolSize &poolSize) {
+				return poolSize.type == binding.descriptorType;
+			});
+			if(found == poolSizes.end())
+			{
+				poolSizes.emplace_back(binding.descriptorType, binding.descriptorCount);
+			}
+			else
+			{
+				found->descriptorCount += binding.descriptorCount;
+			}
+		}
 
 		vk::DescriptorPoolCreateInfo poolInfo;
 		poolInfo.poolSizeCount = static_cast<uint32_t>(poolSizes.size());
@@ -667,28 +738,72 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 
 	commandBuffers = device.allocateCommandBuffers(commandBufferAllocateInfo);
 
-	for(size_t i = 0; i < commandBuffers.size(); i++)
-	{
-		vk::CommandBufferBeginInfo commandBufferBeginInfo;
-		commandBuffers[i].begin(commandBufferBeginInfo);
-
-		uint32_t clearValueCount = multisample ? (depthTestEnabled ? 3u : 2u) : (depthTestEnabled ? 2u : 1u);
-		std::vector<vk::ClearValue> clearValues(clearValueCount);
-		clearValues[0].color = vk::ClearColorValue(colorClearValue);
-		if(depthTestEnabled)
+		for(size_t i = 0; i < commandBuffers.size(); i++)
 		{
-			clearValues[multisample ? 2u : 1u].depthStencil = vk::ClearDepthStencilValue(1.0f, 0u);
-		}
+			vk::CommandBufferBeginInfo commandBufferBeginInfo;
+			commandBuffers[i].begin(commandBufferBeginInfo);
 
-		vk::RenderPassBeginInfo renderPassBeginInfo;
-		renderPassBeginInfo.framebuffer = framebuffers[i]->getFramebuffer();
-		renderPassBeginInfo.renderPass = renderPass;
-		renderPassBeginInfo.renderArea.offset.x = 0;
-		renderPassBeginInfo.renderArea.offset.y = 0;
-		renderPassBeginInfo.renderArea.extent = windowSize;
-		renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
-		renderPassBeginInfo.pClearValues = clearValues.data();
-		commandBuffers[i].beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+			if(dynamicRenderingEnabled)
+			{
+				assert(!multisample);
+				assert(!secondSubpassEnabled);
+				assert(!depthTestEnabled);
+
+				vk::ImageMemoryBarrier colorBarrier;
+				colorBarrier.oldLayout = vk::ImageLayout::ePresentSrcKHR;
+				colorBarrier.newLayout = vk::ImageLayout::eColorAttachmentOptimal;
+				colorBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				colorBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				colorBarrier.image = swapchain->getImage(i);
+				colorBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+				colorBarrier.subresourceRange.baseMipLevel = 0;
+				colorBarrier.subresourceRange.levelCount = 1;
+				colorBarrier.subresourceRange.baseArrayLayer = 0;
+				colorBarrier.subresourceRange.layerCount = 1;
+				colorBarrier.srcAccessMask = vk::AccessFlagBits::eMemoryRead;
+				colorBarrier.dstAccessMask = vk::AccessFlagBits::eColorAttachmentRead | vk::AccessFlagBits::eColorAttachmentWrite;
+
+				commandBuffers[i].pipelineBarrier(vk::PipelineStageFlagBits::eBottomOfPipe, vk::PipelineStageFlagBits::eColorAttachmentOutput,
+				                                  vk::DependencyFlags{}, 0, nullptr, 0, nullptr, 1, &colorBarrier);
+
+				vk::RenderingAttachmentInfo colorAttachment;
+				colorAttachment.imageView = swapchain->getImageView(i);
+				colorAttachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
+				colorAttachment.loadOp = colorLoadOp;
+				colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+				colorAttachment.clearValue.color = vk::ClearColorValue(colorClearValue);
+
+				vk::RenderingInfo renderingInfo;
+				renderingInfo.renderArea.offset.x = 0;
+				renderingInfo.renderArea.offset.y = 0;
+				renderingInfo.renderArea.extent = windowSize;
+				renderingInfo.layerCount = 1;
+				renderingInfo.viewMask = 0;
+				renderingInfo.colorAttachmentCount = 1;
+				renderingInfo.pColorAttachments = &colorAttachment;
+
+				commandBuffers[i].beginRendering(renderingInfo);
+			}
+			else
+			{
+				uint32_t clearValueCount = multisample ? (depthTestEnabled ? 3u : 2u) : (depthTestEnabled ? 2u : 1u);
+				std::vector<vk::ClearValue> clearValues(clearValueCount);
+				clearValues[0].color = vk::ClearColorValue(colorClearValue);
+				if(depthTestEnabled)
+				{
+					clearValues[multisample ? 2u : 1u].depthStencil = vk::ClearDepthStencilValue(1.0f, 0u);
+				}
+
+				vk::RenderPassBeginInfo renderPassBeginInfo;
+				renderPassBeginInfo.framebuffer = framebuffers[i]->getFramebuffer();
+				renderPassBeginInfo.renderPass = renderPass;
+				renderPassBeginInfo.renderArea.offset.x = 0;
+				renderPassBeginInfo.renderArea.offset.y = 0;
+				renderPassBeginInfo.renderArea.extent = windowSize;
+				renderPassBeginInfo.clearValueCount = static_cast<uint32_t>(clearValues.size());
+				renderPassBeginInfo.pClearValues = clearValues.data();
+				commandBuffers[i].beginRenderPass(renderPassBeginInfo, vk::SubpassContents::eInline);
+			}
 
 		// Set dynamic state
 		vk::Viewport viewport(0.0f, 0.0f, static_cast<float>(windowSize.width), static_cast<float>(windowSize.height), 0.0f, 1.0f);
@@ -699,7 +814,7 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 
 		if(!descriptorSets.empty())
 		{
-			commandBuffers[i].bindDescriptorSets(vk::PipelineBindPoint::eGraphics, pipelineLayout, 0, 1, &descriptorSets[0], 0, nullptr);
+			bindDescriptorSet(commandBuffers[i]);
 		}
 
 		// Draw
@@ -772,10 +887,34 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 			}
 		}
 
-		commandBuffers[i].endRenderPass();
-		commandBuffers[i].end();
+			if(dynamicRenderingEnabled)
+			{
+				commandBuffers[i].endRendering();
+
+				vk::ImageMemoryBarrier presentBarrier;
+				presentBarrier.oldLayout = vk::ImageLayout::eColorAttachmentOptimal;
+				presentBarrier.newLayout = vk::ImageLayout::ePresentSrcKHR;
+				presentBarrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				presentBarrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+				presentBarrier.image = swapchain->getImage(i);
+				presentBarrier.subresourceRange.aspectMask = vk::ImageAspectFlagBits::eColor;
+				presentBarrier.subresourceRange.baseMipLevel = 0;
+				presentBarrier.subresourceRange.levelCount = 1;
+				presentBarrier.subresourceRange.baseArrayLayer = 0;
+				presentBarrier.subresourceRange.layerCount = 1;
+				presentBarrier.srcAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+				presentBarrier.dstAccessMask = vk::AccessFlagBits::eMemoryRead;
+
+				commandBuffers[i].pipelineBarrier(vk::PipelineStageFlagBits::eColorAttachmentOutput, vk::PipelineStageFlagBits::eBottomOfPipe,
+				                                  vk::DependencyFlags{}, 0, nullptr, 0, nullptr, 1, &presentBarrier);
+			}
+			else
+			{
+				commandBuffers[i].endRenderPass();
+			}
+			commandBuffers[i].end();
+		}
 	}
-}
 
 void DrawTester::addVertexBuffer(void *vertexBufferData, size_t vertexBufferDataSize, size_t vertexSize, std::vector<vk::VertexInputAttributeDescription> inputAttributes)
 {

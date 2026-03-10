@@ -1,53 +1,54 @@
-# Task Plan: Re-review and revise design + implementation plans
+# Task Plan: CUDA backend unit-test stabilization
 
 ## Goal
-结合新的 review 意见，技术性判断哪些反馈应采纳，并据此修订双语设计文档与实施计划，同时把判断依据记录到持久化规划文件中。
+调整当前开发主线：优先把 SwiftShader 仓库自带的一批单元测试在 `build-cuda-bootstrap/` 这类 CUDA 自定义后端构建里跑通，并以仓库内测试通过作为主要验收标准；不再把“CPU 基线是否也失败/崩溃”作为本轮推进的决策门槛。
 
 ## Current Phase
-Complete
+Phase 5: Delivery
 
 ## Phases
 ### Phase 1: Requirements & Discovery
-- [x] Understand user intent
-- [x] Identify constraints and requirements
-- [x] Document findings in findings.md
+- [x] Confirm user-directed scope shift away from CPU-baseline comparisons
+- [x] Identify which built-in test binaries / filters are the best first targets
+- [x] Record the pivot and scope constraints in findings.md
 - **Status:** complete
 
-### Phase 2: Review Evaluation
-- [x] Validate each review point against current docs and codebase reality
-- [x] Decide accept / reject / partial accept for each point
-- [x] Record rationale in findings.md
+### Phase 2: Failure Triage
+- [x] Run focused SwiftShader built-in tests under the CUDA build
+- [x] Capture failing test names, exit modes, and first reproducible cluster
+- [x] Select the smallest high-value failure family to fix first
 - **Status:** complete
 
-### Phase 3: Document Revisions
-- [x] Update design doc with accepted changes
-- [x] Update implementation plan with accepted changes
-- [x] Keep bilingual formatting consistent
+### Phase 3: Implementation
+- [x] Add or reuse the narrowest existing regression signal for the chosen failure family
+- [x] Fix the root cause in harness/backend/runtime code
+- [x] Keep changes scoped to the failing unit-test family
 - **Status:** complete
 
 ### Phase 4: Verification
-- [x] Re-read revised sections for consistency
-- [x] Confirm plan/design alignment
-- [x] Log outcomes in progress.md
+- [x] Re-run the fixed focused tests in the CUDA build
+- [x] Re-run adjacent built-in tests that cover the same area
+- [x] Record commands and results in progress.md
 - **Status:** complete
 
 ### Phase 5: Delivery
-- [x] Summarize accepted and rejected review items
-- [x] Reference updated files
-- [x] Offer next-step execution options
+- [x] Summarize which built-in tests were stabilized
+- [x] Note remaining failing families / next candidates
+- [x] Confirm planning files reflect the latest state
 - **Status:** complete
 
 ## Key Questions
-1. Which review items reflect real technical gaps versus optional refinements?
-2. Which accepted changes belong in the design doc, the implementation plan, or both?
-3. Do any accepted changes alter previously confirmed architecture decisions?
+1. 哪一批 SwiftShader 自带测试最适合作为当前 CUDA 构建的第一组稳定化目标？
+2. 当前失败更集中在测试 harness、后端接线，还是某个具体图形/描述符/状态族？
+3. 哪些失败适合通过已有测试直接验收，哪些需要补更窄的新回归用例？
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| 在当前工作区执行实现 | 用户明确要求不创建 worktree |
-| Use `planning-with-files` for this turn | User explicitly requested it and task spans multiple document updates |
-| Evaluate feedback with `receiving-code-review` discipline | Need technical verification instead of blind acceptance |
+| 在当前工作区执行实现 | 用户此前已明确不创建 worktree，本轮继续沿用 |
+| Use `planning-with-files` for this turn | 用户显式指定，并且任务已切换到新的多阶段方向 |
+| Prioritize built-in SwiftShader tests over external samples | 用户明确要求先把仓库自带测试跑通 |
+| Do not gate progress on CPU-baseline comparisons | 用户明确说明 CPU 版本原本应可通过，无需继续纠结对比 CPU 是否支持或崩溃 |
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
@@ -57,6 +58,10 @@ Complete
 | Shell backtick expansion in `rg` command | 1 | Re-ran with `grep -F` and proper quoting |
 
 ## Notes
+- 2026-03-10 pivot: the active plan is no longer the external Vulkan-Samples ladder. The immediate objective is to stabilize selected repository-owned unit tests in the CUDA-enabled build.
+- 2026-03-10 first stabilization result: the initial failing family in `backend-unittests` was fixed by restoring layout parity between the raster CUDA kernel's invocation struct and host-side `FragmentBootstrapInvocation`.
+- Next built-in test candidates after this checkpoint: `draw-unittests` and then `vk-unittests`, starting from the smallest reproducible failing cluster in the CUDA build.
+- Historical milestones below remain useful as implementation context, but they are no longer the active phase tracker for this turn.
 - Task 1: backend build skeleton complete.
 - Task 2 complete: backend-neutral queue seam added with CPU default backend.
 - Task 3 complete: dedicated `backend-unittests` target added and passing.
@@ -143,7 +148,7 @@ Complete
 
 - Current primitive-restart draw milestone: `IndexedTriangleStripWithPrimitiveRestart` is now covered in the draw harness and passes in both CPU and CUDA builds; the earlier failure was a bad sample point, not a renderer defect.
 
-- Current blocker revalidated: `noperspective` still crashes in both CPU and CUDA draw paths, so it remains outside the committed parity suite until root-caused.
+- Update: the original `noperspective` blocker was glslang crashing on `#version 310 es` + `noperspective`. `DrawTest.FragmentShaderUsesNoPerspectiveColor` now provides repo-local coverage using Vulkan GLSL `#version 450` and passes in both CPU and CUDA builds.
 
 - Current indexed-pointcoord milestone: `indexed point-list` now also has `PointCoord` gradient coverage in both CPU and CUDA draw builds.
 
@@ -165,23 +170,19 @@ Complete
 
 - Current indexed-baseVertex milestone: `drawIndexed(..., vertexOffset, ...)` coverage is now present in both CPU and CUDA builds.
 
-- Vulkan Samples compatibility roadmap added: the current sample ladder now explicitly highlights missing capabilities such as separate image/sampler, mipmap generation, dynamic uniform buffers, dynamic rendering, dynamic blending, vertex dynamic state, and full instancing input-rate coverage.
+- Vulkan Samples compatibility roadmap added: the current sample ladder now explicitly highlights missing capabilities such as mipmap generation, dynamic blending, and broader vertex dynamic state coverage.
 
-- Current blocker confirmed: `separate image + sampler` is not yet safe to promote into the committed parity suite; it needs separate investigation from the already-working combined image sampler path.
+- Update: `separate image + sampler` now has repo-local draw coverage via `DrawTest.TexturedTriangleSeparateImageSamplerNearest`; the earlier failure was `ErrorOutOfPoolMemory` from DrawTester descriptor-pool sizing, not a renderer capability gap.
+
+- Update: `dynamic uniform buffers` now have repo-local draw coverage via `DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor`; the earlier probe was blocked by DrawTester not binding dynamic descriptor sets with dynamic offsets.
 
 - Current per-instance-input milestone: `VK_VERTEX_INPUT_RATE_INSTANCE` draw coverage is now present in both CPU and CUDA builds.
 
-- Current sample-gap blocker: `separate image + sampler` still fails as a real capability gap and should be tracked separately from the already-working combined image sampler path.
-
-- Explicit blocker: `separate image + sampler` is a real capability gap and is now deferred until a dedicated investigation cycle; do not route normal short-term feature work back into it.
-
 - Current firstInstance milestone: `draw(..., firstInstance)` / `gl_InstanceIndex` offset coverage is now present in both CPU and CUDA builds.
 
-- Current sample-gap blocker: `dynamic rendering` is not yet ready for promotion into the committed parity suite and needs a dedicated investigation cycle.
+- Update: `dynamic rendering` now has repo-local draw coverage via `DrawTest.DynamicRenderingSolidColorTriangle`.
 
-- Current sample-aligned milestone: `MSAA resolve` draw coverage is now present in both CPU and CUDA builds, while `dynamic rendering` remains a separate blocker.
-
-- Current sample-gap blocker: `dynamic uniform buffers` should be treated as a dedicated investigation item rather than part of the immediate low-risk feature path.
+- Current sample-aligned milestone: `MSAA resolve` draw coverage is now present in both CPU and CUDA builds.
 
 - Current sample-aligned milestone: `vertex_dynamic_state` now has repo-local draw coverage via `DrawTest.VertexInputDynamicStateSolidColorTriangle`, so it moves out of the “missing” bucket and into the staged compatibility ladder.
 

@@ -25,6 +25,7 @@
 
 #include <filesystem>
 #include <functional>
+#include <initializer_list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -62,11 +63,13 @@ public:
 	void enableVertexInputDynamicState();
 	void enablePushConstantRange(vk::ShaderStageFlags stageFlags, uint32_t size);
 	void setPushConstantData(vk::ShaderStageFlags stageFlags, const void *data, uint32_t size);
+	void enableDynamicRendering();
 	void enableDepthTest(bool depthTestEnable, bool depthWriteEnable, vk::CompareOp depthCompareOp);
 	void enableDepthLoad();
 	void pumpWindowEvents();
 	void setWindowTitle(const std::string &title);
 	void bindIndexBuffer(vk::CommandBuffer &commandBuffer);
+	void bindDescriptorSet(vk::CommandBuffer &commandBuffer, std::initializer_list<uint32_t> dynamicOffsets = {});
 
 	/////////////////////////
 	// Hooks
@@ -196,6 +199,7 @@ private:
 	std::array<float, 4> colorClearValue = { 0.5f, 0.5f, 0.5f, 1.0f };
 	bool pushConstantEnabled = false;
 	bool vertexInputDynamicStateEnabled = false;
+	bool dynamicRenderingEnabled = false;
 	vk::ShaderStageFlags pushConstantStages = {};
 	uint32_t pushConstantSize = 0;
 	std::array<uint8_t, 128> pushConstantData = {};
@@ -233,6 +237,7 @@ private:
 	} indices;
 
 	vk::DescriptorSetLayout descriptorSetLayout;  // Owning handle
+	std::vector<vk::DescriptorSetLayoutBinding> descriptorSetLayoutBindings;
 	vk::PipelineLayout pipelineLayout;            // Owning handle
 	vk::Pipeline pipeline;                        // Owning handle
 	vk::Pipeline secondSubpassPipeline;           // Owning handle

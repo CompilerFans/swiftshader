@@ -95,7 +95,7 @@
 - The shortest way to bring up point-list before `PointCoord` is to expand each point into two host-side triangles and reuse the existing triangle raster/bootstrap chain. This is a transitional implementation, but it widens real draw-state coverage immediately.
 - Once point-list bootstrap exists, `PointCoord` becomes a pure fragment-payload problem. The shortest path is to populate `pointCoordX/Y` directly in the point branch and expose a narrow `PointCoordGradient` fragment mode before tackling general point fragment lowering.
 - `flat` 插值在当前 bootstrap 里不需要新的 raster payload；只要在 fragment 侧直接选 provoking vertex 的颜色即可。结合当前默认 `FIRST_VERTEX` 规则，这是一条非常短的 parity 增量路径。
-- The current CPU baseline crashes on the `noperspective` draw test in both CPU-only and CUDA-enabled builds. Until that upstream CPU-path issue is understood, `noperspective` should be treated as a blocked parity item rather than forced through the bootstrap path.
+- The earlier `noperspective` draw-test crash was a glslang (GLSL -> SPIR-V) segfault triggered by `#version 310 es` shaders using `noperspective`. Switching the reproducer to Vulkan GLSL `#version 450` avoids the crash, and `DrawTest.FragmentShaderUsesNoPerspectiveColor` now provides repo-local coverage that validates `NoPerspective` interpolation differs from perspective-correct interpolation.
 - `triangle strip` can be brought up with the same transitional strategy used for indexed draws and point lists: expand to triangle-list on the host side using the CPU default `FIRST_VERTEX` strip ordering, then reuse the existing triangle bootstrap chain.
 - `IndexedTriangleStripWithPrimitiveRestart` currently fails in the CPU-only baseline as well as the CUDA build, so primitive restart should be tracked as a CPU-reference blocker rather than a CUDA-bootstrap regression until the baseline path is understood.
 - `IndexedTriangleStripWithPrimitiveRestart` currently fails in the CPU-only baseline, so primitive restart remains a CPU-reference blocker and should not be used as a CUDA regression signal yet.
@@ -115,7 +115,7 @@
 
 - `IndexedTriangleStripWithPrimitiveRestart` is currently covered at the draw-harness level and passes in both CPU and CUDA builds; the previously observed failure was caused by sampling below the actual covered region, not by primitive restart semantics being broken in the renderer path.
 
-- A minimal `noperspective` varying-color draw case still crashes in both the CPU baseline and the CUDA build before producing a frame. This remains a real blocker and should stay out of committed test suites until the crash is root-caused.
+- A minimal `noperspective` varying-color draw case no longer blocks the suite once authored as Vulkan GLSL `#version 450`: the repo-local `DrawTest.FragmentShaderUsesNoPerspectiveColor` passes in both CPU and CUDA builds and provides a concrete regression gate.
 
 - `indexed POINT_LIST` composes cleanly not only with constant-color output but also with the existing `PointCoordGradient` fragment path; no extra runtime changes were required beyond the earlier deindex + point-size work.
 
@@ -131,31 +131,27 @@
 
 - For visible benchmarks, explicit clear is necessary for reliable visual output. Unlike unit tests, users interpret the window contents frame-to-frame, so leaving the background undefined makes the benchmark look broken even when draw results are technically valid. This is a harness-level presentation requirement, not a reason to globally change Vulkan clear semantics.
 
-- Matching `noperspective` on both VS output and FS input does not unblock the local reproducer. The issue remains inside the renderer/compiler path rather than being explained away by qualifier mismatch alone.
+- Matching `noperspective` on both VS output and FS input was never the real issue; the root cause was glslang crashing on the `#version 310 es` + `noperspective` combination instead of emitting a compile error or valid SPIR-V.
 
-- A narrow push-constant path is low-risk and high-yield for feature expansion: the harness and command buffer path already supported Vulkan push constants, so adding explicit test-side pipeline layout ranges/data was enough to unlock real VS/FS push-constant coverage without touching the `noperspective` blocker.
+- A narrow push-constant path is low-risk and high-yield for feature expansion: the harness and command buffer path already supported Vulkan push constants, so adding explicit test-side pipeline layout ranges/data was enough to unlock real VS/FS push-constant coverage without being blocked on `noperspective`.
 
 - `gl_InstanceIndex` is an easy low-risk coverage gain even before custom bootstrap-specific lowering: the existing CPU/CUDA draw paths already render instanced geometry correctly through normal Vulkan command recording.
 
 - `drawIndexed(..., vertexOffset, ...)` is another low-risk coverage gain: the existing CPU/CUDA draw paths already honor `baseVertex`, and the only real work needed here was choosing sample points inside the shifted triangle.
 
-- The local sample scan revealed that `hello_triangle_1_3` already depends on dynamic rendering (`vkCmdBeginRendering`), so it should not be grouped with plain `hello_triangle` in planning. That makes dynamic rendering a higher-priority missing capability than the previous rough roadmap suggested.
+- The local sample scan revealed that `hello_triangle_1_3` already depends on dynamic rendering (`vkCmdBeginRendering`), so it should not be grouped with plain `hello_triangle` in planning. Repo-local `dynamic_rendering` coverage now exists (`DrawTest.DynamicRenderingSolidColorTriangle`), and Vulkan Samples `hello_triangle_1_3` now runs headless against SwiftShader.
 
-- A minimal `separate image + sampler` draw case currently crashes in both CPU and CUDA builds. That makes `separate_image_sampler` a real missing capability rather than just an unimplemented bootstrap optimization.
+- `separate_image_sampler` was initially blocked by a DrawTester limitation: the descriptor pool was hard-coded for `eCombinedImageSampler`, causing `vk::Device::allocateDescriptorSets` to throw `ErrorOutOfPoolMemory` for separate image/sampler layouts. After sizing the pool from the descriptor set layout bindings, `DrawTest.TexturedTriangleSeparateImageSamplerNearest` passes in both CPU and CUDA builds.
 
 - `VK_VERTEX_INPUT_RATE_INSTANCE` is another low-risk compatibility gain: the underlying renderer already handles the Vulkan path correctly, and the main work was extending the test harness from one vertex buffer to a narrow two-binding case.
 
-- A minimal `separate image + sampler` draw probe currently crashes in both CPU and CUDA builds, so `separate_image_sampler` remains a real missing capability rather than a bootstrap-only optimization gap.
-
-- `separate image + sampler` has now been explicitly confirmed as a blocker: a minimal local reproducer crashes in both CPU and CUDA builds, so we should not keep circling back to it until it becomes a dedicated investigation item.
-
 - `draw(..., firstInstance)` is another low-risk external-sample-aligned gain: the renderer already honors `gl_InstanceIndex` with non-zero firstInstance, and the only adjustment needed was choosing sample points inside the resulting shifted geometry.
 
-- A minimal `dynamic rendering` draw probe currently crashes in both CPU and CUDA builds. This makes `hello_triangle_1_3` / `dynamic_rendering` a real missing capability, not just an untested path.
+- `dynamic_rendering` now has repo-local draw coverage via `DrawTest.DynamicRenderingSolidColorTriangle`; the DrawTester path uses `vkCmdBeginRendering`/`vkCmdEndRendering` with explicit swapchain-image layout transitions. External sample execution is still pending.
 
 - The existing multisample harness path is already strong enough for an initial `msaa` sample-aligned gate. A simple resolved solid triangle passes in both CPU and CUDA builds without requiring new backend work.
 
-- A minimal `dynamic uniform buffer` graphics draw probe currently fails before producing the expected output in both CPU and CUDA builds. This makes `dynamic_uniform_buffers` another real missing capability, not a low-risk extension of the current short-term path.
+- `dynamic_uniform_buffers` was initially blocked by a DrawTester harness gap: dynamic descriptor sets were bound without supplying dynamic offsets, and there was no per-draw dynamic-offset rebind hook. After adding `DrawTester::bindDescriptorSet(...dynamicOffsets...)` plus `DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor`, dynamic UBO offsets now have repo-local coverage in both CPU and CUDA builds.
 
 - `vertex_dynamic_state` turned out to be a low-risk sample-aligned gain: SwiftShader already exposes `vkCmdSetVertexInputEXT`, so the main missing piece was test-harness support for the extension, feature enablement, and dynamic vertex-input command recording.
 
@@ -194,3 +190,28 @@
 - The current combined-image-sampler path composes cleanly with instancing: both CPU and CUDA builds rendered two offset textured instances correctly using the existing narrow texture bootstrap path.
 
 - The current narrow texture path composes cleanly with dynamic vertex input and instancing together: both CPU and CUDA builds rendered instanced textured triangles correctly under `vkCmdSetVertexInputEXT`.
+
+- 2026-03-10 plan pivot: for the next stretch, the primary acceptance signal is SwiftShader's own built-in unit tests under the CUDA-enabled build, not external Vulkan-Samples runs.
+
+- Per user direction, CPU-baseline comparison should not drive prioritization for this round. Treat the repository-owned test failures in the CUDA build as the actionable queue unless a failure clearly proves the test itself is invalid.
+
+- The current `task_plan.md` had gone stale: it still described an older document-review task even though the repository state and `progress.md` already reflect substantial CUDA/backend test work. Planning files now need to track unit-test stabilization as the active objective.
+
+- In `build-cuda-bootstrap/`, `ctest -N` reports `Total Tests: 0`. The actionable built-in test entry points are the standalone binaries such as `backend-unittests`, `draw-unittests`, and `vk-unittests`, not CTest registrations.
+
+- First CUDA-built-in failure cluster from `./build-cuda-bootstrap/backend-unittests` is tightly grouped, not random:
+  - `TrianglePipelineBootstrap.CudaRuntimeAppliesRequestedVertexGeometry`
+  - `TrianglePipelineBootstrap.CudaRuntimeUsesRawVertexDataAndBinding`
+  - `TrianglePipelineBootstrap.CudaRuntimeRendersMultipleTrianglesFromRawVertexData`
+  - `TrianglePipelineBootstrap.CudaRuntimeAppliesFragCoordQuadrantFragmentMode`
+  - `RasterBootstrap.CudaRuntimeMatchesCpuReference`
+  - `RasterBootstrap.RasterFeedsFragmentBootstrap`
+
+- The strongest current signal is in `RasterBootstrap.CudaRuntimeMatchesCpuReference`: for the same simple 8x8 triangle, CUDA output reports `28` fragment invocations while the CPU reference reports `10`. Downstream triangle-pipeline failures all look like “expected covered pixel stayed black”, which points more toward raster coverage / coordinate generation than toward fragment shading or basic CUDA runtime launch failures.
+
+- Root-cause hypothesis for the first failure cluster is now concrete: the raster CUDA kernel writes `RasterInvocation`, but host code allocates and reads the buffer as `FragmentBootstrapInvocation`.
+  - Device-side `RasterInvocation` in `src/Backend/RasterBootstrap.cpp` contains `x/y/exportMask/helperInvocation/frontFacing/barycentric0/1/2`.
+  - Host-side `FragmentBootstrapInvocation` in `src/Backend/FragmentBootstrap.hpp` additionally contains `pointCoordX/pointCoordY` before the barycentrics.
+  - That means the kernel uses a 32-byte stride while host code reads back with a 40-byte stride, which cleanly explains why coverage counts inflate (`28` vs `10`) and why downstream raster-fed triangle tests read incorrect covered pixels.
+
+- The minimal root-cause fix is to restore layout parity at the raster/fragment boundary, not to special-case any individual failing test. Adding `pointCoordX/pointCoordY` to the raster CUDA-side invocation struct and zero-initializing them is sufficient because point rasterization already populates those fields elsewhere without using `runRasterBootstrap()`.

@@ -9,6 +9,74 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 - CMake: `cmake -S . -B build-custom -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON`
 - GN arg: `swiftshader_enable_custom_gpu_backend=true`
 
+## CUDA Build / CUDA 构建
+- Prerequisites:
+  - Install NVIDIA driver so `libcuda.so.1` is available at runtime.
+  - Install the CUDA toolkit so CMake can satisfy `find_package(CUDAToolkit REQUIRED)`.
+  - Prefer `Subzero` for the current bootstrap flow.
+- Recommended configure command:
+  - `cmake -S . -B build-cuda-bootstrap -DREACTOR_BACKEND=Subzero -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON -DSWIFTSHADER_CUSTOM_GPU_USE_CUDA=ON -DSWIFTSHADER_BUILD_TESTS=ON -DSWIFTSHADER_BUILD_BENCHMARKS=ON`
+- Recommended build command:
+  - `cmake --build build-cuda-bootstrap --parallel`
+
+- 前置条件：
+  - 运行时需要可用的 NVIDIA 驱动，使 `libcuda.so.1` 可被加载。
+  - 构建时需要安装 CUDA toolkit，供 CMake 的 `find_package(CUDAToolkit REQUIRED)` 使用。
+  - 当前 bootstrap 流程建议搭配 `Subzero`。
+- 推荐配置命令：
+  - `cmake -S . -B build-cuda-bootstrap -DREACTOR_BACKEND=Subzero -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON -DSWIFTSHADER_CUSTOM_GPU_USE_CUDA=ON -DSWIFTSHADER_BUILD_TESTS=ON -DSWIFTSHADER_BUILD_BENCHMARKS=ON`
+- 推荐构建命令：
+  - `cmake --build build-cuda-bootstrap --parallel`
+
+## CUDA Smoke Tests / CUDA 烟测
+- Backend runtime smoke:
+  - `./build-cuda-bootstrap/backend-unittests`
+- Draw smoke:
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle`
+- Focused draw coverage:
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
+- Benchmark helper:
+  - `tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --scene=color --seconds=10`
+
+- 后端 runtime 烟测：
+  - `./build-cuda-bootstrap/backend-unittests`
+- 绘制烟测：
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle`
+- 聚焦绘制覆盖：
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
+- Benchmark 辅助脚本：
+  - `tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --scene=color --seconds=10`
+
+## Vulkan ICD Usage / 作为 Vulkan ICD 使用
+- Create an ICD manifest that points to the CUDA-enabled `libvk_swiftshader.so`, for example:
+  - `{"file_format_version":"1.0.0","ICD":{"library_path":"/absolute/path/to/build-cuda-bootstrap/libvk_swiftshader.so","api_version":"1.0.5"}}`
+- Run Vulkan applications with `VK_ICD_FILENAMES=/path/to/swiftshader-icd.json`.
+
+- 新建一个指向 CUDA 构建产物 `libvk_swiftshader.so` 的 ICD manifest，例如：
+  - `{"file_format_version":"1.0.0","ICD":{"library_path":"/absolute/path/to/build-cuda-bootstrap/libvk_swiftshader.so","api_version":"1.0.5"}}`
+- 运行 Vulkan 应用时设置 `VK_ICD_FILENAMES=/path/to/swiftshader-icd.json`。
+
+## CUDA Environment Variables / CUDA 环境变量
+- `SWIFTSHADER_CUDA_DUMP_SOURCE`
+  - Empty or unset means dump generated CUDA source to `stderr`.
+  - Set to `0`, `false`, `off`, or `no` to suppress the `stderr` dump.
+- `SWIFTSHADER_CUDA_SOURCE_DUMP_PATH`
+  - Append generated CUDA source to the specified file.
+- `SWIFTSHADER_CUDA_LAUNCH_STAMP`
+  - Append one line per kernel launch to the specified file.
+- `SWIFTSHADER_CUDA_DISABLE_WARMUP`
+  - Disable the startup warmup launch done by the CUDA runtime bootstrap.
+
+- `SWIFTSHADER_CUDA_DUMP_SOURCE`
+  - 为空或未设置时，会把生成的 CUDA 源码打印到 `stderr`。
+  - 设为 `0`、`false`、`off` 或 `no` 可关闭 `stderr` dump。
+- `SWIFTSHADER_CUDA_SOURCE_DUMP_PATH`
+  - 把生成的 CUDA 源码追加写入指定文件。
+- `SWIFTSHADER_CUDA_LAUNCH_STAMP`
+  - 每次 kernel launch 向指定文件追加一行标记。
+- `SWIFTSHADER_CUDA_DISABLE_WARMUP`
+  - 关闭 CUDA runtime bootstrap 默认的启动预热 launch。
+
 ## Current Behavior / 当前行为
 - The custom backend flag enables backend scaffolding code paths and compile definitions.
 - CPU execution remains available as the fallback path for graphics and presentation.
