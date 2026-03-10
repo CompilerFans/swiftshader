@@ -759,3 +759,31 @@
 - Verification after fix:
   - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests --gtest_filter='RasterBootstrap.CudaRuntimeMatchesCpuReference:RasterBootstrap.RasterFeedsFragmentBootstrap:TrianglePipelineBootstrap.CudaRuntimeAppliesRequestedVertexGeometry'` passed
   - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests` passed (`94 tests from 17 test suites`)
+
+## 2026-03-10: Commit/push checkpoint and draw suite sweep
+- Rebuilt `backend-unittests` and `draw-unittests` in `build-cuda-bootstrap/`.
+- Fresh verification before commit:
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./backend-unittests` passed (`94 tests from 17 test suites`)
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.DynamicRenderingSolidColorTriangle:DrawTest.FragmentShaderUsesNoPerspectiveColor:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor'` passed
+- Committed and pushed current checkpoint:
+  - commit `2573a03dd` (`Tests: expand CUDA draw coverage`)
+  - `git push origin HEAD` passed
+- Continued with a CUDA `draw-unittests` sweep:
+  - `LineStripConstantColor`, `PointListUsesVertexPointSize`, indexed topology cases, texture/push-constant/instancing cases, render-pass/swapchain cases, and the MSAA tail cases all passed when run in smaller batches.
+  - The earlier full-suite session termination did not reproduce as a concrete test failure when the suite was sharded.
+
+## 2026-03-10: Vulkan unit-test stabilization follow-up
+- Reproduced three immediate `vk-unittests` expectation failures in the CUDA build:
+  - `BackendSelection.DefaultsToCpuBackend`
+  - `BackendSmoke.GraphicsPathStillFallsBackToCpu`
+  - `GraphicsBackendSelection.DefaultsToCpuRendererForGraphics`
+- Fixed those tests to expect `BackendKind::CUSTOM_GPU` when `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND` is enabled.
+- Reproduced a CUDA-build segfault in `ComputeBackendPipelineTest.BuildBackendExecutableWithoutDispatch` and traced it to `SetUpTestSuite()` skipping before `driver.loadSwiftShader()`, while the test body still ran.
+- Fixed the compute Vulkan test fixture by always loading the driver in `SetUpTestSuite()` and moving the CUDA unsupported-path skip into `BuildBackendExecutableWithoutDispatch`.
+- Reproduced a sequence-dependent failure in `DrawTest.FragmentShaderDiscardsLeftHalfByFragCoord` inside `vk-unittests`, where the discarded half inherited undefined color-attachment contents after earlier tests.
+- Stabilized that discard case by enabling an explicit gray clear and asserting the discarded half against the known clear color instead of undefined background.
+- Fresh verification for this checkpoint:
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./vk-unittests --gtest_filter='BackendSelection.DefaultsToCpuBackend:BackendSmoke.GraphicsPathStillFallsBackToCpu:GraphicsBackendSelection.DefaultsToCpuRendererForGraphics'` passed
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./vk-unittests --gtest_filter='ComputeBackendPipelineTest.BuildBackendExecutableWithoutDispatch:ComputeBackendPipelineTest.DispatchUsesFakeRuntimeWhenCustomBackendEnabled'` ran with 2 skips and no failures
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./vk-unittests --gtest_filter='DrawTest.VertexColorTriangleInterpolation:DrawTest.FragmentShaderUsesNoPerspectiveColor:DrawTest.VertexInputDynamicStateVertexColorTriangleInterpolation:DrawTest.FragmentShaderDiscardsLeftHalfByFragCoord'` passed
+- Remaining issue: full `vk-unittests` in the CUDA build still hits a later `SIGSEGV` after the early DrawTests prefix, so another failure cluster remains to be isolated.

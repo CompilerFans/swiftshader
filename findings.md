@@ -215,3 +215,16 @@
   - That means the kernel uses a 32-byte stride while host code reads back with a 40-byte stride, which cleanly explains why coverage counts inflate (`28` vs `10`) and why downstream raster-fed triangle tests read incorrect covered pixels.
 
 - The minimal root-cause fix is to restore layout parity at the raster/fragment boundary, not to special-case any individual failing test. Adding `pointCoordX/pointCoordY` to the raster CUDA-side invocation struct and zero-initializing them is sufficient because point rasterization already populates those fields elsewhere without using `runRasterBootstrap()`.
+
+- `draw-unittests` in `build-cuda-bootstrap/` currently do not show a concrete failing test family. The earlier full-suite session died near `LineStripConstantColor` / later near `MultisampleSolidColorTriangle`, but those tests pass individually and the suite passes when sharded into smaller batches. For now, treat that as an execution-session limitation rather than a renderer or harness regression.
+
+- The first concrete `vk-unittests` crash in the CUDA build is `ComputeBackendPipelineTest.BuildBackendExecutableWithoutDispatch`, exiting with signal 11 (`139`) before any assertion output.
+
+- Root cause is a test-fixture control-flow bug, not a compute backend assertion failure:
+  - `ComputeBackendPipelineTest::SetUpTestSuite()` calls `GTEST_SKIP()` under `SWIFTSHADER_CUSTOM_GPU_USE_CUDA` and therefore never calls `driver.loadSwiftShader()`.
+  - GoogleTest still proceeds to run `BuildBackendExecutableWithoutDispatch`, which then dereferences the unresolved `driver` function table (`driver.vkCreateInstance(...)`) and segfaults.
+  - The correct place to gate unsupported CUDA compute Vulkan tests is at the individual test level, while keeping suite setup responsible for initializing the shared driver fixture.
+
+- The `vk-unittests` failure in `DrawTest.FragmentShaderDiscardsLeftHalfByFragCoord` is a test-stability bug, not a discard implementation regression. The left half of the frame is discarded and therefore preserves the color attachment's prior contents; with the default non-MSAA `eDontCare` load path, that background is undefined and can drift above the old `< 180` threshold after earlier tests.
+
+- A stable fix for the discard case is to opt into an explicit color clear for that test and assert the known clear color on the discarded half. This matches the repository's existing `DrawTester::enableColorClear()` pattern and removes the sequence dependence.

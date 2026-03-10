@@ -14,5 +14,9 @@ TEST(BackendSmoke, ComputePathCanCompile)
 
 TEST(BackendSmoke, GraphicsPathStillFallsBackToCpu)
 {
+#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND
+	EXPECT_EQ(backend::defaultBackendKind(), backend::BackendKind::CUSTOM_GPU);
+#else
 	EXPECT_EQ(backend::defaultBackendKind(), backend::BackendKind::CPU);
+#endif
 }

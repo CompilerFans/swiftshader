@@ -1257,6 +1257,7 @@ TEST_F(DrawTest, FragmentShaderDiscardsLeftHalfByFragCoord)
 #endif
 
 	DrawTester tester;
+	tester.enableColorClear({ 0.5f, 0.5f, 0.5f, 1.0f });
 	tester.onCreateVertexBuffers([](DrawTester &tester) {
 		struct Vertex { float position[2]; };
 		Vertex vertexBufferData[] = {
@@ -1294,7 +1295,10 @@ TEST_F(DrawTest, FragmentShaderDiscardsLeftHalfByFragCoord)
 
 	auto leftPixel = tester.readbackPixel(320, 180);
 	auto rightPixel = tester.readbackPixel(960, 180);
-	EXPECT_LT(leftPixel[0], 180);
+	EXPECT_NEAR(leftPixel[0], 128, 8);
+	EXPECT_NEAR(leftPixel[1], 128, 8);
+	EXPECT_NEAR(leftPixel[2], 128, 8);
+	EXPECT_GT(leftPixel[3], 200);
 	EXPECT_GT(rightPixel[0], 200);
 	EXPECT_LT(rightPixel[1], 80);
 	EXPECT_LT(rightPixel[2], 80);

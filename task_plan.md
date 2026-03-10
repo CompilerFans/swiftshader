@@ -4,7 +4,7 @@
 调整当前开发主线：优先把 SwiftShader 仓库自带的一批单元测试在 `build-cuda-bootstrap/` 这类 CUDA 自定义后端构建里跑通，并以仓库内测试通过作为主要验收标准；不再把“CPU 基线是否也失败/崩溃”作为本轮推进的决策门槛。
 
 ## Current Phase
-Phase 5: Delivery
+Phase 4: Verification
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -60,7 +60,8 @@ Phase 5: Delivery
 ## Notes
 - 2026-03-10 pivot: the active plan is no longer the external Vulkan-Samples ladder. The immediate objective is to stabilize selected repository-owned unit tests in the CUDA-enabled build.
 - 2026-03-10 first stabilization result: the initial failing family in `backend-unittests` was fixed by restoring layout parity between the raster CUDA kernel's invocation struct and host-side `FragmentBootstrapInvocation`.
-- Next built-in test candidates after this checkpoint: `draw-unittests` and then `vk-unittests`, starting from the smallest reproducible failing cluster in the CUDA build.
+- 2026-03-10 second stabilization result: `draw-unittests` has no concrete failing CUDA case when sharded, while `vk-unittests` yielded three selection/smoke expectation fixes, one compute-fixture skip fix, and one discard-test stability fix.
+- Current next blocker: full `vk-unittests` in the CUDA build still reaches a later `SIGSEGV` after the early DrawTests prefix, so the next cycle should continue isolating that remaining crash window.
 - Historical milestones below remain useful as implementation context, but they are no longer the active phase tracker for this turn.
 - Task 1: backend build skeleton complete.
 - Task 2 complete: backend-neutral queue seam added with CPU default backend.

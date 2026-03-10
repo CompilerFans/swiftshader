@@ -69,11 +69,7 @@ protected:
 
 	static void SetUpTestSuite()
 	{
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
-		GTEST_SKIP() << "Real CUDA-backed Vulkan compute tests are deferred until shared-library dispatch is integrated.";
-#else
 		ASSERT_TRUE(driver.loadSwiftShader());
-#endif
 	}
 
 	static void TearDownTestSuite()
@@ -88,6 +84,10 @@ Driver ComputeBackendPipelineTest::driver;
 
 TEST_F(ComputeBackendPipelineTest, BuildBackendExecutableWithoutDispatch)
 {
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	GTEST_SKIP() << "Real CUDA-backed Vulkan compute tests are deferred until shared-library dispatch is integrated.";
+#endif
+
 	const VkInstanceCreateInfo createInfo = {
 		VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, nullptr, 0, nullptr, 0, nullptr, 0, nullptr,
 	};
