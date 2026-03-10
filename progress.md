@@ -697,3 +697,5 @@
 - Added `DrawTest.SwapchainTripleBufferedColorCycle`, a BMP-producing swapchain case that requests triple buffering, renders red/green/blue across successive frames, and verifies the final presented frame is blue in both CPU and CUDA builds.
 
 - Added `DrawTest.TexturedTriangleDescriptorUpdateChangesFrame`, a BMP-producing texture-loading case that updates the combined image sampler descriptor between frames and verifies the final frame switches from red to blue in both CPU and CUDA builds.
+
+- Added `DrawTest.InstancedTexturedTriangles`, a BMP-producing case that combines a narrow combined-image-sampler path with `VK_VERTEX_INPUT_RATE_INSTANCE`, and passes in both CPU and CUDA builds.

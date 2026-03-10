@@ -216,3 +216,5 @@ Complete
 - Current sample-aligned milestone: `swapchain_images` now also has a repo-local multi-frame triple-buffered color-cycle test, not just a one-frame `minImageCount` probe.
 
 - Current sample-aligned milestone: `texture_loading` now also has repo-local descriptor-update coverage across frames, not just static combined-image-sampler draws.
+
+- Current sample-aligned milestone: `texture_loading` now also has repo-local instanced textured draw coverage, not just static and descriptor-updated single-draw cases.

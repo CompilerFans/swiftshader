@@ -13,8 +13,8 @@
   - surface / swapchain / render pass / basic graphics pipeline / present / sync are already exercised by visible benchmarks and draw tests.
   - surface / swapchain / render pass / 基础图形管线 / present / 同步，现已通过可见 benchmark 与 draw tests 间接覆盖。
 - `texture_loading`
-  - narrow combined-image-sampler path is implemented and now validated both for static textured draws and for cross-frame descriptor updates that switch the sampled texture without re-recording command buffers.
-  - 窄 `combined image sampler` 路径已经实现，并且现在不仅覆盖静态纹理绘制，还覆盖了不重录命令缓冲、跨帧更新 descriptor 后切换采样纹理的场景。
+  - narrow combined-image-sampler path is implemented and now validated for static textured draws, cross-frame descriptor updates without command-buffer re-recording, and instanced textured draws that combine sampling with per-instance vertex input.
+  - 窄 `combined image sampler` 路径已经实现，并且现在不仅覆盖静态纹理绘制、跨帧更新 descriptor 后切换采样纹理的场景，还覆盖了把贴图采样和实例化顶点输入组合起来的绘制路径。
 - `instancing`
   - `gl_InstanceIndex`, `VK_VERTEX_INPUT_RATE_INSTANCE`, and a combined `indexed + baseVertex + firstInstance` draw path now all have repo-local coverage.
   - `gl_InstanceIndex`、`VK_VERTEX_INPUT_RATE_INSTANCE`，以及组合了 `indexed + baseVertex + firstInstance` 的 draw 路径现在都已有仓库内覆盖。
