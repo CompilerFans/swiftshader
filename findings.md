@@ -158,3 +158,7 @@
 - A minimal `dynamic uniform buffer` graphics draw probe currently fails before producing the expected output in both CPU and CUDA builds. This makes `dynamic_uniform_buffers` another real missing capability, not a low-risk extension of the current short-term path.
 
 - `vertex_dynamic_state` turned out to be a low-risk sample-aligned gain: SwiftShader already exposes `vkCmdSetVertexInputEXT`, so the main missing piece was test-harness support for the extension, feature enablement, and dynamic vertex-input command recording.
+
+- `vertex_dynamic_state` is now covered beyond the trivial solid triangle: a multi-attribute interpolated-color triangle also passes through `vkCmdSetVertexInputEXT` in both CPU and CUDA builds, which increases confidence before broader sample-style expansion.
+
+- A local `textureLod(..., 1.0)` + two-level mip draw probe does not produce the expected level-1 color even in the CPU baseline. That makes `texture_mipmap_generation` more than a simple bootstrap gap, and not part of the current low-risk feature lane.

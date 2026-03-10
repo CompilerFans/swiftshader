@@ -184,3 +184,7 @@ Complete
 - Current sample-gap blocker: `dynamic uniform buffers` should be treated as a dedicated investigation item rather than part of the immediate low-risk feature path.
 
 - Current sample-aligned milestone: `vertex_dynamic_state` now has repo-local draw coverage via `DrawTest.VertexInputDynamicStateSolidColorTriangle`, so it moves out of the “missing” bucket and into the staged compatibility ladder.
+
+- Current sample-aligned milestone: `vertex_dynamic_state` now has both solid-color and interpolated-color repo-local draw coverage, making the sample path materially stronger before tackling broader format/topology combinations.
+
+- Current sample-gap finding: a local `texture_mipmap_generation` explicit-LOD probe does not yet produce the expected level-1 color even in the CPU baseline, so mip/LOD work should stay out of the immediate low-risk lane for now.

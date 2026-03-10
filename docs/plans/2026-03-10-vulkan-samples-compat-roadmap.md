@@ -24,8 +24,8 @@
 
 ### Partial / 部分覆盖
 - `vertex_dynamic_state`
-  - the repository now has a narrow `vkCmdSetVertexInputEXT` draw test for a solid-color triangle, but broader sample-style coverage still needs more formats/topologies.
-  - 仓库内已经有一个窄 `vkCmdSetVertexInputEXT` 纯色三角形 draw 用例，但更广的样例风格覆盖仍需补更多格式/拓扑。
+  - the repository now has repo-local `vkCmdSetVertexInputEXT` coverage for both a solid-color triangle and a multi-attribute interpolated-color triangle, but broader sample-style coverage still needs more formats/topologies/instance-rate combinations.
+  - 仓库内已经有 `vkCmdSetVertexInputEXT` 的纯色三角形和多 attribute 颜色插值三角形覆盖，但更广的样例风格覆盖仍需补更多格式/拓扑/instance-rate 组合。
 - `hello_triangle_1_3`
   - Source scan shows it uses `vkCmdBeginRendering`, so it is not just “hello_triangle with Vulkan 1.3 headers”; it depends on dynamic rendering coverage.
   - 源码扫描显示它使用 `vkCmdBeginRendering`，因此并不只是“1.3 头文件版本的 hello_triangle”，而是依赖 dynamic rendering。

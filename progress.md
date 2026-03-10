@@ -665,3 +665,7 @@
 - Result: the probe does not produce the expected dynamic-UBO-driven color and is therefore kept out of the committed suite.
 
 - Completed a narrow `vertex_dynamic_state` milestone: `DrawTester` and `VulkanTester` now enable `VK_EXT_vertex_input_dynamic_state`, `DrawTester` can record `vkCmdSetVertexInputEXT`, and both CPU/CUDA builds pass `DrawTest.VertexInputDynamicStateSolidColorTriangle` with a BMP artifact.
+
+- Strengthened the `vertex_dynamic_state` milestone with `DrawTest.VertexInputDynamicStateVertexColorTriangleInterpolation`, a BMP-producing multi-attribute color-interpolation draw case that passes in both CPU and CUDA builds.
+
+- Probed a narrow `texture_mipmap_generation` path using `textureLod(..., 1.0)` plus a two-level mip texture; the draw did not produce the expected level-1 color in either CPU or CUDA builds, so the probe was discarded rather than committed.
