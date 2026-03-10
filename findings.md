@@ -192,3 +192,5 @@
 - The current harness can safely update a bound graphics descriptor set between frames without re-recording command buffers: both CPU and CUDA builds picked up the new combined image sampler contents on the next submit.
 
 - The current combined-image-sampler path composes cleanly with instancing: both CPU and CUDA builds rendered two offset textured instances correctly using the existing narrow texture bootstrap path.
+
+- The current narrow texture path composes cleanly with dynamic vertex input and instancing together: both CPU and CUDA builds rendered instanced textured triangles correctly under `vkCmdSetVertexInputEXT`.

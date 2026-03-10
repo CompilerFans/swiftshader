@@ -218,3 +218,5 @@ Complete
 - Current sample-aligned milestone: `texture_loading` now also has repo-local descriptor-update coverage across frames, not just static combined-image-sampler draws.
 
 - Current sample-aligned milestone: `texture_loading` now also has repo-local instanced textured draw coverage, not just static and descriptor-updated single-draw cases.
+
+- Current sample-aligned milestone: the local overlap between `vertex_dynamic_state`, `instancing`, and `texture_loading` is now covered by a repo-local instanced textured draw using dynamic vertex input.

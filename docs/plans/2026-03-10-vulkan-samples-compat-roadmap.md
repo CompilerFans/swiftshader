@@ -13,8 +13,8 @@
   - surface / swapchain / render pass / basic graphics pipeline / present / sync are already exercised by visible benchmarks and draw tests.
   - surface / swapchain / render pass / 基础图形管线 / present / 同步，现已通过可见 benchmark 与 draw tests 间接覆盖。
 - `texture_loading`
-  - narrow combined-image-sampler path is implemented and now validated for static textured draws, cross-frame descriptor updates without command-buffer re-recording, and instanced textured draws that combine sampling with per-instance vertex input.
-  - 窄 `combined image sampler` 路径已经实现，并且现在不仅覆盖静态纹理绘制、跨帧更新 descriptor 后切换采样纹理的场景，还覆盖了把贴图采样和实例化顶点输入组合起来的绘制路径。
+  - narrow combined-image-sampler path is implemented and now validated for static textured draws, cross-frame descriptor updates without command-buffer re-recording, instanced textured draws, and the same instanced-texture path under `vkCmdSetVertexInputEXT`.
+  - 窄 `combined image sampler` 路径已经实现，并且现在不仅覆盖静态纹理绘制、跨帧更新 descriptor 后切换采样纹理、普通实例化贴图绘制，还覆盖了同一路径在 `vkCmdSetVertexInputEXT` 下的实例化贴图绘制。
 - `instancing`
   - `gl_InstanceIndex`, `VK_VERTEX_INPUT_RATE_INSTANCE`, and a combined `indexed + baseVertex + firstInstance` draw path now all have repo-local coverage.
   - `gl_InstanceIndex`、`VK_VERTEX_INPUT_RATE_INSTANCE`，以及组合了 `indexed + baseVertex + firstInstance` 的 draw 路径现在都已有仓库内覆盖。
@@ -24,8 +24,8 @@
 
 ### Partial / 部分覆盖
 - `vertex_dynamic_state`
-  - the repository now has repo-local `vkCmdSetVertexInputEXT` coverage for a solid-color triangle, a multi-attribute interpolated-color triangle, an `instance-rate` offset case, and a combined `indexed + baseVertex + firstInstance + instance-rate` path; broader sample-style coverage still needs more formats/topologies.
-  - 仓库内已经有 `vkCmdSetVertexInputEXT` 的纯色三角形、多 attribute 颜色插值三角形、`instance-rate` 偏移组合，以及 `indexed + baseVertex + firstInstance + instance-rate` 组合路径覆盖；更广的样例风格覆盖仍需补更多格式/拓扑。
+  - the repository now has repo-local `vkCmdSetVertexInputEXT` coverage for a solid-color triangle, a multi-attribute interpolated-color triangle, an `instance-rate` offset case, a combined `indexed + baseVertex + firstInstance + instance-rate` path, and a textured instanced draw; broader sample-style coverage still needs more formats/topologies.
+  - 仓库内已经有 `vkCmdSetVertexInputEXT` 的纯色三角形、多 attribute 颜色插值三角形、`instance-rate` 偏移组合、`indexed + baseVertex + firstInstance + instance-rate` 组合路径，以及贴图实例化绘制覆盖；更广的样例风格覆盖仍需补更多格式/拓扑。
 - `hello_triangle_1_3`
   - Source scan shows it uses `vkCmdBeginRendering`, so it is not just “hello_triangle with Vulkan 1.3 headers”; it depends on dynamic rendering coverage.
   - 源码扫描显示它使用 `vkCmdBeginRendering`，因此并不只是“1.3 头文件版本的 hello_triangle”，而是依赖 dynamic rendering。
