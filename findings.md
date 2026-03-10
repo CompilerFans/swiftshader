@@ -162,3 +162,5 @@
 - `vertex_dynamic_state` is now covered beyond the trivial solid triangle: a multi-attribute interpolated-color triangle also passes through `vkCmdSetVertexInputEXT` in both CPU and CUDA builds, which increases confidence before broader sample-style expansion.
 
 - A local `textureLod(..., 1.0)` + two-level mip draw probe does not produce the expected level-1 color even in the CPU baseline. That makes `texture_mipmap_generation` more than a simple bootstrap gap, and not part of the current low-risk feature lane.
+
+- `vertex_dynamic_state` combines cleanly with `VK_VERTEX_INPUT_RATE_INSTANCE` in the current harness: the same dynamic binding/attribute path works for both per-vertex and per-instance inputs in CPU and CUDA builds.

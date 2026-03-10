@@ -188,3 +188,5 @@ Complete
 - Current sample-aligned milestone: `vertex_dynamic_state` now has both solid-color and interpolated-color repo-local draw coverage, making the sample path materially stronger before tackling broader format/topology combinations.
 
 - Current sample-gap finding: a local `texture_mipmap_generation` explicit-LOD probe does not yet produce the expected level-1 color even in the CPU baseline, so mip/LOD work should stay out of the immediate low-risk lane for now.
+
+- Current sample-aligned milestone: `vertex_dynamic_state` now also covers the `VK_VERTEX_INPUT_RATE_INSTANCE` combination, so the local sample ladder includes both multi-attribute and instance-rate dynamic vertex input cases.
