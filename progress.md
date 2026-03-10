@@ -675,3 +675,5 @@
 - Added `DrawTest.ClearAttachmentsOverridesTriangleRegion`, a BMP-producing render-pass coverage case that draws a red triangle and then uses `vkCmdClearAttachments` to override a blue region in both CPU and CUDA builds.
 
 - Added `DrawTest.MultisampleVertexColorTriangleInterpolation`, a BMP-producing MSAA resolve case that validates interpolated color output in both CPU and CUDA builds.
+
+- Added `DrawTest.ColorLoadOpLoadPreservesPreviousFrame`, a BMP-producing render-pass case that initializes swapchain images with a fullscreen red triangle, then switches to a smaller green triangle under `loadOp = LOAD` and verifies the previous red contents are preserved in both CPU and CUDA builds.

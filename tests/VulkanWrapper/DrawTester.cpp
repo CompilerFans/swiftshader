@@ -249,7 +249,14 @@ void DrawTester::setLineWidth(float width)
 void DrawTester::enableColorClear(const std::array<float, 4> &color)
 {
 	colorClearEnabled = true;
+	colorLoadOp = vk::AttachmentLoadOp::eClear;
 	colorClearValue = color;
+}
+
+void DrawTester::enableColorLoad()
+{
+	colorClearEnabled = false;
+	colorLoadOp = vk::AttachmentLoadOp::eLoad;
 }
 
 void DrawTester::enableVertexInputDynamicState()
@@ -332,11 +339,11 @@ vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
 	{
 		attachments[0].format = colorFormat;
 		attachments[0].samples = vk::SampleCountFlagBits::e1;
-		attachments[0].loadOp = colorClearEnabled ? vk::AttachmentLoadOp::eClear : vk::AttachmentLoadOp::eDontCare;
+		attachments[0].loadOp = colorLoadOp;
 		attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
 		attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 		attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		attachments[0].initialLayout = vk::ImageLayout::eUndefined;
+		attachments[0].initialLayout = (colorLoadOp == vk::AttachmentLoadOp::eLoad) ? vk::ImageLayout::ePresentSrcKHR : vk::ImageLayout::eUndefined;
 		attachments[0].finalLayout = vk::ImageLayout::ePresentSrcKHR;
 	}
 

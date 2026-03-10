@@ -168,3 +168,5 @@
 - `vkCmdClearAttachments` is a good low-risk entry point for the `render_passes` sample family: it exercises in-render-pass attachment manipulation without immediately needing the harder subpass/lifecycle cases.
 
 - `MSAA` remains a good low-risk lane: after the earlier solid-color case, a resolved interpolated-color triangle also passes in both CPU and CUDA builds, so resolve coverage is no longer limited to a constant fragment color.
+
+- `loadOp = LOAD` on swapchain-backed color attachments is another practical low-risk entry point for the `render_passes` sample family; in the current harness it works cleanly in both CPU and CUDA builds when the images are explicitly initialized first.

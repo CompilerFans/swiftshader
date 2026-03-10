@@ -54,6 +54,7 @@ public:
 	void setPrimitiveRestartEnable(bool enable);
 	void setLineWidth(float width);
 	void enableColorClear(const std::array<float, 4> &color);
+	void enableColorLoad();
 	void enableVertexInputDynamicState();
 	void enablePushConstantRange(vk::ShaderStageFlags stageFlags, uint32_t size);
 	void setPushConstantData(vk::ShaderStageFlags stageFlags, const void *data, uint32_t size);
@@ -182,6 +183,7 @@ private:
 	vk::PrimitiveTopology primitiveTopology = vk::PrimitiveTopology::eTriangleList;
 	bool primitiveRestartEnable = false;
 	bool colorClearEnabled = false;
+	vk::AttachmentLoadOp colorLoadOp = vk::AttachmentLoadOp::eDontCare;
 	std::array<float, 4> colorClearValue = { 0.5f, 0.5f, 0.5f, 1.0f };
 	bool pushConstantEnabled = false;
 	bool vertexInputDynamicStateEnabled = false;
