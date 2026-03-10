@@ -202,3 +202,5 @@ Complete
 - Current sample-aligned milestone: `instancing` now also has repo-local coverage for the combined `drawIndexed + baseVertex + firstInstance + instance-rate` path, not just the simpler individual pieces.
 
 - Current sample-aligned milestone: `render_passes` now also has a repo-local two-subpass overlay case, so the local ladder no longer stops at single-subpass attachment operations.
+
+- Current sample-aligned milestone: `vertex_dynamic_state` now also covers the combined indexed instancing path with `baseVertex` and `firstInstance`, not just the simpler dynamic vertex-input cases.

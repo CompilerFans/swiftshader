@@ -176,3 +176,5 @@
 - The current harness now confirms that `baseVertex`, `firstInstance`, and `VK_VERTEX_INPUT_RATE_INSTANCE` compose correctly together in a single indexed instanced draw on both CPU and CUDA paths; the earlier failure was only a bad sample point.
 
 - A narrow two-subpass render pass is still a low-risk addition in the current harness: reusing the same shaders/state with a second subpass-specific pipeline is enough to validate `vkCmdNextSubpass` sequencing in both CPU and CUDA builds.
+
+- `vkCmdSetVertexInputEXT` composes cleanly with the existing indexed-instancing path: the current harness passes the combined `indexed + baseVertex + firstInstance + instance-rate` scenario in both CPU and CUDA builds.
