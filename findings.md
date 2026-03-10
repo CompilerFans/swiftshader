@@ -166,3 +166,5 @@
 - `vertex_dynamic_state` combines cleanly with `VK_VERTEX_INPUT_RATE_INSTANCE` in the current harness: the same dynamic binding/attribute path works for both per-vertex and per-instance inputs in CPU and CUDA builds.
 
 - `vkCmdClearAttachments` is a good low-risk entry point for the `render_passes` sample family: it exercises in-render-pass attachment manipulation without immediately needing the harder subpass/lifecycle cases.
+
+- `MSAA` remains a good low-risk lane: after the earlier solid-color case, a resolved interpolated-color triangle also passes in both CPU and CUDA builds, so resolve coverage is no longer limited to a constant fragment color.

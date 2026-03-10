@@ -3091,6 +3091,81 @@ TEST_F(DrawTest, MultisampleSolidColorTriangle)
 #endif
 }
 
+TEST_F(DrawTest, MultisampleVertexColorTriangleInterpolation)
+{
+	auto artifactPath = makeDrawArtifactPath("msaa-vertex-color-triangle.bmp");
+	std::filesystem::remove(artifactPath);
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	auto stampPath = makeCudaLaunchStampPath("msaa-vertex-color-triangle");
+	auto sourceDumpPath = makeCudaLaunchStampPath("msaa-vertex-color-triangle-source");
+	std::filesystem::remove(stampPath);
+	std::filesystem::remove(sourceDumpPath);
+	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+	::setenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH", sourceDumpPath.c_str(), 1);
+	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
+#endif
+
+	DrawTester tester(Multisample::True);
+	tester.enableColorClear({ 0.5f, 0.5f, 0.5f, 1.0f });
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex
+		{
+			float position[3];
+			float color[3];
+		};
+		Vertex vertexBufferData[] = {
+			{ { -0.95f, -0.85f, 0.5f }, { 1.0f, 0.0f, 0.0f } },
+			{ {  0.95f, -0.85f, 0.5f }, { 0.0f, 1.0f, 0.0f } },
+			{ {  0.0f,  0.95f, 0.5f }, { 0.0f, 0.0f, 1.0f } },
+		};
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)));
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 310 es
+			layout(location = 0) in vec3 inPos;
+			layout(location = 1) in vec3 inColor;
+			layout(location = 0) out vec3 vColor;
+			void main()
+			{
+				gl_Position = vec4(inPos, 1.0);
+				vColor = inColor;
+			})";
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 310 es
+			precision highp float;
+			layout(location = 0) in vec3 vColor;
+			layout(location = 0) out vec4 outColor;
+			void main()
+			{
+				outColor = vec4(vColor, 1.0);
+			})";
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.initialize();
+	tester.renderFrame();
+	tester.saveFrame(artifactPath);
+	auto topPixel = tester.readbackPixel(640, 180);
+	EXPECT_GT(topPixel[3], 200);
+	EXPECT_TRUE(std::filesystem::exists(artifactPath));
+#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	auto sourceDump = readTextFile(sourceDumpPath);
+	EXPECT_NE(sourceDump.find("invocation.barycentric0"), std::string::npos);
+	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
+	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
+#endif
+}
+
+
 
 TEST_F(DrawTest, VertexInputDynamicStateSolidColorTriangle)
 {

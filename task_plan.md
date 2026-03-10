@@ -192,3 +192,5 @@ Complete
 - Current sample-aligned milestone: `vertex_dynamic_state` now also covers the `VK_VERTEX_INPUT_RATE_INSTANCE` combination, so the local sample ladder includes both multi-attribute and instance-rate dynamic vertex input cases.
 
 - Current sample-aligned milestone: `render_passes` now has a first repo-local coverage point via `vkCmdClearAttachments`, while load/store, subpass dependency, and layout-transition cases remain future work.
+
+- Current sample-aligned milestone: `msaa` now has repo-local resolve coverage for both solid-color and interpolated-color triangles, improving confidence before tackling heavier sample scenarios.

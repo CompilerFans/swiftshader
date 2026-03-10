@@ -33,8 +33,8 @@
   - Render pass basics exist, and repo-local coverage now includes `vkCmdClearAttachments` overriding a region inside an active render pass; broader sample-driven validation for attachment load/store, subpass dependency, and layout transitions is still missing.
   - render pass 基础已有，且仓库内已经覆盖了活动 render pass 内用 `vkCmdClearAttachments` 覆盖局部区域；但 attachment load/store、subpass 依赖、layout 转换的样例驱动验证仍缺失。
 - `msaa`
-  - multisample paths exist in harnesses/benchmarks, but sample-grade coverage for resolve attachments is not yet in the current roadmap.
-  - multisample 路径在 harness/benchmark 中存在，但 resolve attachment 的样例级覆盖尚未进入当前路线图。
+  - multisample paths exist in harnesses/benchmarks, and repo-local draw coverage now includes both a resolved solid-color triangle and a resolved interpolated-color triangle; broader sample-grade resolve and state coverage is still pending.
+  - multisample 路径在 harness/benchmark 中存在，且仓库内 draw 覆盖已经包含 resolve 后的纯色三角形和插值彩色三角形；更广的样例级 resolve 与状态覆盖仍待补齐。
 
 ### Missing from current plan / 当前计划中缺失
 - `separate_image_sampler`

@@ -673,3 +673,5 @@
 - Extended `vertex_dynamic_state` coverage with `DrawTest.VertexInputDynamicStateInstanceRateOffsets`, which verifies `vkCmdSetVertexInputEXT` together with `VK_VERTEX_INPUT_RATE_INSTANCE` in both CPU and CUDA builds and dumps a BMP artifact.
 
 - Added `DrawTest.ClearAttachmentsOverridesTriangleRegion`, a BMP-producing render-pass coverage case that draws a red triangle and then uses `vkCmdClearAttachments` to override a blue region in both CPU and CUDA builds.
+
+- Added `DrawTest.MultisampleVertexColorTriangleInterpolation`, a BMP-producing MSAA resolve case that validates interpolated color output in both CPU and CUDA builds.
