@@ -180,3 +180,5 @@
 - `vkCmdSetVertexInputEXT` composes cleanly with the existing indexed-instancing path: the current harness passes the combined `indexed + baseVertex + firstInstance + instance-rate` scenario in both CPU and CUDA builds.
 
 - Configurable `minImageCount` is a low-risk way to strengthen the `swapchain_images` sample line: the current harness can request triple buffering cleanly and still render/present correctly in both CPU and CUDA builds.
+
+- Depth `loadOp = LOAD` is stable in the current harness when images are initialized first: both CPU and CUDA builds preserve prior depth values strongly enough to reject a farther triangle on later frames.

@@ -687,3 +687,5 @@
 - Added `DrawTest.VertexInputDynamicStateIndexedInstancedDrawUsesBaseVertexAndFirstInstance`, a BMP-producing dynamic-vertex-input case that combines indexed drawing, `baseVertex`, `firstInstance`, and `VK_VERTEX_INPUT_RATE_INSTANCE` in both CPU and CUDA builds.
 
 - Added `DrawTest.SwapchainMinImageCountTripleBufferedTriangle`, a BMP-producing swapchain case that requests `minImageCount = 3`, verifies the created swapchain has at least 3 images, and renders correctly in both CPU and CUDA builds.
+
+- Added `DrawTest.DepthLoadOpLoadPreservesPreviousDepth`, a BMP-producing render-pass case that initializes swapchain/depth attachments, then verifies a farther triangle stays blocked when depth `loadOp = LOAD` preserves prior depth contents in both CPU and CUDA builds.

@@ -62,6 +62,7 @@ public:
 	void enablePushConstantRange(vk::ShaderStageFlags stageFlags, uint32_t size);
 	void setPushConstantData(vk::ShaderStageFlags stageFlags, const void *data, uint32_t size);
 	void enableDepthTest(bool depthTestEnable, bool depthWriteEnable, vk::CompareOp depthCompareOp);
+	void enableDepthLoad();
 	void pumpWindowEvents();
 	void setWindowTitle(const std::string &title);
 	void bindIndexBuffer(vk::CommandBuffer &commandBuffer);
@@ -184,6 +185,7 @@ private:
 	bool depthTestEnabled = false;
 	bool depthWriteEnabled = false;
 	vk::CompareOp depthCompareOp = vk::CompareOp::eLessOrEqual;
+	vk::AttachmentLoadOp depthLoadOp = vk::AttachmentLoadOp::eClear;
 	vk::Format depthFormat = vk::Format::eD32Sfloat;
 	vk::PrimitiveTopology primitiveTopology = vk::PrimitiveTopology::eTriangleList;
 	bool primitiveRestartEnable = false;

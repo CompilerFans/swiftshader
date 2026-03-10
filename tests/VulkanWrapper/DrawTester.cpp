@@ -313,6 +313,11 @@ void DrawTester::enableDepthTest(bool enableTest, bool enableWrite, vk::CompareO
 	depthCompareOp = compareOp;
 }
 
+void DrawTester::enableDepthLoad()
+{
+	depthLoadOp = vk::AttachmentLoadOp::eLoad;
+}
+
 void DrawTester::pumpWindowEvents()
 {
 	window->pumpEvents();
@@ -388,11 +393,11 @@ vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
 		auto &depth = attachments.back();
 		depth.format = depthFormat;
 		depth.samples = multisample ? vk::SampleCountFlagBits::e4 : vk::SampleCountFlagBits::e1;
-		depth.loadOp = vk::AttachmentLoadOp::eClear;
+		depth.loadOp = depthLoadOp;
 		depth.storeOp = vk::AttachmentStoreOp::eDontCare;
 		depth.stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 		depth.stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
-		depth.initialLayout = vk::ImageLayout::eUndefined;
+		depth.initialLayout = (depthLoadOp == vk::AttachmentLoadOp::eLoad) ? vk::ImageLayout::eDepthStencilAttachmentOptimal : vk::ImageLayout::eUndefined;
 		depth.finalLayout = vk::ImageLayout::eDepthStencilAttachmentOptimal;
 	}
 
