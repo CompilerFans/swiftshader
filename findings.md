@@ -156,3 +156,5 @@
 - The existing multisample harness path is already strong enough for an initial `msaa` sample-aligned gate. A simple resolved solid triangle passes in both CPU and CUDA builds without requiring new backend work.
 
 - A minimal `dynamic uniform buffer` graphics draw probe currently fails before producing the expected output in both CPU and CUDA builds. This makes `dynamic_uniform_buffers` another real missing capability, not a low-risk extension of the current short-term path.
+
+- `vertex_dynamic_state` turned out to be a low-risk sample-aligned gain: SwiftShader already exposes `vkCmdSetVertexInputEXT`, so the main missing piece was test-harness support for the extension, feature enablement, and dynamic vertex-input command recording.

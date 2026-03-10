@@ -345,17 +345,34 @@ void VulkanTester::initialize()
 	queueCreateInfo.queueCount = 1;
 	queueCreateInfo.pQueuePriorities = &defaultQueuePriority;
 
+	auto deviceExtensionProperties = physicalDevice.enumerateDeviceExtensionProperties();
+	auto hasDeviceExtension = [&](const char *name) {
+		return std::find_if(deviceExtensionProperties.begin(), deviceExtensionProperties.end(), [name](const auto &property) {
+			return std::strcmp(property.extensionName, name) == 0;
+		}) != deviceExtensionProperties.end();
+	};
+
 	std::vector<const char *> deviceExtensions = {
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME,
 	};
+	vk::PhysicalDeviceVertexInputDynamicStateFeaturesEXT vertexInputDynamicStateFeature = {};
+	void *deviceFeatureChain = nullptr;
+	if(hasDeviceExtension(VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME))
+	{
+		deviceExtensions.push_back(VK_EXT_VERTEX_INPUT_DYNAMIC_STATE_EXTENSION_NAME);
+		vertexInputDynamicStateFeature.vertexInputDynamicState = VK_TRUE;
+		deviceFeatureChain = &vertexInputDynamicStateFeature;
+	}
 
 	vk::DeviceCreateInfo deviceCreateInfo;
 	deviceCreateInfo.queueCreateInfoCount = 1;
 	deviceCreateInfo.pQueueCreateInfos = &queueCreateInfo;
 	deviceCreateInfo.ppEnabledExtensionNames = deviceExtensions.data();
 	deviceCreateInfo.enabledExtensionCount = static_cast<uint32_t>(deviceExtensions.size());
+	deviceCreateInfo.pNext = deviceFeatureChain;
 
 	device = physicalDevice.createDevice(deviceCreateInfo, nullptr);
+	VULKAN_HPP_DEFAULT_DISPATCHER.init(device);
 
 	queue = device.getQueue(queueFamilyIndex, 0);
 }

@@ -54,6 +54,7 @@ public:
 	void setPrimitiveRestartEnable(bool enable);
 	void setLineWidth(float width);
 	void enableColorClear(const std::array<float, 4> &color);
+	void enableVertexInputDynamicState();
 	void enablePushConstantRange(vk::ShaderStageFlags stageFlags, uint32_t size);
 	void setPushConstantData(vk::ShaderStageFlags stageFlags, const void *data, uint32_t size);
 	void enableDepthTest(bool depthTestEnable, bool depthWriteEnable, vk::CompareOp depthCompareOp);
@@ -183,6 +184,7 @@ private:
 	bool colorClearEnabled = false;
 	std::array<float, 4> colorClearValue = { 0.5f, 0.5f, 0.5f, 1.0f };
 	bool pushConstantEnabled = false;
+	bool vertexInputDynamicStateEnabled = false;
 	vk::ShaderStageFlags pushConstantStages = {};
 	uint32_t pushConstantSize = 0;
 	std::array<uint8_t, 128> pushConstantData = {};

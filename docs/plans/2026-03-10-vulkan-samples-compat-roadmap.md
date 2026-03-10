@@ -16,13 +16,16 @@
   - narrow combined-image-sampler path is already implemented and validated with draw tests.
   - 窄 `combined image sampler` 路径已经实现并通过 draw tests 验证。
 - `instancing`
-  - `gl_InstanceIndex` draw coverage already exists.
-  - `gl_InstanceIndex` 的 draw 覆盖已经存在。
+  - `gl_InstanceIndex` and `VK_VERTEX_INPUT_RATE_INSTANCE` draw coverage already exist.
+  - `gl_InstanceIndex` 和 `VK_VERTEX_INPUT_RATE_INSTANCE` 的 draw 覆盖已经存在。
 - `swapchain_images`
   - swapchain/image-count visible paths are already partially exercised by benchmark windows.
   - swapchain/image-count 的可见路径已经被 benchmark 窗口部分覆盖。
 
 ### Partial / 部分覆盖
+- `vertex_dynamic_state`
+  - the repository now has a narrow `vkCmdSetVertexInputEXT` draw test for a solid-color triangle, but broader sample-style coverage still needs more formats/topologies.
+  - 仓库内已经有一个窄 `vkCmdSetVertexInputEXT` 纯色三角形 draw 用例，但更广的样例风格覆盖仍需补更多格式/拓扑。
 - `hello_triangle_1_3`
   - Source scan shows it uses `vkCmdBeginRendering`, so it is not just “hello_triangle with Vulkan 1.3 headers”; it depends on dynamic rendering coverage.
   - 源码扫描显示它使用 `vkCmdBeginRendering`，因此并不只是“1.3 头文件版本的 hello_triangle”，而是依赖 dynamic rendering。
@@ -49,12 +52,6 @@
 - `dynamic_rendering`
   - not yet elevated into the staged compatibility plan even though samples require it.
   - 虽然样例已经需要，但它还没有正式进入分阶段兼容路线。
-- `vertex_dynamic_state`
-  - no current plan item for `vkCmdSetVertexInputEXT`.
-  - 当前没有 `vkCmdSetVertexInputEXT` 的计划项。
-- `instancing` (full sample scope)
-  - current coverage validates `gl_InstanceIndex`, but not yet per-instance vertex input streams / `VK_VERTEX_INPUT_RATE_INSTANCE` sample-style usage.
-  - 当前只验证了 `gl_InstanceIndex`，还没覆盖样例风格的 per-instance vertex stream / `VK_VERTEX_INPUT_RATE_INSTANCE`。
 
 ## Recommended Execution Order / 推荐执行顺序
 ### Phase 1: Sample-baseline gates / 样例基线门槛

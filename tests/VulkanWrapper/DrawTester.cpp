@@ -252,6 +252,11 @@ void DrawTester::enableColorClear(const std::array<float, 4> &color)
 	colorClearValue = color;
 }
 
+void DrawTester::enableVertexInputDynamicState()
+{
+	vertexInputDynamicStateEnabled = true;
+}
+
 void DrawTester::enablePushConstantRange(vk::ShaderStageFlags stageFlags, uint32_t size)
 {
 	assert(size <= vk::MAX_PUSH_CONSTANT_SIZE);
@@ -480,6 +485,10 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass)
 	std::vector<vk::DynamicState> dynamicStateEnables;
 	dynamicStateEnables.push_back(vk::DynamicState::eViewport);
 	dynamicStateEnables.push_back(vk::DynamicState::eScissor);
+	if(vertexInputDynamicStateEnabled)
+	{
+		dynamicStateEnables.push_back(vk::DynamicState::eVertexInputEXT);
+	}
 	vk::PipelineDynamicStateCreateInfo dynamicState = {};
 	dynamicState.pDynamicStates = dynamicStateEnables.data();
 	dynamicState.dynamicStateCount = static_cast<uint32_t>(dynamicStateEnables.size());
@@ -517,7 +526,8 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass)
 
 	pipelineCreateInfo.stageCount = static_cast<uint32_t>(shaderStages.size());
 	pipelineCreateInfo.pStages = shaderStages.data();
-	pipelineCreateInfo.pVertexInputState = &vertexInputState;
+	vk::PipelineVertexInputStateCreateInfo emptyVertexInputState;
+	pipelineCreateInfo.pVertexInputState = vertexInputDynamicStateEnabled ? &emptyVertexInputState : &vertexInputState;
 	pipelineCreateInfo.pInputAssemblyState = &inputAssemblyState;
 	pipelineCreateInfo.pRasterizationState = &rasterizationState;
 	pipelineCreateInfo.pColorBlendState = &colorBlendState;
@@ -637,6 +647,34 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 				offsets.push_back(0);
 			}
 			commandBuffers[i].bindVertexBuffers(0, static_cast<uint32_t>(vertexBuffers.size()), vertexBuffers.data(), offsets.data());
+			if(vertexInputDynamicStateEnabled)
+			{
+				std::vector<vk::VertexInputBindingDescription2EXT> bindingDescriptions;
+				std::vector<vk::VertexInputAttributeDescription2EXT> attributeDescriptions;
+				auto appendBinding = [&](const VertexBuffer &buffer) {
+					vk::VertexInputBindingDescription2EXT binding;
+					binding.binding = buffer.inputBinding.binding;
+					binding.stride = buffer.inputBinding.stride;
+					binding.inputRate = buffer.inputBinding.inputRate;
+					binding.divisor = 1;
+					bindingDescriptions.push_back(binding);
+					for(const auto &attribute : buffer.inputAttributes)
+					{
+						vk::VertexInputAttributeDescription2EXT attr;
+						attr.location = attribute.location;
+						attr.binding = attribute.binding;
+						attr.format = attribute.format;
+						attr.offset = attribute.offset;
+						attributeDescriptions.push_back(attr);
+					}
+				};
+				appendBinding(vertices);
+				if(instances.buffer)
+				{
+					appendBinding(instances);
+				}
+				commandBuffers[i].setVertexInputEXT(bindingDescriptions, attributeDescriptions);
+			}
 			if(pushConstantEnabled)
 			{
 				commandBuffers[i].pushConstants(pipelineLayout, pushConstantStages, 0, pushConstantSize, pushConstantData.data());

@@ -663,3 +663,5 @@
 ## 2026-03-10: Dynamic uniform buffer probe
 - Added a local minimal `dynamic uniform buffer` draw probe and ran it in both CPU and CUDA builds.
 - Result: the probe does not produce the expected dynamic-UBO-driven color and is therefore kept out of the committed suite.
+
+- Completed a narrow `vertex_dynamic_state` milestone: `DrawTester` and `VulkanTester` now enable `VK_EXT_vertex_input_dynamic_state`, `DrawTester` can record `vkCmdSetVertexInputEXT`, and both CPU/CUDA builds pass `DrawTest.VertexInputDynamicStateSolidColorTriangle` with a BMP artifact.
