@@ -49,6 +49,7 @@ public:
 	std::array<uint8_t, 4> readbackPixel(uint32_t x, uint32_t y);
 	void saveFrame(const std::filesystem::path &path);
 	void updateVertexBufferData(const void *vertexBufferData, size_t vertexBufferDataSize);
+	void updateDescriptorSetNow();
 	void show();
 	void setSwapchainMinImageCount(uint32_t minImageCount);
 	size_t getSwapchainImageCount() const;
@@ -242,6 +243,7 @@ private:
 
 	vk::CommandPool commandPool;        // Owning handle
 	vk::DescriptorPool descriptorPool;  // Owning handle
+	std::vector<vk::DescriptorSet> descriptorSets;
 
 	// Resources
 	std::vector<std::unique_ptr<Image>> images;

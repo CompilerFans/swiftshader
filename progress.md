@@ -695,3 +695,5 @@
 - Added `DrawTest.MultisampleDepthBlocksFarTriangle`, and fixed the harness bug where multisample+depth render passes wrote the depth clear value into the wrong `pClearValues` slot. CPU and CUDA builds now pass the solid-color, interpolated-color, and depth-tested MSAA cases.
 
 - Added `DrawTest.SwapchainTripleBufferedColorCycle`, a BMP-producing swapchain case that requests triple buffering, renders red/green/blue across successive frames, and verifies the final presented frame is blue in both CPU and CUDA builds.
+
+- Added `DrawTest.TexturedTriangleDescriptorUpdateChangesFrame`, a BMP-producing texture-loading case that updates the combined image sampler descriptor between frames and verifies the final frame switches from red to blue in both CPU and CUDA builds.

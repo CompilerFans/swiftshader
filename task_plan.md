@@ -214,3 +214,5 @@ Complete
 - Current sample-aligned milestone: `msaa` now also covers a depth-tested case, not just resolved color output, and the multisample clear-value indexing bug in the harness has been fixed.
 
 - Current sample-aligned milestone: `swapchain_images` now also has a repo-local multi-frame triple-buffered color-cycle test, not just a one-frame `minImageCount` probe.
+
+- Current sample-aligned milestone: `texture_loading` now also has repo-local descriptor-update coverage across frames, not just static combined-image-sampler draws.

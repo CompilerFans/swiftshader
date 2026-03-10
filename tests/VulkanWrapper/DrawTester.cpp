@@ -235,6 +235,16 @@ void DrawTester::updateVertexBufferData(const void *vertexBufferData, size_t ver
 	device.unmapMemory(vertices.memory);
 }
 
+void DrawTester::updateDescriptorSetNow()
+{
+	if(descriptorSets.empty())
+	{
+		return;
+	}
+	device.waitIdle();
+	hooks.updateDescriptorSet(*this, commandPool, descriptorSets[0]);
+}
+
 void DrawTester::show()
 {
 	window->show();
@@ -625,7 +635,7 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 	commandPoolCreateInfo.flags = vk::CommandPoolCreateFlagBits::eResetCommandBuffer;
 	commandPool = device.createCommandPool(commandPoolCreateInfo);
 
-	std::vector<vk::DescriptorSet> descriptorSets;
+	descriptorSets.clear();
 	if(descriptorSetLayout)
 	{
 		std::array<vk::DescriptorPoolSize, 1> poolSizes = {};

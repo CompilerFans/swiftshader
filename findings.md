@@ -188,3 +188,5 @@
 - The root cause of the initial MSAA+depth failure was in the test harness, not the renderer: `beginRenderPass` used a too-short `clearValues` array and placed the depth clear value in the wrong slot when both resolve and depth attachments were present.
 
 - The current triple-buffered swapchain path remains stable across successive presents: after requesting `minImageCount = 3`, both CPU and CUDA builds correctly present updated contents over multiple frames rather than only the first frame.
+
+- The current harness can safely update a bound graphics descriptor set between frames without re-recording command buffers: both CPU and CUDA builds picked up the new combined image sampler contents on the next submit.
