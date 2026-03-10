@@ -689,3 +689,5 @@
 - Added `DrawTest.SwapchainMinImageCountTripleBufferedTriangle`, a BMP-producing swapchain case that requests `minImageCount = 3`, verifies the created swapchain has at least 3 images, and renders correctly in both CPU and CUDA builds.
 
 - Added `DrawTest.DepthLoadOpLoadPreservesPreviousDepth`, a BMP-producing render-pass case that initializes swapchain/depth attachments, then verifies a farther triangle stays blocked when depth `loadOp = LOAD` preserves prior depth contents in both CPU and CUDA builds.
+
+- Added `DrawTest.TwoSubpassesDepthBlocksFarTriangle`, a BMP-producing two-subpass render-pass case that draws a fullscreen red near triangle in subpass 0, then verifies a farther green triangle remains blocked by preserved depth in subpass 1, in both CPU and CUDA builds.

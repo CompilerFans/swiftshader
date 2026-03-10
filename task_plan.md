@@ -208,3 +208,5 @@ Complete
 - Current sample-aligned milestone: `swapchain_images` now has repo-local coverage for configurable `minImageCount`, not just the fixed double-buffered default path.
 
 - Current sample-aligned milestone: `render_passes` now also has repo-local depth `loadOp = LOAD` coverage, not just color LOAD and subpass sequencing.
+
+- Current sample-aligned milestone: `render_passes` now also has a repo-local two-subpass depth-blocking case, strengthening subpass/depth interaction coverage alongside the existing color overlay case.

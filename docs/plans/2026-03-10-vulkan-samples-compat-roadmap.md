@@ -30,8 +30,8 @@
   - Source scan shows it uses `vkCmdBeginRendering`, so it is not just “hello_triangle with Vulkan 1.3 headers”; it depends on dynamic rendering coverage.
   - 源码扫描显示它使用 `vkCmdBeginRendering`，因此并不只是“1.3 头文件版本的 hello_triangle”，而是依赖 dynamic rendering。
 - `render_passes`
-  - Render pass basics exist, and repo-local coverage now includes `vkCmdClearAttachments` for both color and depth aspects, `loadOp = LOAD` preservation for both color and depth attachments, and a narrow two-subpass overlay path using `vkCmdNextSubpass`; broader sample-driven validation for storeOp and more complex subpass/layout patterns is still missing.
-  - render pass 基础已有，且仓库内已经覆盖了活动 render pass 内针对 color/depth 的 `vkCmdClearAttachments`、color/depth attachment 上 `loadOp = LOAD` 的保留语义，以及通过 `vkCmdNextSubpass` 的窄双 subpass 叠加路径；但 storeOp 和更复杂的 subpass/layout 模式仍待补齐。
+  - Render pass basics exist, and repo-local coverage now includes `vkCmdClearAttachments` for both color and depth aspects, `loadOp = LOAD` preservation for both color and depth attachments, and narrow two-subpass paths that validate both color overlay and depth blocking through `vkCmdNextSubpass`; broader sample-driven validation for storeOp and more complex subpass/layout patterns is still missing.
+  - render pass 基础已有，且仓库内已经覆盖了活动 render pass 内针对 color/depth 的 `vkCmdClearAttachments`、color/depth attachment 上 `loadOp = LOAD` 的保留语义，以及通过 `vkCmdNextSubpass` 的窄双 subpass 颜色叠加与深度阻挡路径；但 storeOp 和更复杂的 subpass/layout 模式仍待补齐。
 - `msaa`
   - multisample paths exist in harnesses/benchmarks, and repo-local draw coverage now includes both a resolved solid-color triangle and a resolved interpolated-color triangle; broader sample-grade resolve and state coverage is still pending.
   - multisample 路径在 harness/benchmark 中存在，且仓库内 draw 覆盖已经包含 resolve 后的纯色三角形和插值彩色三角形；更广的样例级 resolve 与状态覆盖仍待补齐。
