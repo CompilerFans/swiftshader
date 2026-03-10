@@ -677,3 +677,5 @@
 - Added `DrawTest.MultisampleVertexColorTriangleInterpolation`, a BMP-producing MSAA resolve case that validates interpolated color output in both CPU and CUDA builds.
 
 - Added `DrawTest.ColorLoadOpLoadPreservesPreviousFrame`, a BMP-producing render-pass case that initializes swapchain images with a fullscreen red triangle, then switches to a smaller green triangle under `loadOp = LOAD` and verifies the previous red contents are preserved in both CPU and CUDA builds.
+
+- Added `DrawTest.ClearAttachmentsDepthEnablesFarTriangleInRect`, a BMP-producing render-pass case that clears the depth attachment in a rect and verifies a farther green triangle only passes there, in both CPU and CUDA builds.

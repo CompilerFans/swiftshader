@@ -196,3 +196,5 @@ Complete
 - Current sample-aligned milestone: `msaa` now has repo-local resolve coverage for both solid-color and interpolated-color triangles, improving confidence before tackling heavier sample scenarios.
 
 - Current sample-aligned milestone: `render_passes` now also has a repo-local `loadOp = LOAD` preservation test on swapchain images, strengthening attachment load semantics before subpass work.
+
+- Current sample-aligned milestone: `render_passes` now also covers depth-aspect `vkCmdClearAttachments`, not just color clears and `loadOp = LOAD` preservation.
