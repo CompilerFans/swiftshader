@@ -252,3 +252,7 @@
   - `DrawTest.DrawTwoVerticesThenDestroy` repeats cleanly in both CPU and CUDA builds.
   - `DrawTest.RenderWithoutPresentThenDestroy` still crashes under CUDA repeats with the default 3-vertex triangle draw.
   - Therefore the current fault boundary is no longer generic submit, command buffer execution, render-pass setup, or VS-only/incomplete-primitive work; it first appears once the draw path forms a complete triangle primitive and enters the triangle assembly / raster / fragment portion of the pipeline.
+
+- `DrawTest.DrawDegenerateTriangleThenDestroy` still crashes under CUDA repeats even though the triangle has zero area and should not produce meaningful covered fragments; the same case repeats cleanly on CPU.
+  - A one-shot launch stamp probe with `SWIFTSHADER_CUDA_DISABLE_WARMUP=1` shows `DrawTest.DrawTwoVerticesThenDestroy` produces `0` stamped launches, while `DrawTest.DrawDegenerateTriangleThenDestroy` produces `3`.
+  - Therefore the current boundary is narrower than “actual fragment coverage”: the first complete 3-vertex triangle primitive is enough to trigger the CUDA bootstrap launches and the later repeat crash, even when the primitive is degenerate.

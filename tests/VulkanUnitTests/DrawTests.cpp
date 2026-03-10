@@ -642,6 +642,26 @@ TEST_F(DrawTest, DrawTwoVerticesThenDestroy)
 	tester.renderFrameWithoutPresent();
 }
 
+TEST_F(DrawTest, DrawDegenerateTriangleThenDestroy)
+{
+	struct Vertex
+	{
+		float position[3];
+	};
+
+	Vertex degenerateVertices[] = {
+		{ { 0.0f, 0.0f, 0.5f } },
+		{ { 0.0f, 0.0f, 0.5f } },
+		{ { 0.0f, 0.0f, 0.5f } }
+	};
+
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+	tester.updateVertexBufferData(degenerateVertices, sizeof(degenerateVertices));
+	tester.renderFrameWithoutPresent();
+}
+
 TEST_F(DrawTest, RenderWithoutPresentThenDestroy)
 {
 	DrawTester tester;

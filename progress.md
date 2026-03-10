@@ -837,3 +837,13 @@
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.DrawTwoVerticesThenDestroy' --gtest_repeat=25)` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.DrawTwoVerticesThenDestroy' --gtest_repeat=25)` passed
 - Current conclusion: the remaining CUDA-only repeat crash is not triggered by generic submit, by an empty draw section, or by VS-only / incomplete-primitive draws. It first appears when the default 3-vertex triangle draw forms a complete primitive, so the next debugging cycle should focus on triangle assembly, rasterization, or fragment-stage execution rather than broader lifecycle or queue mechanics.
+
+## 2026-03-10: Degenerate-triangle isolation
+- Added `DrawTest.DrawDegenerateTriangleThenDestroy`, which reuses the normal 3-vertex triangle pipeline setup but overwrites the vertex buffer after `initialize()` with three identical positions so the submitted primitive is complete yet degenerate.
+- Verification:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.DrawDegenerateTriangleThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.DrawDegenerateTriangleThenDestroy' --gtest_repeat=25)` crashed with `139` during iteration 20
+- Launch-count probe with warmup disabled:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=... ./draw-unittests --gtest_filter='DrawTest.DrawTwoVerticesThenDestroy')` produced `0` stamped launches
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=... ./draw-unittests --gtest_filter='DrawTest.DrawDegenerateTriangleThenDestroy')` produced `3` stamped launches
+- Current conclusion: actual covered fragments are not required to trigger the CUDA-only repeat crash. The fault boundary is now “first complete 3-vertex primitive triggers the triangle bootstrap launches”, even when the primitive is degenerate and should rasterize to no useful coverage.
