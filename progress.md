@@ -820,3 +820,20 @@
   - `(cd build && ./draw-unittests --gtest_filter='DrawTest.AcquireWithoutSubmitThenDestroy' --gtest_repeat=25)` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.AcquireWithoutSubmitThenDestroy' --gtest_repeat=25)` passed
 - Current conclusion: the remaining CUDA-only repeat crash now narrows further to the actual submitted frame path after acquire. Initialization, warmup, swapchain acquire, and `queuePresent()` have each been isolated away as standalone reproducers.
+
+## 2026-03-10: Primitive-boundary draw isolation
+- Added four narrower submitted-frame diagnostics in `tests/VulkanUnitTests/DrawTests.cpp`:
+  - `DrawTest.SubmitWithoutDrawThenDestroy`
+  - `DrawTest.DrawZeroVerticesThenDestroy`
+  - `DrawTest.DrawOneVertexThenDestroy`
+  - `DrawTest.DrawTwoVerticesThenDestroy`
+- Verification:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.SubmitWithoutDrawThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.SubmitWithoutDrawThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.DrawZeroVerticesThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.DrawZeroVerticesThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.DrawOneVertexThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.DrawOneVertexThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.DrawTwoVerticesThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.DrawTwoVerticesThenDestroy' --gtest_repeat=25)` passed
+- Current conclusion: the remaining CUDA-only repeat crash is not triggered by generic submit, by an empty draw section, or by VS-only / incomplete-primitive draws. It first appears when the default 3-vertex triangle draw forms a complete primitive, so the next debugging cycle should focus on triangle assembly, rasterization, or fragment-stage execution rather than broader lifecycle or queue mechanics.

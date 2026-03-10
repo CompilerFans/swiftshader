@@ -600,6 +600,48 @@ TEST_F(DrawTest, AcquireWithoutSubmitThenDestroy)
 	tester.acquireFrameWithoutSubmit();
 }
 
+TEST_F(DrawTest, SubmitWithoutDrawThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.onRecordDrawCommands([](DrawTester &, vk::CommandBuffer &) {});
+	tester.initialize();
+	tester.renderFrameWithoutPresent();
+}
+
+TEST_F(DrawTest, DrawZeroVerticesThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.onRecordDrawCommands([](DrawTester &, vk::CommandBuffer &commandBuffer) {
+		commandBuffer.draw(0, 1, 0, 0);
+	});
+	tester.initialize();
+	tester.renderFrameWithoutPresent();
+}
+
+TEST_F(DrawTest, DrawOneVertexThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.onRecordDrawCommands([](DrawTester &, vk::CommandBuffer &commandBuffer) {
+		commandBuffer.draw(1, 1, 0, 0);
+	});
+	tester.initialize();
+	tester.renderFrameWithoutPresent();
+}
+
+TEST_F(DrawTest, DrawTwoVerticesThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.onRecordDrawCommands([](DrawTester &, vk::CommandBuffer &commandBuffer) {
+		commandBuffer.draw(2, 1, 0, 0);
+	});
+	tester.initialize();
+	tester.renderFrameWithoutPresent();
+}
+
 TEST_F(DrawTest, RenderWithoutPresentThenDestroy)
 {
 	DrawTester tester;

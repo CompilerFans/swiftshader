@@ -244,3 +244,11 @@
 - `DrawTest.InitializeThenDestroyWithoutRender` still triggers one CUDA launch in the current CUDA build, which is consistent with the existing runtime warmup path. That warmup-only launch is stable across repeats; the crashing cases trigger additional real draw-stage launches. So the remaining bug is not “any CUDA launch”, but something specific to the actual draw bootstrap/submit path.
 
 - `DrawTest.AcquireWithoutSubmitThenDestroy` repeats cleanly in both CPU and CUDA builds. This removes `acquireNextImage()` and swapchain image acquisition state from the primary suspicion set. The remaining CUDA-only repeat crash now narrows to the actual submitted frame work after acquire, not to initialization, warmup, acquire, or present in isolation.
+
+- The remaining CUDA-only draw repeat crash is narrower than “any submitted frame”:
+  - `DrawTest.SubmitWithoutDrawThenDestroy` repeats cleanly in both CPU and CUDA builds.
+  - `DrawTest.DrawZeroVerticesThenDestroy` repeats cleanly in both CPU and CUDA builds.
+  - `DrawTest.DrawOneVertexThenDestroy` repeats cleanly in both CPU and CUDA builds.
+  - `DrawTest.DrawTwoVerticesThenDestroy` repeats cleanly in both CPU and CUDA builds.
+  - `DrawTest.RenderWithoutPresentThenDestroy` still crashes under CUDA repeats with the default 3-vertex triangle draw.
+  - Therefore the current fault boundary is no longer generic submit, command buffer execution, render-pass setup, or VS-only/incomplete-primitive work; it first appears once the draw path forms a complete triangle primitive and enters the triangle assembly / raster / fragment portion of the pipeline.
