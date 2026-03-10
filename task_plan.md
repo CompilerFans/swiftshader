@@ -65,6 +65,7 @@ Phase 4: Verification
 - 2026-03-10 lifecycle isolation update: in both CPU and CUDA builds, `DrawTest.ConstructThenDestroyWithoutInitialize` and `DrawTest.InitializeThenDestroyWithoutRender` repeat cleanly; the remaining CUDA-only crash still requires `renderFrame()`, so the active root-cause search is now narrowed to submit/present or post-submit teardown rather than plain tester construction/initialization.
 - 2026-03-10 no-present update: `DrawTest.RenderWithoutPresentThenDestroy` also reproduces the CUDA-only repeat crash, so `queuePresent()` / surface presentation is no longer the leading suspect; the remaining search narrows further to the real draw submit path after swapchain acquire.
 - 2026-03-10 launch-shape update: `InitializeThenDestroyWithoutRender` still performs the expected single CUDA warmup launch and remains stable, while real draw tests perform additional stage launches and are the ones that crash. The active search is therefore inside the actual draw bootstrap/submit path, not generic CUDA runtime bring-up.
+- 2026-03-10 acquire update: `DrawTest.AcquireWithoutSubmitThenDestroy` repeats cleanly in both CPU and CUDA builds, so the remaining CUDA-only repeat crash now narrows to work that happens after swapchain acquire and during the real submitted frame.
 - Historical milestones below remain useful as implementation context, but they are no longer the active phase tracker for this turn.
 - Task 1: backend build skeleton complete.
 - Task 2 complete: backend-neutral queue seam added with CPU default backend.

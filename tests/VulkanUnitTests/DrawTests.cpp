@@ -592,6 +592,14 @@ TEST_F(DrawTest, InitializeThenDestroyWithoutRender)
 	tester.initialize();
 }
 
+TEST_F(DrawTest, AcquireWithoutSubmitThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+	tester.acquireFrameWithoutSubmit();
+}
+
 TEST_F(DrawTest, RenderWithoutPresentThenDestroy)
 {
 	DrawTester tester;

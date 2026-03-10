@@ -45,6 +45,7 @@ public:
 	~DrawTester();
 
 	void initialize();
+	void acquireFrameWithoutSubmit();
 	void renderFrame();
 	void renderFrameWithoutPresent();
 	std::vector<uint8_t> readbackFrameRgba();

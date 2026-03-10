@@ -142,6 +142,11 @@ void DrawTester::submitFrame(bool present)
 	}
 }
 
+void DrawTester::acquireFrameWithoutSubmit()
+{
+	swapchain->acquireNextImage(presentCompleteSemaphore, currentFrameBuffer);
+}
+
 void DrawTester::renderFrame()
 {
 	submitFrame(true);

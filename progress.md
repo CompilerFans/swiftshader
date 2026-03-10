@@ -813,3 +813,10 @@
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/... ./draw-unittests --gtest_filter='DrawTest.InitializeThenDestroyWithoutRender')` produced `1` stamped launch
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/... ./draw-unittests --gtest_filter='DrawTest.VertexShaderNoPositionOutput')` produced `4` stamped launches
 - Current conclusion: the remaining repeat crash is no longer best explained by presentation. Warmup-only initialization is stable; the unstable path requires the extra real draw-stage launches that happen during an actual submitted frame.
+
+## 2026-03-10: Acquire-only draw isolation
+- Extended the harness with `DrawTester::acquireFrameWithoutSubmit()` and added `DrawTest.AcquireWithoutSubmitThenDestroy` to isolate swapchain acquire from real queue submit work.
+- Verification:
+  - `(cd build && ./draw-unittests --gtest_filter='DrawTest.AcquireWithoutSubmitThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.AcquireWithoutSubmitThenDestroy' --gtest_repeat=25)` passed
+- Current conclusion: the remaining CUDA-only repeat crash now narrows further to the actual submitted frame path after acquire. Initialization, warmup, swapchain acquire, and `queuePresent()` have each been isolated away as standalone reproducers.

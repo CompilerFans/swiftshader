@@ -242,3 +242,5 @@
 - `DrawTest.RenderWithoutPresentThenDestroy` also crashes under CUDA repeats while passing on CPU, so `queuePresent()` / surface presentation is not the leading suspect anymore. The remaining fault boundary is “real frame submit after swapchain acquire”, not “presentation only”.
 
 - `DrawTest.InitializeThenDestroyWithoutRender` still triggers one CUDA launch in the current CUDA build, which is consistent with the existing runtime warmup path. That warmup-only launch is stable across repeats; the crashing cases trigger additional real draw-stage launches. So the remaining bug is not “any CUDA launch”, but something specific to the actual draw bootstrap/submit path.
+
+- `DrawTest.AcquireWithoutSubmitThenDestroy` repeats cleanly in both CPU and CUDA builds. This removes `acquireNextImage()` and swapchain image acquisition state from the primary suspicion set. The remaining CUDA-only repeat crash now narrows to the actual submitted frame work after acquire, not to initialization, warmup, acquire, or present in isolation.
