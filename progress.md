@@ -876,3 +876,19 @@
   - `./build/draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenDestroy' --gtest_repeat=25` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenDestroy' --gtest_repeat=25)` crashed with `139` during iteration 19
 - Current conclusion: after the degenerate-raster fix, the remaining normal-triangle repeat crash is no longer reproduced by `renderFrameWithoutPresent()`. It now requires the present path, so the next debugging cycle should focus on queue present, swapchain, semaphores, and post-present teardown.
+
+## 2026-03-11: Present boundary follow-up
+- Added a small harness helper `DrawTester::waitForDeviceIdle()` and one diagnostic:
+  - `DrawTest.RenderWithPresentThenWaitIdleDestroy`
+- Verification:
+  - `./build/draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenWaitIdleDestroy' --gtest_repeat=25` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenWaitIdleDestroy' --gtest_repeat=25)` crashed with `139` during iteration 18
+- Conclusion: an extra `device.waitIdle()` after `renderFrame()` does not stabilize the CUDA crash, so this is not explained by a simple post-present drain gap.
+
+- Added two narrower present-path boundary tests:
+  - `DrawTest.SubmitWithoutDrawWithPresentThenDestroy`
+  - `DrawTest.DrawTwoVerticesWithPresentThenDestroy`
+- Verification:
+  - `./build/draw-unittests --gtest_filter='DrawTest.SubmitWithoutDrawWithPresentThenDestroy:DrawTest.DrawTwoVerticesWithPresentThenDestroy' --gtest_repeat=25` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.SubmitWithoutDrawWithPresentThenDestroy:DrawTest.DrawTwoVerticesWithPresentThenDestroy' --gtest_repeat=25)` passed (`EXIT:0`)
+- Current conclusion: the remaining non-degenerate present crash is not “any present” and not “present after any draw”. It specifically requires a complete triangle primitive plus the present path. The separate degenerate-triangle no-present crash remains as another active family.

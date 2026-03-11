@@ -157,6 +157,11 @@ void DrawTester::renderFrameWithoutPresent()
 	submitFrame(false);
 }
 
+void DrawTester::waitForDeviceIdle()
+{
+	device.waitIdle();
+}
+
 std::vector<uint8_t> DrawTester::readbackFrameRgba()
 {
 	queue.waitIdle();

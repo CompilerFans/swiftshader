@@ -48,6 +48,7 @@ public:
 	void acquireFrameWithoutSubmit();
 	void renderFrame();
 	void renderFrameWithoutPresent();
+	void waitForDeviceIdle();
 	std::vector<uint8_t> readbackFrameRgba();
 	std::array<uint8_t, 4> readbackPixel(uint32_t x, uint32_t y);
 	void saveFrame(const std::filesystem::path &path);

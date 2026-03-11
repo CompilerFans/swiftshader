@@ -272,3 +272,9 @@
   - `DrawTest.RenderWithoutPresentThenDestroy` repeats cleanly for 25 iterations in the CUDA build after the degenerate-raster fix.
   - `DrawTest.RenderWithPresentThenDestroy` repeats cleanly for 25 iterations on CPU but still crashes under CUDA repeats (latest repro at iteration 19, `EXIT:139`).
   - Therefore the remaining CUDA-only normal-triangle crash now points back at the present path, swapchain/semaphore lifetime, or post-present teardown rather than the bare submit path.
+
+- Additional present-path isolation on 2026-03-11 tightened that boundary further:
+  - `DrawTest.RenderWithPresentThenWaitIdleDestroy` still crashes under CUDA repeats (latest repro at iteration 18), so an extra `device.waitIdle()` after `renderFrame()` is not sufficient.
+  - `DrawTest.SubmitWithoutDrawWithPresentThenDestroy` repeats cleanly for 25 iterations in both CPU and CUDA builds.
+  - `DrawTest.DrawTwoVerticesWithPresentThenDestroy` also repeats cleanly for 25 iterations in both CPU and CUDA builds.
+  - Therefore the remaining non-degenerate present crash requires both the present path and a complete triangle primitive; generic present, empty submit, and incomplete-primitive present are all ruled out.

@@ -609,6 +609,15 @@ TEST_F(DrawTest, SubmitWithoutDrawThenDestroy)
 	tester.renderFrameWithoutPresent();
 }
 
+TEST_F(DrawTest, SubmitWithoutDrawWithPresentThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.onRecordDrawCommands([](DrawTester &, vk::CommandBuffer &) {});
+	tester.initialize();
+	tester.renderFrame();
+}
+
 TEST_F(DrawTest, DrawZeroVerticesThenDestroy)
 {
 	DrawTester tester;
@@ -642,6 +651,17 @@ TEST_F(DrawTest, DrawTwoVerticesThenDestroy)
 	tester.renderFrameWithoutPresent();
 }
 
+TEST_F(DrawTest, DrawTwoVerticesWithPresentThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.onRecordDrawCommands([](DrawTester &, vk::CommandBuffer &commandBuffer) {
+		commandBuffer.draw(2, 1, 0, 0);
+	});
+	tester.initialize();
+	tester.renderFrame();
+}
+
 TEST_F(DrawTest, DrawDegenerateTriangleThenDestroy)
 {
 	struct Vertex
@@ -668,6 +688,15 @@ TEST_F(DrawTest, RenderWithPresentThenDestroy)
 	configureSolidColorTriangleDraw(tester);
 	tester.initialize();
 	tester.renderFrame();
+}
+
+TEST_F(DrawTest, RenderWithPresentThenWaitIdleDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+	tester.renderFrame();
+	tester.waitForDeviceIdle();
 }
 
 TEST_F(DrawTest, RenderWithoutPresentThenDestroy)
