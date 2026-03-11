@@ -865,3 +865,14 @@
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle' --gtest_repeat=25)` still crashes with `139` during iteration 18
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.VertexShaderNoPositionOutput' --gtest_repeat=25)` still crashes with `139` and emits repeated `Unsupported Descriptor Type` warnings from `src/Vulkan/VkDescriptorSetLayout.cpp`
 - Current conclusion: the degenerate raster bug was real and is fixed, but a second CUDA-only repeat crash family remains. The new leading clue is descriptor-layout corruption during repeated draw teardown or pipeline destruction, not the old triangle-bootstrap raster path alone.
+
+## 2026-03-10: Present-only crash isolation after degenerate fix
+- Added one narrower diagnostic in `tests/VulkanUnitTests/DrawTests.cpp`:
+  - `DrawTest.RenderWithPresentThenDestroy`
+- Rebuilt:
+  - `cmake --build build --target draw-unittests --parallel`
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel`
+- Verification:
+  - `./build/draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenDestroy' --gtest_repeat=25` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenDestroy' --gtest_repeat=25)` crashed with `139` during iteration 19
+- Current conclusion: after the degenerate-raster fix, the remaining normal-triangle repeat crash is no longer reproduced by `renderFrameWithoutPresent()`. It now requires the present path, so the next debugging cycle should focus on queue present, swapchain, semaphores, and post-present teardown.

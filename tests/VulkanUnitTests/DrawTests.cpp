@@ -662,6 +662,14 @@ TEST_F(DrawTest, DrawDegenerateTriangleThenDestroy)
 	tester.renderFrameWithoutPresent();
 }
 
+TEST_F(DrawTest, RenderWithPresentThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+	tester.renderFrame();
+}
+
 TEST_F(DrawTest, RenderWithoutPresentThenDestroy)
 {
 	DrawTester tester;

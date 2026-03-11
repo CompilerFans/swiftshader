@@ -267,3 +267,8 @@
   - `DrawTest.DrawDegenerateTriangleThenDestroy` still crashes under CUDA repeats, but its warmup-disabled launch count dropped from `3` to `1`, confirming the raster/fragment degenerate path is no longer being launched.
   - `DrawTest.SolidColorTriangle` still crashes under CUDA repeats (iteration 18 in the latest run).
   - `DrawTest.VertexShaderNoPositionOutput` still crashes under CUDA repeats and now emits repeated `Unsupported Descriptor Type` warnings from `VkDescriptorSetLayout.cpp`, which is a strong hint that a separate descriptor-layout / lifetime corruption issue remains.
+
+- The remaining normal-triangle repeat crash boundary is now narrower than “any submitted frame”:
+  - `DrawTest.RenderWithoutPresentThenDestroy` repeats cleanly for 25 iterations in the CUDA build after the degenerate-raster fix.
+  - `DrawTest.RenderWithPresentThenDestroy` repeats cleanly for 25 iterations on CPU but still crashes under CUDA repeats (latest repro at iteration 19, `EXIT:139`).
+  - Therefore the remaining CUDA-only normal-triangle crash now points back at the present path, swapchain/semaphore lifetime, or post-present teardown rather than the bare submit path.
