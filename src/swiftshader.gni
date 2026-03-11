@@ -29,8 +29,8 @@ declare_args() {
   # Enable the ASTC codec sources from ARM
   swiftshader_enable_astc = true
 
-  # Enable custom GPU backend scaffolding
-  swiftshader_enable_custom_gpu_backend = false
+  # Enable GPU backend scaffolding
+  swiftshader_enable_gpu_backend = false
 
   # Skip SPIR-V optimizer in fast test builds
   swiftshader_skip_pipeline_spirv_opt = false

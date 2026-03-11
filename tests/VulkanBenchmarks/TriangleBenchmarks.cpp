@@ -24,7 +24,7 @@
 template<typename T>
 static void RunBenchmark(benchmark::State &state, T &tester, const char *caseName, int triangleCount)
 {
-	#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+	#if SWIFTSHADER_GPU_USE_CUDA
 	state.SetLabel(std::string("case=") + caseName + ",backend=cuda,mode=headless");
 #else
 	state.SetLabel(std::string("case=") + caseName + ",backend=cpu,mode=headless");

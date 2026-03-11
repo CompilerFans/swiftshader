@@ -14,24 +14,24 @@
 namespace backend {
 namespace {
 
-bool shouldTraceCustomSubmit()
+bool shouldTraceGpuSubmit()
 {
-	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_TRACE_CUSTOM_SUBMIT");
+	const char *value = std::getenv("SWIFTSHADER_GPU_TRACE_GPU_SUBMIT");
 	return value != nullptr && value[0] != '\0';
 }
 
-class CustomExecutionBackend : public ExecutionBackend
+class GpuExecutionBackend : public ExecutionBackend
 {
 public:
-	explicit CustomExecutionBackend(vk::Device *device)
+	explicit GpuExecutionBackend(vk::Device *device)
 	    : runtime(device ? device->getRuntimeAPI() : nullptr)
 	{}
 
 	void submit(vk::Device *device, vk::SubmitInfo &submitInfo, sw::CountedEvent *events) override
 	{
-		if(shouldTraceCustomSubmit())
+		if(shouldTraceGpuSubmit())
 		{
-			std::fprintf(stderr, "[custom-gpu] submit via custom execution backend\n");
+			std::fprintf(stderr, "[gpu] submit via gpu execution backend\n");
 		}
 
 		ensureRenderer(device);
@@ -73,10 +73,10 @@ private:
 
 }  // namespace
 
-std::unique_ptr<ExecutionBackend> createCustomExecutionBackend(vk::Device *device)
+std::unique_ptr<ExecutionBackend> createGpuExecutionBackend(vk::Device *device)
 {
-	const_cast<ExecutionBackendCapture &>(lastExecutionBackendCapture()).usedCustomFactory = true;
-	return std::make_unique<CustomExecutionBackend>(device);
+	const_cast<ExecutionBackendCapture &>(lastExecutionBackendCapture()).usedGpuFactory = true;
+	return std::make_unique<GpuExecutionBackend>(device);
 }
 
 }  // namespace backend

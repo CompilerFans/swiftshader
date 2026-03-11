@@ -30,15 +30,15 @@ if [[ "$backend" == "cuda" ]]; then
     cmake_args=(
         -DSWIFTSHADER_BUILD_BENCHMARKS=ON
         -DSWIFTSHADER_BUILD_TESTS=ON
-        -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON
-        -DSWIFTSHADER_CUSTOM_GPU_USE_CUDA=ON
+        -DSWIFTSHADER_ENABLE_GPU_BACKEND=ON
+        -DSWIFTSHADER_GPU_USE_CUDA=ON
     )
 else
     build_dir="${repo_root}/build-benchmark-cpu"
     cmake_args=(
         -DSWIFTSHADER_BUILD_BENCHMARKS=ON
         -DSWIFTSHADER_BUILD_TESTS=ON
-        -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=OFF
+        -DSWIFTSHADER_ENABLE_GPU_BACKEND=OFF
     )
 fi
 

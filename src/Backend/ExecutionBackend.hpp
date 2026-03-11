@@ -17,7 +17,7 @@ namespace backend {
 enum class BackendKind
 {
 	CPU,
-	CUSTOM_GPU,
+	GPU,
 };
 
 class ExecutionBackend

@@ -10,8 +10,8 @@ std::unique_ptr<ExecutionBackend> createExecutionBackend(vk::Device *device)
 	{
 	case BackendKind::CPU:
 		return createCpuExecutionBackend(device);
-	case BackendKind::CUSTOM_GPU:
-		return createCustomExecutionBackend(device);
+	case BackendKind::GPU:
+		return createGpuExecutionBackend(device);
 	default:
 		return createCpuExecutionBackend(device);
 	}

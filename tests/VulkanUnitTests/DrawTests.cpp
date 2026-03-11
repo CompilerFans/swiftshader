@@ -14,7 +14,7 @@
 
 #include "DrawTester.hpp"
 #include <filesystem>
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 #	include "Backend/CudaRuntimeAPI.hpp"
 #	include <fstream>
 #	include <unistd.h>
@@ -41,7 +41,7 @@ std::filesystem::path makeDrawArtifactPath(const char *name)
 	return dir / name;
 }
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 std::filesystem::path makeCudaLaunchStampPath(const char *suffix)
 {
 	return std::filesystem::temp_directory_path() / (std::string("swiftshader-cuda-launch-") + suffix + "-" + std::to_string(::getpid()) + ".log");
@@ -181,7 +181,7 @@ TEST_F(DrawTest, VertexShaderAppliesOffsetFromGlsl)
 {
 	auto artifactPath = makeDrawArtifactPath("vertex-offset-glsl.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("vertex-offset-glsl");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -243,7 +243,7 @@ TEST_F(DrawTest, VertexShaderAppliesOffsetFromGlsl)
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -254,7 +254,7 @@ TEST_F(DrawTest, VertexShaderAppliesOffsetFromSpirvModule)
 {
 	auto artifactPath = makeDrawArtifactPath("vertex-offset-spirv.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("vertex-offset-spirv");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -317,7 +317,7 @@ TEST_F(DrawTest, VertexShaderAppliesOffsetFromSpirvModule)
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -328,7 +328,7 @@ TEST_F(DrawTest, FragmentShaderUsesFragCoordQuadrantColors)
 {
 	auto artifactPath = makeDrawArtifactPath("fragcoord-quadrant-colors.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("fragcoord-quadrant");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -425,7 +425,7 @@ TEST_F(DrawTest, FragmentShaderUsesFragCoordQuadrantColors)
 
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -436,7 +436,7 @@ TEST_F(DrawTest, FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle)
 {
 	auto artifactPath = makeDrawArtifactPath("fragcoord-quadrant-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("fragcoord-quadrant-triangle");
 	auto sourceDumpPath = makeCudaLaunchStampPath("fragcoord-quadrant-triangle-source");
 	std::filesystem::remove(stampPath);
@@ -536,7 +536,7 @@ TEST_F(DrawTest, FragmentShaderUsesFragCoordQuadrantColorsInsideTriangle)
 
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("bool left = invocation.x * 2u < params.width"), std::string::npos);
@@ -551,7 +551,7 @@ TEST_F(DrawTest, SolidColorTriangle)
 {
 	auto artifactPath = makeDrawArtifactPath("solid-color-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("draw");
 	auto sourceDumpPath = makeCudaLaunchStampPath("draw-source");
 	std::filesystem::remove(stampPath);
@@ -573,7 +573,7 @@ TEST_F(DrawTest, SolidColorTriangle)
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_GT(pixel[3], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("outR = packColor(1.0f);"), std::string::npos);
@@ -736,7 +736,7 @@ TEST_F(DrawTest, DynamicRenderingSolidColorTriangle)
 {
 	auto artifactPath = makeDrawArtifactPath("dynamic-rendering-solid-color-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("dynamic-rendering-solid-color-triangle");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -801,7 +801,7 @@ TEST_F(DrawTest, DynamicRenderingSolidColorTriangle)
 	EXPECT_GT(pixel[3], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -812,7 +812,7 @@ TEST_F(DrawTest, MultipleSolidColorTriangles)
 {
 	auto artifactPath = makeDrawArtifactPath("multiple-solid-color-triangles.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("multi-draw");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
@@ -891,7 +891,7 @@ TEST_F(DrawTest, MultipleSolidColorTriangles)
 	EXPECT_LT(rightPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -902,7 +902,7 @@ TEST_F(DrawTest, VertexColorTriangleInterpolation)
 {
 	auto artifactPath = makeDrawArtifactPath("vertex-color-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("vertex-color-triangle");
 	auto sourceDumpPath = makeCudaLaunchStampPath("vertex-color-triangle-source");
 	std::filesystem::remove(stampPath);
@@ -971,7 +971,7 @@ TEST_F(DrawTest, VertexColorTriangleInterpolation)
 	EXPECT_GT(topPixel[3], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("invocation.barycentric0"), std::string::npos);
@@ -1073,7 +1073,7 @@ TEST_F(DrawTest, VertexInputDynamicStateVertexColorTriangleInterpolation)
 {
 	auto artifactPath = makeDrawArtifactPath("vertex-input-dynamic-state-color-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("vertex-input-dynamic-state-color-triangle");
 	auto sourceDumpPath = makeCudaLaunchStampPath("vertex-input-dynamic-state-color-triangle-source");
 	std::filesystem::remove(stampPath);
@@ -1137,7 +1137,7 @@ TEST_F(DrawTest, VertexInputDynamicStateVertexColorTriangleInterpolation)
 	auto topPixel = tester.readbackPixel(640, 180);
 	EXPECT_GT(topPixel[3], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -1235,7 +1235,7 @@ TEST_F(DrawTest, IndexedVertexColorTriangleInterpolation)
 	};
 	uint16_t indexBufferData[] = { 0u, 2u, 3u };
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("indexed-vertex-color");
 	auto sourceDumpPath = makeCudaLaunchStampPath("indexed-vertex-color-source");
 	std::filesystem::remove(stampPath);
@@ -1295,7 +1295,7 @@ TEST_F(DrawTest, IndexedVertexColorTriangleInterpolation)
 	auto pixel = tester.readbackPixel(960, 520);
 	EXPECT_GT(pixel[3], 200);
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("invocation.barycentric0"), std::string::npos);
@@ -1311,7 +1311,7 @@ TEST_F(DrawTest, FragmentShaderUsesFrontFacingColors)
 {
 	auto artifactPath = makeDrawArtifactPath("front-facing-colors.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("front-facing-colors");
 	auto sourceDumpPath = makeCudaLaunchStampPath("front-facing-colors-source");
 	std::filesystem::remove(stampPath);
@@ -1382,7 +1382,7 @@ TEST_F(DrawTest, FragmentShaderUsesFrontFacingColors)
 	EXPECT_GT(rightPixel[2], rightPixel[0]);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("invocation.frontFacing"), std::string::npos);
@@ -1398,7 +1398,7 @@ TEST_F(DrawTest, FragmentShaderDiscardsLeftHalfByFragCoord)
 {
 	auto artifactPath = makeDrawArtifactPath("fragcoord-discard-left.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("fragcoord-discard-left");
 	auto sourceDumpPath = makeCudaLaunchStampPath("fragcoord-discard-left-source");
 	std::filesystem::remove(stampPath);
@@ -1456,7 +1456,7 @@ TEST_F(DrawTest, FragmentShaderDiscardsLeftHalfByFragCoord)
 	EXPECT_LT(rightPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -1468,7 +1468,7 @@ TEST_F(DrawTest, FragmentShaderUsesFragDepthFromInterpolatedColor)
 {
 	auto artifactPath = makeDrawArtifactPath("fragdepth-interpolated-color.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("fragdepth-interpolated-color");
 	auto sourceDumpPath = makeCudaLaunchStampPath("fragdepth-interpolated-color-source");
 	std::filesystem::remove(stampPath);
@@ -1538,7 +1538,7 @@ TEST_F(DrawTest, FragmentShaderUsesFragDepthFromInterpolatedColor)
 	EXPECT_GT(pixel[3], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("params.nearDepth"), std::string::npos);
@@ -1553,7 +1553,7 @@ TEST_F(DrawTest, PointListConstantColor)
 {
 	auto artifactPath = makeDrawArtifactPath("point-list-constant-color.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("point-list-constant-color");
 	auto sourceDumpPath = makeCudaLaunchStampPath("point-list-constant-color-source");
 	std::filesystem::remove(stampPath);
@@ -1601,7 +1601,7 @@ TEST_F(DrawTest, PointListConstantColor)
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
@@ -1614,7 +1614,7 @@ TEST_F(DrawTest, FragmentShaderUsesPointCoordGradient)
 {
 	auto artifactPath = makeDrawArtifactPath("pointcoord-gradient.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("pointcoord-gradient");
 	auto sourceDumpPath = makeCudaLaunchStampPath("pointcoord-gradient-source");
 	std::filesystem::remove(stampPath);
@@ -1664,7 +1664,7 @@ TEST_F(DrawTest, FragmentShaderUsesPointCoordGradient)
 	EXPECT_GT(rightPixel[1], 0);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("invocation.pointCoordX"), std::string::npos);
@@ -1680,7 +1680,7 @@ TEST_F(DrawTest, FragmentShaderUsesFlatInterpolatedColor)
 {
 	auto artifactPath = makeDrawArtifactPath("flat-interpolated-color.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("flat-interpolated-color");
 	auto sourceDumpPath = makeCudaLaunchStampPath("flat-interpolated-color-source");
 	std::filesystem::remove(stampPath);
@@ -1735,7 +1735,7 @@ TEST_F(DrawTest, FragmentShaderUsesFlatInterpolatedColor)
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("params.vertexColor0R"), std::string::npos);
@@ -1750,7 +1750,7 @@ TEST_F(DrawTest, TriangleStripConstantColor)
 {
 	auto artifactPath = makeDrawArtifactPath("triangle-strip-constant-color.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("triangle-strip-constant-color");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -1795,7 +1795,7 @@ TEST_F(DrawTest, TriangleStripConstantColor)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -1807,7 +1807,7 @@ TEST_F(DrawTest, TriangleFanConstantColor)
 {
 	auto artifactPath = makeDrawArtifactPath("triangle-fan-constant-color.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("triangle-fan-constant-color");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -1852,7 +1852,7 @@ TEST_F(DrawTest, TriangleFanConstantColor)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -1867,7 +1867,7 @@ TEST_F(DrawTest, LineListConstantColor)
 {
 	auto artifactPath = makeDrawArtifactPath("line-list-constant-color.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("line-list-constant-color");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -1911,7 +1911,7 @@ TEST_F(DrawTest, LineListConstantColor)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -1923,7 +1923,7 @@ TEST_F(DrawTest, LineStripConstantColor)
 {
 	auto artifactPath = makeDrawArtifactPath("line-strip-constant-color.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("line-strip-constant-color");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -1974,7 +1974,7 @@ TEST_F(DrawTest, LineStripConstantColor)
 	}
 	EXPECT_GT(redPixelCount, 1000u);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -1986,7 +1986,7 @@ TEST_F(DrawTest, PointListUsesVertexPointSize)
 {
 	auto artifactPath = makeDrawArtifactPath("point-list-vertex-point-size.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("point-list-vertex-point-size");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -2038,7 +2038,7 @@ TEST_F(DrawTest, PointListUsesVertexPointSize)
 	EXPECT_GT(redPixelCount, 100u);
 	EXPECT_LT(redPixelCount, 800u);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -2050,7 +2050,7 @@ TEST_F(DrawTest, IndexedLineStripConstantColor)
 {
 	auto artifactPath = makeDrawArtifactPath("indexed-line-strip-constant-color.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("indexed-line-strip-constant-color");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -2108,7 +2108,7 @@ TEST_F(DrawTest, IndexedLineStripConstantColor)
 	}
 	EXPECT_GT(redPixelCount, 1000u);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -2119,7 +2119,7 @@ TEST_F(DrawTest, IndexedTriangleFanConstantColor)
 {
 	auto artifactPath = makeDrawArtifactPath("indexed-triangle-fan-constant-color.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("indexed-triangle-fan-constant-color");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -2171,7 +2171,7 @@ TEST_F(DrawTest, IndexedTriangleFanConstantColor)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -2183,7 +2183,7 @@ TEST_F(DrawTest, IndexedPointListConstantColor)
 {
 	auto artifactPath = makeDrawArtifactPath("indexed-point-list-constant-color.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("indexed-point-list-constant-color");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -2234,7 +2234,7 @@ TEST_F(DrawTest, IndexedPointListConstantColor)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -2246,7 +2246,7 @@ TEST_F(DrawTest, IndexedTriangleStripWithPrimitiveRestart)
 {
 	auto artifactPath = makeDrawArtifactPath("indexed-triangle-strip-primitive-restart.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("indexed-triangle-strip-primitive-restart");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -2305,7 +2305,7 @@ TEST_F(DrawTest, IndexedTriangleStripWithPrimitiveRestart)
 	EXPECT_LT(rightPixel[1], 80);
 	EXPECT_LT(rightPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -2317,7 +2317,7 @@ TEST_F(DrawTest, IndexedPointCoordGradient)
 {
 	auto artifactPath = makeDrawArtifactPath("indexed-pointcoord-gradient.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("indexed-pointcoord-gradient");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -2369,7 +2369,7 @@ TEST_F(DrawTest, IndexedPointCoordGradient)
 	EXPECT_GT(leftPixel[1], 0);
 	EXPECT_GT(rightPixel[1], 0);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -2381,7 +2381,7 @@ TEST_F(DrawTest, TexturedTriangleNearest)
 {
 	auto artifactPath = makeDrawArtifactPath("textured-triangle-nearest.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("textured-triangle-nearest");
 	auto sourceDumpPath = makeCudaLaunchStampPath("textured-triangle-nearest-source");
 	std::filesystem::remove(stampPath);
@@ -2484,7 +2484,7 @@ TEST_F(DrawTest, TexturedTriangleNearest)
 	auto pixel = tester.readbackPixel(480, 420);
 	EXPECT_GT(pixel[3], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("textureData"), std::string::npos);
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
@@ -2498,7 +2498,7 @@ TEST_F(DrawTest, TexturedTriangleSeparateImageSamplerNearest)
 {
 	auto artifactPath = makeDrawArtifactPath("textured-triangle-separate-image-sampler-nearest.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("textured-triangle-separate-image-sampler-nearest");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -2634,7 +2634,7 @@ TEST_F(DrawTest, TexturedTriangleSeparateImageSamplerNearest)
 	EXPECT_GT(pixel[3], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -2645,7 +2645,7 @@ TEST_F(DrawTest, DynamicUniformBufferOffsetsSelectPerDrawColor)
 {
 	auto artifactPath = makeDrawArtifactPath("dynamic-uniform-buffer-offsets.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("dynamic-uniform-buffer-offsets");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -2805,7 +2805,7 @@ TEST_F(DrawTest, DynamicUniformBufferOffsetsSelectPerDrawColor)
 
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -2827,7 +2827,7 @@ TEST_F(DrawTest, IndexedTexturedTriangleNearest)
 {
 	auto artifactPath = makeDrawArtifactPath("indexed-textured-triangle-nearest.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("indexed-textured-triangle-nearest");
 	auto sourceDumpPath = makeCudaLaunchStampPath("indexed-textured-triangle-nearest-source");
 	std::filesystem::remove(stampPath);
@@ -2941,7 +2941,7 @@ TEST_F(DrawTest, IndexedTexturedTriangleNearest)
 	auto pixel = tester.readbackPixel(480, 420);
 	EXPECT_GT(pixel[3], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("textureData"), std::string::npos);
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
@@ -2956,7 +2956,7 @@ TEST_F(DrawTest, TexturedTriangleLinearRepeat)
 {
 	auto artifactPath = makeDrawArtifactPath("textured-triangle-linear-repeat.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("textured-triangle-linear-repeat");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3067,7 +3067,7 @@ TEST_F(DrawTest, TexturedTriangleLinearRepeat)
 	EXPECT_GT(bottomPixel[2], bottomPixel[0]);
 	EXPECT_GT(bottomPixel[2], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3078,7 +3078,7 @@ TEST_F(DrawTest, TexturedTriangleDescriptorUpdateChangesFrame)
 {
 	auto artifactPath = makeDrawArtifactPath("textured-triangle-descriptor-update.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("textured-triangle-descriptor-update");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3186,7 +3186,7 @@ TEST_F(DrawTest, TexturedTriangleDescriptorUpdateChangesFrame)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_GT(pixel[2], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3198,7 +3198,7 @@ TEST_F(DrawTest, InstancedTexturedTriangles)
 {
 	auto artifactPath = makeDrawArtifactPath("instanced-textured-triangles.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("instanced-textured-triangles");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3317,7 +3317,7 @@ TEST_F(DrawTest, InstancedTexturedTriangles)
 	EXPECT_LT(rightPixel[1], 80);
 	EXPECT_GT(rightPixel[2], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3329,7 +3329,7 @@ TEST_F(DrawTest, VertexInputDynamicStateInstancedTexturedTriangles)
 {
 	auto artifactPath = makeDrawArtifactPath("vertex-input-dynamic-state-instanced-textured-triangles.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("vertex-input-dynamic-state-instanced-textured-triangles");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3449,7 +3449,7 @@ TEST_F(DrawTest, VertexInputDynamicStateInstancedTexturedTriangles)
 	EXPECT_LT(rightPixel[1], 80);
 	EXPECT_GT(rightPixel[2], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3462,7 +3462,7 @@ TEST_F(DrawTest, ClearColorBackground)
 {
 	auto artifactPath = makeDrawArtifactPath("clear-color-background.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("clear-color-background");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3510,7 +3510,7 @@ TEST_F(DrawTest, ClearColorBackground)
 	EXPECT_LT(triangle[1], 80);
 	EXPECT_LT(triangle[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3522,7 +3522,7 @@ TEST_F(DrawTest, VertexShaderUsesPushConstantOffset)
 {
 	auto artifactPath = makeDrawArtifactPath("push-constant-vertex-offset.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("push-constant-vertex-offset");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3575,7 +3575,7 @@ TEST_F(DrawTest, VertexShaderUsesPushConstantOffset)
 	EXPECT_NEAR(background[1], 128, 4);
 	EXPECT_NEAR(background[2], 128, 4);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3586,7 +3586,7 @@ TEST_F(DrawTest, FragmentShaderUsesPushConstantTint)
 {
 	auto artifactPath = makeDrawArtifactPath("push-constant-fragment-tint.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("push-constant-fragment-tint");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3635,7 +3635,7 @@ TEST_F(DrawTest, FragmentShaderUsesPushConstantTint)
 	EXPECT_NEAR(pixel[1], 204, 4);
 	EXPECT_NEAR(pixel[2], 102, 4);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3647,7 +3647,7 @@ TEST_F(DrawTest, VertexShaderUsesInstanceIndexOffset)
 {
 	auto artifactPath = makeDrawArtifactPath("instance-index-offset.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("instance-index-offset");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3703,7 +3703,7 @@ TEST_F(DrawTest, VertexShaderUsesInstanceIndexOffset)
 	EXPECT_LT(rightPixel[1], 80);
 	EXPECT_LT(rightPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3715,7 +3715,7 @@ TEST_F(DrawTest, IndexedDrawUsesBaseVertexOffset)
 {
 	auto artifactPath = makeDrawArtifactPath("indexed-base-vertex-offset.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("indexed-base-vertex-offset");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3773,7 +3773,7 @@ TEST_F(DrawTest, IndexedDrawUsesBaseVertexOffset)
 	EXPECT_NEAR(leftBackground[1], 128, 4);
 	EXPECT_NEAR(leftBackground[2], 128, 4);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3785,7 +3785,7 @@ TEST_F(DrawTest, VertexInputRateInstanceOffsets)
 {
 	auto artifactPath = makeDrawArtifactPath("instance-input-rate-offsets.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("instance-input-rate-offsets");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3846,7 +3846,7 @@ TEST_F(DrawTest, VertexInputRateInstanceOffsets)
 	EXPECT_LT(rightPixel[1], 80);
 	EXPECT_LT(rightPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3857,7 +3857,7 @@ TEST_F(DrawTest, VertexInputDynamicStateInstanceRateOffsets)
 {
 	auto artifactPath = makeDrawArtifactPath("vertex-input-dynamic-state-instance-rate-offsets.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("vertex-input-dynamic-state-instance-rate-offsets");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3919,7 +3919,7 @@ TEST_F(DrawTest, VertexInputDynamicStateInstanceRateOffsets)
 	EXPECT_LT(rightPixel[1], 80);
 	EXPECT_LT(rightPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -3931,7 +3931,7 @@ TEST_F(DrawTest, ClearAttachmentsOverridesTriangleRegion)
 {
 	auto artifactPath = makeDrawArtifactPath("clear-attachments-overrides-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("clear-attachments-overrides-triangle");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -3993,7 +3993,7 @@ TEST_F(DrawTest, ClearAttachmentsOverridesTriangleRegion)
 	EXPECT_LT(unclearedTrianglePixel[1], 80);
 	EXPECT_LT(unclearedTrianglePixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4005,7 +4005,7 @@ TEST_F(DrawTest, ColorLoadOpLoadPreservesPreviousFrame)
 {
 	auto artifactPath = makeDrawArtifactPath("color-load-op-load-preserves-previous-frame.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("color-load-op-load-preserves-previous-frame");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4078,7 +4078,7 @@ TEST_F(DrawTest, ColorLoadOpLoadPreservesPreviousFrame)
 	EXPECT_LT(preservedRedPixel[1], 80);
 	EXPECT_LT(preservedRedPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4090,7 +4090,7 @@ TEST_F(DrawTest, ClearAttachmentsDepthEnablesFarTriangleInRect)
 {
 	auto artifactPath = makeDrawArtifactPath("clear-attachments-depth-enables-far-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("clear-attachments-depth-enables-far-triangle");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4168,7 +4168,7 @@ TEST_F(DrawTest, ClearAttachmentsDepthEnablesFarTriangleInRect)
 	EXPECT_LT(redPixel[1], 80);
 	EXPECT_LT(redPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4180,7 +4180,7 @@ TEST_F(DrawTest, IndexedInstancedDrawUsesBaseVertexAndFirstInstance)
 {
 	auto artifactPath = makeDrawArtifactPath("indexed-instanced-base-vertex-first-instance.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("indexed-instanced-base-vertex-first-instance");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4248,7 +4248,7 @@ TEST_F(DrawTest, IndexedInstancedDrawUsesBaseVertexAndFirstInstance)
 	EXPECT_LT(rightPixel[1], 80);
 	EXPECT_LT(rightPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4260,7 +4260,7 @@ TEST_F(DrawTest, TwoSubpassesOverlayGreenTriangleOnRedBackground)
 {
 	auto artifactPath = makeDrawArtifactPath("two-subpasses-overlay-green-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("two-subpasses-overlay-green-triangle");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4331,7 +4331,7 @@ TEST_F(DrawTest, TwoSubpassesOverlayGreenTriangleOnRedBackground)
 	EXPECT_LT(redPixel[1], 80);
 	EXPECT_LT(redPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4343,7 +4343,7 @@ TEST_F(DrawTest, VertexInputDynamicStateIndexedInstancedDrawUsesBaseVertexAndFir
 {
 	auto artifactPath = makeDrawArtifactPath("vertex-input-dynamic-state-indexed-instanced-base-vertex-first-instance.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("vertex-input-dynamic-state-indexed-instanced-base-vertex-first-instance");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4412,7 +4412,7 @@ TEST_F(DrawTest, VertexInputDynamicStateIndexedInstancedDrawUsesBaseVertexAndFir
 	EXPECT_LT(rightPixel[1], 80);
 	EXPECT_LT(rightPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4424,7 +4424,7 @@ TEST_F(DrawTest, SwapchainMinImageCountTripleBufferedTriangle)
 {
 	auto artifactPath = makeDrawArtifactPath("swapchain-min-image-count-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("swapchain-min-image-count-triangle");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4470,7 +4470,7 @@ TEST_F(DrawTest, SwapchainMinImageCountTripleBufferedTriangle)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4482,7 +4482,7 @@ TEST_F(DrawTest, DepthLoadOpLoadPreservesPreviousDepth)
 {
 	auto artifactPath = makeDrawArtifactPath("depth-load-op-load-preserves-previous-depth.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("depth-load-op-load-preserves-previous-depth");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4550,7 +4550,7 @@ TEST_F(DrawTest, DepthLoadOpLoadPreservesPreviousDepth)
 	EXPECT_NEAR(centerPixel[1], 128, 6);
 	EXPECT_NEAR(centerPixel[2], 128, 6);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4562,7 +4562,7 @@ TEST_F(DrawTest, TwoSubpassesDepthBlocksFarTriangle)
 {
 	auto artifactPath = makeDrawArtifactPath("two-subpasses-depth-blocks-far-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("two-subpasses-depth-blocks-far-triangle");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4634,7 +4634,7 @@ TEST_F(DrawTest, TwoSubpassesDepthBlocksFarTriangle)
 	EXPECT_LT(centerPixel[1], 80);
 	EXPECT_LT(centerPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4646,7 +4646,7 @@ TEST_F(DrawTest, SwapchainTripleBufferedColorCycle)
 {
 	auto artifactPath = makeDrawArtifactPath("swapchain-triple-buffered-color-cycle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("swapchain-triple-buffered-color-cycle");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4720,7 +4720,7 @@ TEST_F(DrawTest, SwapchainTripleBufferedColorCycle)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_GT(pixel[2], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4733,7 +4733,7 @@ TEST_F(DrawTest, DrawUsesFirstInstanceOffset)
 {
 	auto artifactPath = makeDrawArtifactPath("first-instance-offset.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("first-instance-offset");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4785,7 +4785,7 @@ TEST_F(DrawTest, DrawUsesFirstInstanceOffset)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4797,7 +4797,7 @@ TEST_F(DrawTest, MultisampleSolidColorTriangle)
 {
 	auto artifactPath = makeDrawArtifactPath("msaa-solid-color-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("msaa-solid-color-triangle");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4841,7 +4841,7 @@ TEST_F(DrawTest, MultisampleSolidColorTriangle)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -4852,7 +4852,7 @@ TEST_F(DrawTest, MultisampleVertexColorTriangleInterpolation)
 {
 	auto artifactPath = makeDrawArtifactPath("msaa-vertex-color-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("msaa-vertex-color-triangle");
 	auto sourceDumpPath = makeCudaLaunchStampPath("msaa-vertex-color-triangle-source");
 	std::filesystem::remove(stampPath);
@@ -4912,7 +4912,7 @@ TEST_F(DrawTest, MultisampleVertexColorTriangleInterpolation)
 	auto topPixel = tester.readbackPixel(640, 180);
 	EXPECT_GT(topPixel[3], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	auto sourceDump = readTextFile(sourceDumpPath);
 	EXPECT_NE(sourceDump.find("invocation.barycentric0"), std::string::npos);
@@ -4927,7 +4927,7 @@ TEST_F(DrawTest, MultisampleDepthBlocksFarTriangle)
 {
 	auto artifactPath = makeDrawArtifactPath("msaa-depth-blocks-far-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("msaa-depth-blocks-far-triangle");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -4996,7 +4996,7 @@ TEST_F(DrawTest, MultisampleDepthBlocksFarTriangle)
 	EXPECT_LT(centerPixel[1], 80);
 	EXPECT_LT(centerPixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -5009,7 +5009,7 @@ TEST_F(DrawTest, VertexInputDynamicStateSolidColorTriangle)
 {
 	auto artifactPath = makeDrawArtifactPath("vertex-input-dynamic-state-triangle.bmp");
 	std::filesystem::remove(artifactPath);
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("vertex-input-dynamic-state-triangle");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
@@ -5054,7 +5054,7 @@ TEST_F(DrawTest, VertexInputDynamicStateSolidColorTriangle)
 	EXPECT_LT(pixel[1], 80);
 	EXPECT_LT(pixel[2], 80);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");

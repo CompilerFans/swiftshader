@@ -1,7 +1,7 @@
-#include "Backend/FakeRuntimeAPI.hpp"
+#include "Backend/StubRuntimeAPI.hpp"
 #include "Backend/TrianglePipelineBootstrap.hpp"
 #include "Device/Stream.hpp"
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 #	include "Backend/CudaRuntimeAPI.hpp"
 #endif
 
@@ -9,15 +9,15 @@
 #include <cstring>
 #include <gtest/gtest.h>
 
-TEST(TrianglePipelineBootstrap, FakeRuntimeLaunchesThreeStages)
+TEST(TrianglePipelineBootstrap, StubRuntimeLaunchesThreeStages)
 {
-	backend::FakeRuntimeAPI runtime;
-	backend::FakeRuntimeAPI::resetGlobalCapture();
+	backend::StubRuntimeAPI runtime;
+	backend::StubRuntimeAPI::resetGlobalCapture();
 
 	backend::launchTrianglePipelineBootstrap(runtime);
 
-	EXPECT_EQ(backend::FakeRuntimeAPI::globalLaunchCount(), 3u);
-	EXPECT_NE(backend::FakeRuntimeAPI::globalLastModuleSource().find("struct FsParams"), std::string::npos);
+	EXPECT_EQ(backend::StubRuntimeAPI::globalLaunchCount(), 3u);
+	EXPECT_NE(backend::StubRuntimeAPI::globalLastModuleSource().find("struct FsParams"), std::string::npos);
 }
 
 TEST(TrianglePipelineBootstrap, BuildsConfigFromVec3PositionStream)
@@ -308,7 +308,7 @@ TEST(TrianglePipelineBootstrap, BuildsConfigFromIndexedPositionStream)
 	EXPECT_EQ(std::memcmp(&expanded[2], &vertices[3], sizeof(Vertex)), 0);
 }
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 
 
 

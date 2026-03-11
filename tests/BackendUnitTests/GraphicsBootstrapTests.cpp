@@ -1,6 +1,6 @@
-#include "Backend/FakeRuntimeAPI.hpp"
+#include "Backend/StubRuntimeAPI.hpp"
 #include "Backend/GraphicsBootstrap.hpp"
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 #	include "Backend/CudaRuntimeAPI.hpp"
 #endif
 
@@ -74,7 +74,7 @@ TEST(GraphicsBootstrap, EmitsAttributeBindingFetch)
 
 TEST(GraphicsBootstrap, LaunchUsesSingleVsParamsArgument)
 {
-	backend::FakeRuntimeAPI runtime;
+	backend::StubRuntimeAPI runtime;
 	backend::launchGraphicsBootstrap(runtime);
 
 	EXPECT_NE(runtime.lastModuleSource().find("struct VsParams"), std::string::npos);
@@ -83,7 +83,7 @@ TEST(GraphicsBootstrap, LaunchUsesSingleVsParamsArgument)
 	EXPECT_EQ(runtime.lastLaunch().blockCountX, 3u);
 }
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 TEST(GraphicsBootstrap, CudaRuntimeExecutesThreeVertices)
 {
 	backend::CudaRuntimeAPI runtime;
@@ -272,7 +272,7 @@ TEST(GraphicsBootstrap, EmitsPointSizeShaderBody)
 	EXPECT_NE(source.find("outVertex.pointSize = 16.0f;"), std::string::npos);
 }
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 TEST(GraphicsBootstrap, CudaRuntimeExecutesPointSizeOutput)
 {
 	backend::CudaRuntimeAPI runtime;

@@ -2,7 +2,7 @@ set(BACKEND_SRC_FILES
     BackendConfig.hpp
     BackendFactory.cpp
     ComputeExecutable.cpp
-    CustomExecutionBackend.cpp
+    GpuExecutionBackend.cpp
     CpuExecutionBackend.cpp
     FragmentBootstrap.cpp
     GraphicsBootstrap.cpp
@@ -17,8 +17,8 @@ set(BACKEND_SRC_FILES
     PresentAdapter.cpp
     PresentAdapter.hpp
     GraphicsBackend.hpp
-    FakeRuntimeAPI.cpp
-    FakeRuntimeAPI.hpp
+    StubRuntimeAPI.cpp
+    StubRuntimeAPI.hpp
     BackendFactory.hpp
     ExecutionBackend.cpp
     ExecutionBackendFactory.cpp
@@ -29,7 +29,7 @@ set(BACKEND_SRC_FILES
     ExecutionBackend.hpp
 )
 
-if(SWIFTSHADER_CUSTOM_GPU_USE_CUDA)
+if(SWIFTSHADER_GPU_USE_CUDA)
     list(APPEND BACKEND_SRC_FILES
         CudaCompilerDriver.cpp
         CudaCompilerDriver.hpp
@@ -51,7 +51,7 @@ target_include_directories(vk_backend
         "${SWIFTSHADER_DIR}/third_party/marl/include"
 )
 
-if(SWIFTSHADER_CUSTOM_GPU_USE_CUDA)
+if(SWIFTSHADER_GPU_USE_CUDA)
     target_include_directories(vk_backend
         PRIVATE
             ${CUDAToolkit_INCLUDE_DIRS}

@@ -1,5 +1,5 @@
-#include "Backend/FakeRuntimeAPI.hpp"
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#include "Backend/StubRuntimeAPI.hpp"
+#if SWIFTSHADER_GPU_USE_CUDA
 #	include "Backend/CudaRuntimeAPI.hpp"
 #	include <cstdlib>
 #	include <filesystem>
@@ -8,7 +8,7 @@
 
 #include <gtest/gtest.h>
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 namespace {
 
 std::string readTextFile(const std::filesystem::path &path)
@@ -20,21 +20,21 @@ std::string readTextFile(const std::filesystem::path &path)
 }  // namespace
 #endif
 
-TEST(RuntimeAPI, FakeRuntimeCreatesModuleHandle)
+TEST(RuntimeAPI, StubRuntimeCreatesModuleHandle)
 {
-    backend::FakeRuntimeAPI api;
-    auto module = api.createModule("kernel text");
-    EXPECT_TRUE(module.valid());
+	backend::StubRuntimeAPI api;
+	auto module = api.createModule("kernel text");
+	EXPECT_TRUE(module.valid());
 }
 
-TEST(RuntimeAPI, FakeRuntimeCreatesModuleHandleWithCustomEntrypoint)
+TEST(RuntimeAPI, StubRuntimeCreatesModuleHandleWithCustomEntrypoint)
 {
-	backend::FakeRuntimeAPI api;
+	backend::StubRuntimeAPI api;
 	auto module = api.createModule("kernel text", "vs_entry");
 	EXPECT_TRUE(module.valid());
 }
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 TEST(RuntimeAPI, CudaRuntimePrintsKernelSourceByDefault)
 {
 	::unsetenv("SWIFTSHADER_CUDA_DUMP_SOURCE");

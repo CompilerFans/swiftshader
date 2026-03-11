@@ -76,8 +76,8 @@ function run_scan_sources() {
   python3 ${TESTS_DIR}/scan_sources/main.py ${SRC_DIR}
 }
 
-function run_custom_backend_config() {
-  cmake -S ${ROOT_DIR} -B ${ROOT_DIR}/build-custom-backend -DSWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON -DSWIFTSHADER_BUILD_TESTS=OFF >/dev/null
+function run_gpu_backend_config() {
+  cmake -S ${ROOT_DIR} -B ${ROOT_DIR}/build-gpu-backend -DSWIFTSHADER_ENABLE_GPU_BACKEND=ON -DSWIFTSHADER_BUILD_TESTS=OFF >/dev/null
 }
 
 # Ensure we are clean to start out with.
@@ -98,8 +98,8 @@ check "build files don't reference non-existent files" run_check_build_files
 # Check source files.
 check scan_sources run_scan_sources
 
-# Check custom backend configure path.
-check custom-backend-config run_custom_backend_config
+# Check GPU backend configure path.
+check gpu-backend-config run_gpu_backend_config
 
 echo
 echo "${green}All check completed successfully.${normal}"

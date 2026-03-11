@@ -23,8 +23,8 @@ protected:
 
 Driver PresentAdapterCaptureTest::driver;
 
-#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND
-TEST_F(PresentAdapterCaptureTest, CustomPresentAdapterCaptureApiWorks)
+#if SWIFTSHADER_ENABLE_GPU_BACKEND
+TEST_F(PresentAdapterCaptureTest, GpuPresentAdapterCaptureApiWorks)
 {
 	backend::resetPresentAdapterCapture();
 	backend::ResourceStateTracker tracker;

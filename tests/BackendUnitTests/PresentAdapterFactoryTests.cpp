@@ -7,7 +7,7 @@ TEST(PresentAdapterFactory, SelectsExpectedAdapterKind)
 {
     auto adapter = backend::createPresentAdapter();
     ASSERT_NE(adapter, nullptr);
-#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND
+#if SWIFTSHADER_ENABLE_GPU_BACKEND
     EXPECT_FALSE(adapter->isFallbackAdapter());
 #else
     EXPECT_TRUE(adapter->isFallbackAdapter());
@@ -24,18 +24,18 @@ TEST(PresentAdapterFactory, UpdatesLayoutOnAcquireAndPresent)
     EXPECT_EQ(tracker.layoutForImage(7), VK_IMAGE_LAYOUT_GENERAL);
 }
 
-#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND
-TEST(PresentAdapterFactory, CustomAdapterCapturesAcquireAndPresent)
+#if SWIFTSHADER_ENABLE_GPU_BACKEND
+TEST(PresentAdapterFactory, GpuAdapterCapturesAcquireAndPresent)
 {
-    backend::resetPresentAdapterCapture();
-    auto adapter = backend::createPresentAdapter();
-    backend::ResourceStateTracker tracker;
-    adapter->acquire(tracker, 11);
-    adapter->present(tracker, 11);
-    auto capture = backend::lastPresentAdapterCapture();
-    EXPECT_EQ(capture.acquireCount, 1u);
-    EXPECT_EQ(capture.presentCount, 1u);
-    EXPECT_EQ(capture.lastAcquireImageId, 11u);
-    EXPECT_EQ(capture.lastPresentImageId, 11u);
+	backend::resetPresentAdapterCapture();
+	auto adapter = backend::createPresentAdapter();
+	backend::ResourceStateTracker tracker;
+	adapter->acquire(tracker, 11);
+	adapter->present(tracker, 11);
+	auto capture = backend::lastPresentAdapterCapture();
+	EXPECT_EQ(capture.acquireCount, 1u);
+	EXPECT_EQ(capture.presentCount, 1u);
+	EXPECT_EQ(capture.lastAcquireImageId, 11u);
+	EXPECT_EQ(capture.lastPresentImageId, 11u);
 }
 #endif

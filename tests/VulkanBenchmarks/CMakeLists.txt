@@ -83,8 +83,8 @@ target_include_directories(VulkanBenchmarks
         "${SWIFTSHADER_DIR}/include/"
 )
 
-if(SWIFTSHADER_CUSTOM_GPU_USE_CUDA)
-    target_compile_definitions(VulkanBenchmarks PRIVATE SWIFTSHADER_CUSTOM_GPU_USE_CUDA=1)
+if(SWIFTSHADER_GPU_USE_CUDA)
+    target_compile_definitions(VulkanBenchmarks PRIVATE SWIFTSHADER_GPU_USE_CUDA=1)
 endif()
 
 target_include_directories(draw-fps-observer

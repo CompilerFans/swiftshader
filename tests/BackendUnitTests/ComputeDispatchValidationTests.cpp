@@ -1,11 +1,11 @@
 #include "Backend/ComputeExecutable.hpp"
-#include "Backend/FakeRuntimeAPI.hpp"
+#include "Backend/StubRuntimeAPI.hpp"
 #include "Pipeline/SemanticIRBuilder.hpp"
 
 #include <gtest/gtest.h>
 #include <spirv/unified1/spirv.hpp>
 
-TEST(ComputeDispatchValidation, FakeRuntimeCapturesLaunchAndBindings)
+TEST(ComputeDispatchValidation, StubRuntimeCapturesLaunchAndBindings)
 {
 	sw::ParsedSpirvInfo parsed = { VK_SHADER_STAGE_COMPUTE_BIT, "main" };
 	const uint32_t words[] = { spv::MagicNumber, 0x00010300, 0, 4, 0 };
@@ -15,7 +15,7 @@ TEST(ComputeDispatchValidation, FakeRuntimeCapturesLaunchAndBindings)
 	ASSERT_NE(executable, nullptr);
 	ASSERT_TRUE(executable->valid());
 
-	backend::FakeRuntimeAPI runtime;
+	backend::StubRuntimeAPI runtime;
 	backend::ComputeDispatchInfo dispatch = {};
 	dispatch.groupCountX = 4;
 	dispatch.groupCountY = 2;

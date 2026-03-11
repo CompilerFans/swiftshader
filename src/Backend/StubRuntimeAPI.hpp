@@ -1,5 +1,5 @@
-#ifndef SWIFTSHADER_FAKE_RUNTIME_API_HPP_
-#define SWIFTSHADER_FAKE_RUNTIME_API_HPP_
+#ifndef SWIFTSHADER_STUB_RUNTIME_API_HPP_
+#define SWIFTSHADER_STUB_RUNTIME_API_HPP_
 
 #include "RuntimeAPI.hpp"
 
@@ -8,7 +8,7 @@
 
 namespace backend {
 
-class FakeRuntimeAPI : public RuntimeAPI
+class StubRuntimeAPI : public RuntimeAPI
 {
 public:
 	static void resetGlobalCapture();
@@ -40,4 +40,4 @@ private:
 
 }  // namespace backend
 
-#endif  // SWIFTSHADER_FAKE_RUNTIME_API_HPP_
+#endif  // SWIFTSHADER_STUB_RUNTIME_API_HPP_

@@ -1,6 +1,6 @@
-#include "Backend/FakeRuntimeAPI.hpp"
+#include "Backend/StubRuntimeAPI.hpp"
 #include "Backend/RasterBootstrap.hpp"
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 #	include "Backend/CudaRuntimeAPI.hpp"
 #endif
 
@@ -63,7 +63,7 @@ TEST(RasterBootstrap, CpuReferenceProducesBoundingBoxAndCoverage)
 
 TEST(RasterBootstrap, LaunchUsesSingleRasterParamsArgument)
 {
-	backend::FakeRuntimeAPI runtime;
+	backend::StubRuntimeAPI runtime;
 	backend::launchRasterBootstrap(runtime);
 
 	EXPECT_NE(runtime.lastModuleSource().find("struct RasterParams"), std::string::npos);
@@ -115,7 +115,7 @@ TEST(RasterBootstrap, CpuReferenceProducesNoCoverageForDegenerateTriangle)
 	EXPECT_TRUE(output.invocations.empty());
 }
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 TEST(RasterBootstrap, CudaRuntimeMatchesCpuReference)
 {
 	backend::CudaRuntimeAPI runtime;

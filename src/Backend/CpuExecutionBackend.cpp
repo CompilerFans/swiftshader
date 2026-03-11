@@ -17,19 +17,19 @@ namespace {
 
 bool shouldTraceCpuSubmit()
 {
-	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_SUBMIT");
+	const char *value = std::getenv("SWIFTSHADER_GPU_TRACE_CPU_SUBMIT");
 	return value != nullptr && value[0] != '\0';
 }
 
-bool shouldRequireCustomSubmit()
+bool shouldRequireGpuSubmit()
 {
-	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT");
+	const char *value = std::getenv("SWIFTSHADER_GPU_REQUIRE_GPU_SUBMIT");
 	return value != nullptr && value[0] != '\0';
 }
 
 bool shouldAllowCpuFallback()
 {
-	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK");
+	const char *value = std::getenv("SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK");
 	return value != nullptr && value[0] != '\0';
 }
 
@@ -80,15 +80,15 @@ public:
 		{
 			std::fprintf(stderr, "[cpu-backend] submit\n");
 		}
-#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND && SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_ENABLE_GPU_BACKEND && SWIFTSHADER_GPU_USE_CUDA
 		if(!shouldAllowCpuFallback())
 		{
-			sw::abort("CPU execution backend selected in CUDA mode. Set SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 to override.\n");
+			sw::abort("CPU execution backend selected in CUDA mode. Set SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 to override.\n");
 		}
 #endif
-		if(shouldRequireCustomSubmit())
+		if(shouldRequireGpuSubmit())
 		{
-			sw::abort("SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT=1 but CPU execution backend was selected\n");
+			sw::abort("SWIFTSHADER_GPU_REQUIRE_GPU_SUBMIT=1 but CPU execution backend was selected\n");
 		}
 
 		vk::CommandBuffer::ExecutionState executionState;

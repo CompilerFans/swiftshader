@@ -201,8 +201,8 @@ option_if_not_defined(REACTOR_VERIFY_LLVM_IR "Check reactor-generated LLVM IR is
 option_if_not_defined(SWIFTSHADER_LESS_DEBUG_INFO "Generate less debug info to reduce file size" FALSE)
 # option_if_not_defined(SWIFTSHADER_ENABLE_VULKAN_DEBUGGER "Enable Vulkan debugger support" FALSE)  # TODO(b/251802301)
 option_if_not_defined(SWIFTSHADER_ENABLE_ASTC "Enable ASTC compressed textures support" TRUE)  # TODO(b/150130101)
-option_if_not_defined(SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND "Enable custom GPU backend scaffolding" FALSE)
-option_if_not_defined(SWIFTSHADER_CUSTOM_GPU_USE_CUDA "Enable real CUDA compiler/runtime bootstrap for the custom GPU backend" FALSE)
+option_if_not_defined(SWIFTSHADER_ENABLE_GPU_BACKEND "Enable GPU backend scaffolding" FALSE)
+option_if_not_defined(SWIFTSHADER_GPU_USE_CUDA "Enable real CUDA compiler/runtime bootstrap for the GPU backend" FALSE)
 option_if_not_defined(SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT "Skip SPIR-V optimizer in pipeline compilation for fast test builds" FALSE)
 
 if(SWIFTSHADER_ENABLE_VULKAN_DEBUGGER)
@@ -831,13 +831,13 @@ if(SWIFTSHADER_ENABLE_VULKAN_DEBUGGER)
     target_compile_definitions(vk_base INTERFACE "ENABLE_VK_DEBUGGER")
 endif()
 
-if(SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND)
-    target_compile_definitions(vk_base INTERFACE "SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=1")
+if(SWIFTSHADER_ENABLE_GPU_BACKEND)
+    target_compile_definitions(vk_base INTERFACE "SWIFTSHADER_ENABLE_GPU_BACKEND=1")
 endif()
 
-if(SWIFTSHADER_CUSTOM_GPU_USE_CUDA)
+if(SWIFTSHADER_GPU_USE_CUDA)
     find_package(CUDAToolkit REQUIRED)
-    target_compile_definitions(vk_base INTERFACE "SWIFTSHADER_CUSTOM_GPU_USE_CUDA=1")
+    target_compile_definitions(vk_base INTERFACE "SWIFTSHADER_GPU_USE_CUDA=1")
 endif()
 
 if(SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT)

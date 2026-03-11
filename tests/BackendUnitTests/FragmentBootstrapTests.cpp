@@ -1,6 +1,6 @@
-#include "Backend/FakeRuntimeAPI.hpp"
+#include "Backend/StubRuntimeAPI.hpp"
 #include "Backend/FragmentBootstrap.hpp"
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 #	include "Backend/CudaRuntimeAPI.hpp"
 #endif
 
@@ -102,7 +102,7 @@ TEST(FragmentBootstrap, EmitsFragCoordDiscardLeftShaderWhenRequested)
 
 TEST(FragmentBootstrap, LaunchUsesSingleFsParamsArgument)
 {
-	backend::FakeRuntimeAPI runtime;
+	backend::StubRuntimeAPI runtime;
 	backend::launchFragmentBootstrap(runtime);
 
 	EXPECT_NE(runtime.lastModuleSource().find("struct FsParams"), std::string::npos);
@@ -110,7 +110,7 @@ TEST(FragmentBootstrap, LaunchUsesSingleFsParamsArgument)
 	EXPECT_EQ(runtime.lastLaunch().groupCountX, 1u);
 }
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 TEST(FragmentBootstrap, CudaRuntimeWritesConstantColor)
 {
 	backend::CudaRuntimeAPI runtime;

@@ -27,7 +27,7 @@ public:
 };
 
 std::unique_ptr<PresentAdapter> createFallbackPresentAdapter();
-std::unique_ptr<PresentAdapter> createCustomPresentAdapter();
+std::unique_ptr<PresentAdapter> createGpuPresentAdapter();
 
 void resetPresentAdapterCapture();
 const PresentAdapterCapture &lastPresentAdapterCapture();

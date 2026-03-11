@@ -11,8 +11,8 @@ ExecutionBackendCapture gCapture = {};
 
 GraphicsBootstrapMode defaultGraphicsBootstrapMode()
 {
-#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND
-	return GraphicsBootstrapMode::CustomWithCpuGraphicsFallback;
+#if SWIFTSHADER_ENABLE_GPU_BACKEND
+	return GraphicsBootstrapMode::GpuWithCpuGraphicsFallback;
 #else
 	return GraphicsBootstrapMode::CpuOnly;
 #endif

@@ -1,9 +1,9 @@
 #include "BackendFactory.hpp"
 #include "BackendConfig.hpp"
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 #	include "CudaRuntimeAPI.hpp"
 #endif
-#include "FakeRuntimeAPI.hpp"
+#include "StubRuntimeAPI.hpp"
 #include "PresentAdapter.hpp"
 #include "System/Debug.hpp"
 
@@ -16,7 +16,7 @@
 namespace backend {
 namespace {
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 bool envEnabled(const char *name)
 {
 	const char *value = std::getenv(name);
@@ -79,8 +79,8 @@ void warmupCudaRuntime(RuntimeAPI &runtime)
 
 BackendKind defaultBackendKind()
 {
-#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND
-	return BackendKind::CUSTOM_GPU;
+#if SWIFTSHADER_ENABLE_GPU_BACKEND
+	return BackendKind::GPU;
 #else
 	return BackendKind::CPU;
 #endif
@@ -88,8 +88,8 @@ BackendKind defaultBackendKind()
 
 std::unique_ptr<RuntimeAPI> createRuntimeAPI()
 {
-#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND
-#	if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_ENABLE_GPU_BACKEND
+#	if SWIFTSHADER_GPU_USE_CUDA
 	auto runtime = std::make_unique<CudaRuntimeAPI>();
 	if(runtime->isAvailable())
 	{
@@ -104,13 +104,13 @@ std::unique_ptr<RuntimeAPI> createRuntimeAPI()
 		return runtime;
 	}
 	traceCuda(runtime->initializationError().c_str());
-	if(!envEnabled("SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK"))
+	if(!envEnabled("SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK"))
 	{
 		sw::abort("CUDA runtime unavailable: %s\n", runtime->initializationError().c_str());
 	}
 	return nullptr;
 #	else
-	return std::make_unique<FakeRuntimeAPI>();
+	return std::make_unique<StubRuntimeAPI>();
 #	endif
 #else
 	return nullptr;
@@ -119,8 +119,8 @@ std::unique_ptr<RuntimeAPI> createRuntimeAPI()
 
 std::unique_ptr<PresentAdapter> createPresentAdapter()
 {
-#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND
-	return createCustomPresentAdapter();
+#if SWIFTSHADER_ENABLE_GPU_BACKEND
+	return createGpuPresentAdapter();
 #else
 	return createFallbackPresentAdapter();
 #endif

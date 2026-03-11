@@ -63,27 +63,27 @@ bool envVarEnabled(const char *name)
 
 bool shouldRenderTriangleBootstrapToColorAttachment()
 {
-	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP");
+	return envVarEnabled("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP");
 }
 
 bool shouldRequireTriangleBootstrap()
 {
-	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_REQUIRE_TRIANGLE_BOOTSTRAP");
+	return envVarEnabled("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP");
 }
 
 bool shouldTraceTriangleBootstrapRender()
 {
-	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER");
+	return envVarEnabled("SWIFTSHADER_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER");
 }
 
 bool shouldTraceCpuDraw()
 {
-	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW");
+	return envVarEnabled("SWIFTSHADER_GPU_TRACE_CPU_DRAW");
 }
 
 bool shouldAllowCpuFallback()
 {
-	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK");
+	return envVarEnabled("SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK");
 }
 
 bool writeTriangleBootstrapColorToAttachment(const std::vector<uint8_t> &colorBuffer, uint32_t width, uint32_t height, vk::ImageView *colorAttachment, const VkRect2D &renderArea, int layer)
@@ -860,7 +860,7 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 				const bool wrote = rendered && runtime->isHardwareBacked() && writeTriangleBootstrapColorToAttachment(bootstrapColorBuffer, renderArea.extent.width, renderArea.extent.height, colorAttachment, renderArea, layer);
 				if(shouldTraceTriangleBootstrapRender())
 				{
-					std::fprintf(stderr, "[custom-gpu] triangle bootstrap render: rendered=%d wrote=%d\n", rendered ? 1 : 0, wrote ? 1 : 0);
+					std::fprintf(stderr, "[gpu] triangle bootstrap render: rendered=%d wrote=%d\n", rendered ? 1 : 0, wrote ? 1 : 0);
 				}
 				if(wrote)
 				{
@@ -868,7 +868,7 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 				}
 				if(forceTriangleBootstrap || shouldRequireTriangleBootstrap())
 				{
-					sw::abort("SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP failed (rendered=%d, wrote=%d)\n", rendered ? 1 : 0, wrote ? 1 : 0);
+					sw::abort("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP failed (rendered=%d, wrote=%d)\n", rendered ? 1 : 0, wrote ? 1 : 0);
 				}
 			}
 		}
@@ -1023,13 +1023,13 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 	{
 		if(runtime->isHardwareBacked() && !shouldAllowCpuFallback())
 		{
-			sw::abort("CPU DrawCall::run reached in CUDA mode. Set SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 to override.\n");
+			sw::abort("CPU DrawCall::run reached in CUDA mode. Set SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 to override.\n");
 		}
 	}
 
 	if(shouldTraceCpuDraw())
 	{
-		std::fprintf(stderr, "[custom-gpu] cpu DrawCall::run\n");
+		std::fprintf(stderr, "[gpu] cpu DrawCall::run\n");
 	}
 	DrawCall::run(device, draw, &drawTickets, clusterQueues);
 }

@@ -29,8 +29,8 @@ config("swiftshader_config") {
     }
   }
 
-  if (swiftshader_enable_custom_gpu_backend) {
-    defines += [ "SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=1" ]
+  if (swiftshader_enable_gpu_backend) {
+    defines += [ "SWIFTSHADER_ENABLE_GPU_BACKEND=1" ]
   }
 
   if (swiftshader_skip_pipeline_spirv_opt) {

@@ -1,5 +1,5 @@
-#include "Backend/FakeRuntimeAPI.hpp"
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#include "Backend/StubRuntimeAPI.hpp"
+#if SWIFTSHADER_GPU_USE_CUDA
 #	include <cstdlib>
 #	include <filesystem>
 #	include <fstream>
@@ -17,7 +17,7 @@
 
 namespace {
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 std::filesystem::path makeCudaLaunchStampPath(const char *suffix)
 {
 	return std::filesystem::temp_directory_path() / (std::string("swiftshader-cuda-launch-") + suffix + "-" + std::to_string(::getpid()) + ".log");
@@ -121,16 +121,16 @@ TEST_F(ComputeBackendPipelineTest, BuildBackendExecutableWithoutDispatch)
 	driver.vkDestroyInstance(instance, nullptr);
 }
 
-#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND
-TEST_F(ComputeBackendPipelineTest, DispatchUsesFakeRuntimeWhenCustomBackendEnabled)
+#if SWIFTSHADER_ENABLE_GPU_BACKEND
+TEST_F(ComputeBackendPipelineTest, DispatchUsesStubRuntimeWhenGpuBackendEnabled)
 {
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	auto stampPath = makeCudaLaunchStampPath("compute");
 	std::filesystem::remove(stampPath);
 	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
 #else
-	backend::FakeRuntimeAPI::resetGlobalCapture();
+	backend::StubRuntimeAPI::resetGlobalCapture();
 #endif
 
 	const VkInstanceCreateInfo createInfo = {
@@ -168,15 +168,15 @@ TEST_F(ComputeBackendPipelineTest, DispatchUsesFakeRuntimeWhenCustomBackendEnabl
 	ASSERT_EQ(driver.vkEndCommandBuffer(commandBuffer), VK_SUCCESS);
 	ASSERT_EQ(device->QueueSubmitAndWait(commandBuffer), VK_SUCCESS);
 
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+#if SWIFTSHADER_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
 #else
-	EXPECT_TRUE(backend::FakeRuntimeAPI::globalLastLaunch().module.valid());
-	EXPECT_EQ(backend::FakeRuntimeAPI::globalLastLaunch().groupCountX, 3u);
-	EXPECT_EQ(backend::FakeRuntimeAPI::globalLastLaunch().groupCountY, 2u);
-	EXPECT_EQ(backend::FakeRuntimeAPI::globalLastLaunch().groupCountZ, 1u);
+	EXPECT_TRUE(backend::StubRuntimeAPI::globalLastLaunch().module.valid());
+	EXPECT_EQ(backend::StubRuntimeAPI::globalLastLaunch().groupCountX, 3u);
+	EXPECT_EQ(backend::StubRuntimeAPI::globalLastLaunch().groupCountY, 2u);
+	EXPECT_EQ(backend::StubRuntimeAPI::globalLastLaunch().groupCountZ, 1u);
 #endif
 
 	device->FreeCommandBuffer(pool, commandBuffer);

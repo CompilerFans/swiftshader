@@ -18,13 +18,13 @@ namespace backend {
 enum class GraphicsBootstrapMode
 {
 	CpuOnly,
-	CustomWithCpuGraphicsFallback,
+	GpuWithCpuGraphicsFallback,
 };
 
 struct ExecutionBackendCapture
 {
 	bool usedCpuFactory = false;
-	bool usedCustomFactory = false;
+	bool usedGpuFactory = false;
 };
 
 class GraphicsBackend
@@ -40,7 +40,7 @@ GraphicsBootstrapMode defaultGraphicsBootstrapMode();
 void resetExecutionBackendCapture();
 const ExecutionBackendCapture &lastExecutionBackendCapture();
 std::unique_ptr<ExecutionBackend> createCpuExecutionBackend(vk::Device *device);
-std::unique_ptr<ExecutionBackend> createCustomExecutionBackend(vk::Device *device);
+std::unique_ptr<ExecutionBackend> createGpuExecutionBackend(vk::Device *device);
 
 }  // namespace backend
 

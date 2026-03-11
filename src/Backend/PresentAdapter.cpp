@@ -26,7 +26,7 @@ public:
 	}
 };
 
-class FakePresentAdapter : public PresentAdapter
+class GpuPresentAdapter : public PresentAdapter
 {
 public:
 	bool isFallbackAdapter() const override
@@ -56,9 +56,9 @@ std::unique_ptr<PresentAdapter> createFallbackPresentAdapter()
 	return std::make_unique<FallbackPresentAdapter>();
 }
 
-std::unique_ptr<PresentAdapter> createCustomPresentAdapter()
+std::unique_ptr<PresentAdapter> createGpuPresentAdapter()
 {
-	return std::make_unique<FakePresentAdapter>();
+	return std::make_unique<GpuPresentAdapter>();
 }
 
 void resetPresentAdapterCapture()

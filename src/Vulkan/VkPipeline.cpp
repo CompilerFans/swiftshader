@@ -47,12 +47,12 @@ bool envVarEnabled(const char *name)
 
 bool shouldAllowCpuFallback()
 {
-	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK");
+	return envVarEnabled("SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK");
 }
 
 bool shouldTraceCpuCompute()
 {
-	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_COMPUTE");
+	return envVarEnabled("SWIFTSHADER_GPU_TRACE_CPU_COMPUTE");
 }
 
 const char *computeExecutableKindName(backend::ComputeExecutable::Kind kind)
@@ -864,7 +864,7 @@ void ComputePipeline::run(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t bas
 	{
 		if(runtime->isHardwareBacked() && !shouldAllowCpuFallback())
 		{
-			sw::abort("CPU ComputeProgram::run reached in CUDA mode (backendExecutable=%s). Set SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 to override.\n",
+			sw::abort("CPU ComputeProgram::run reached in CUDA mode (backendExecutable=%s). Set SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 to override.\n",
 			          backendExecutable ? computeExecutableKindName(backendExecutable->kind()) : "none");
 		}
 	}
@@ -872,7 +872,7 @@ void ComputePipeline::run(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t bas
 	ASSERT_OR_RETURN(program != nullptr);
 	if(shouldTraceCpuCompute())
 	{
-		std::fprintf(stderr, "[custom-gpu] cpu ComputeProgram::run\n");
+		std::fprintf(stderr, "[gpu] cpu ComputeProgram::run\n");
 	}
 	program->run(
 	    descriptorSetObjects, descriptorSets, descriptorDynamicOffsets, pushConstants,
