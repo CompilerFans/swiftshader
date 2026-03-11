@@ -1030,3 +1030,12 @@
 - Verification:
   - Strict CUDA mode: `VK_ICD_FILENAMES=.../build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER=1 vkcube --c 3` produced 3 `rendered=1 wrote=1` lines and `stamps=9`.
   - Allow fallback: `... SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW=1 vkcube --c 1` printed `[custom-gpu] cpu DrawCall::run`.
+
+## 2026-03-12: Disallow CPU compute fallback in CUDA mode
+- `vk::ComputePipeline::run()` now aborts in CUDA-backed builds if execution would fall through to the CPU `ComputeProgram::run()` path.
+- This closes the remaining silent compute fallback after strict submit/draw mode.
+- Added optional trace:
+  - `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_COMPUTE=1` prints `[custom-gpu] cpu ComputeProgram::run` when `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` is set and compute is allowed to fall back.
+- Verification:
+  - `(cd build-cuda-bootstrap && ./backend-unittests)` passed.
+  - `(cd build-cuda-bootstrap && ./vk-unittests --gtest_filter=ComputeBackendPipelineTest.DispatchUsesFakeRuntimeWhenCustomBackendEnabled)` passed.

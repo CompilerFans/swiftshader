@@ -25,6 +25,7 @@
 #include "Pipeline/ComputeProgram.hpp"
 #include "Pipeline/SemanticIRBuilder.hpp"
 #include "Pipeline/SpirvShader.hpp"
+#include "System/Debug.hpp"
 
 #include "marl/trace.h"
 
@@ -32,9 +33,42 @@
 #include "spirv-tools/optimizer.hpp"
 #endif
 
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 
 namespace {
+
+bool envVarEnabled(const char *name)
+{
+	const char *value = std::getenv(name);
+	return value != nullptr && value[0] != '\0';
+}
+
+bool shouldAllowCpuFallback()
+{
+	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK");
+}
+
+bool shouldTraceCpuCompute()
+{
+	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_COMPUTE");
+}
+
+const char *computeExecutableKindName(backend::ComputeExecutable::Kind kind)
+{
+	switch(kind)
+	{
+	case backend::ComputeExecutable::Kind::Unsupported:
+		return "unsupported";
+	case backend::ComputeExecutable::Kind::Empty:
+		return "empty";
+	case backend::ComputeExecutable::Kind::BufferMemcpy:
+		return "buffer_memcpy";
+	default:
+		return "unknown";
+	}
+}
 
 // optimizeSpirv() applies and freezes specializations into constants, and runs spirv-opt.
 sw::SpirvBinary optimizeSpirv(const vk::PipelineCache::SpirvBinaryKey &key)
@@ -826,7 +860,20 @@ void ComputePipeline::run(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t bas
 		}
 	}
 
+	if(auto *runtime = device->getRuntimeAPI())
+	{
+		if(runtime->isHardwareBacked() && !shouldAllowCpuFallback())
+		{
+			sw::abort("CPU ComputeProgram::run reached in CUDA mode (backendExecutable=%s). Set SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 to override.\n",
+			          backendExecutable ? computeExecutableKindName(backendExecutable->kind()) : "none");
+		}
+	}
+
 	ASSERT_OR_RETURN(program != nullptr);
+	if(shouldTraceCpuCompute())
+	{
+		std::fprintf(stderr, "[custom-gpu] cpu ComputeProgram::run\n");
+	}
 	program->run(
 	    descriptorSetObjects, descriptorSets, descriptorDynamicOffsets, pushConstants,
 	    baseGroupX, baseGroupY, baseGroupZ,

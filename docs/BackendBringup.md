@@ -97,6 +97,8 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 - `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK`
   - Allow CPU fallback paths even when running a CUDA-backed build (disables the default CUDA-mode aborts).
   - Useful for debugging or running CPU-based tests with a CUDA-enabled build.
+- `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_COMPUTE`
+  - Print when a compute dispatch falls back to the CPU `ComputeProgram::run()` path: `[custom-gpu] cpu ComputeProgram::run`.
 - `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP`
   - Attempt a minimal CUDA triangle-pipeline bootstrap per draw and write the RGBA output back into the first color attachment (location 0), skipping the CPU `DrawCall::run()` path when successful.
   - Intended for bring-up only; it does **not** implement full Vulkan shader/pipeline semantics yet.
@@ -116,6 +118,8 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 - `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK`
   - 即使在 CUDA build 下也允许走 CPU 回退路径（关闭 CUDA 模式下默认的 abort）。
   - 适用于调试或在 CUDA build 下跑 CPU 相关测试。
+- `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_COMPUTE`
+  - 当 compute dispatch 回退到 CPU `ComputeProgram::run()` 路径时打印：`[custom-gpu] cpu ComputeProgram::run`。
 - `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP`
   - 每次 draw 尝试执行最小的 CUDA triangle-pipeline bootstrap，并把 RGBA 输出写回到第一个 color attachment（location 0）；成功时跳过 CPU 的 `DrawCall::run()`。
   - 仅用于 bring-up；目前**不**具备完整 Vulkan shader/pipeline 语义。
@@ -161,11 +165,11 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 
 ## Current Behavior / 当前行为
 - The custom backend flag enables backend scaffolding code paths and compile definitions.
-- In CUDA-backed builds, CPU fallback for queue submit and graphics draw is disabled by default (CPU submit/draw aborts). Set `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` to re-enable CPU fallback.
+- In CUDA-backed builds, CPU fallback for queue submit, graphics draw, and compute dispatch is disabled by default (CPU submit/draw/compute aborts). Set `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` to re-enable CPU fallback.
 - Compute backend bootstrap produces backend executables and fake-runtime dispatch validation, but does not yet replace the full CPU compute execution path.
 
 - 自研后端开关会启用后端骨架相关代码路径和编译定义。
-- CUDA build 下默认切断 queue submit 和图形 draw 的 CPU fallback（CPU submit/draw 会 abort）；可通过 `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` 重新允许 CPU fallback。
+- CUDA build 下默认切断 queue submit、图形 draw、compute dispatch 的 CPU fallback（CPU submit/draw/compute 会 abort）；可通过 `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` 重新允许 CPU fallback。
 - compute 后端 bootstrap 已能生成 backend executable 并完成 fake runtime dispatch 验证，但尚未完整替代 CPU compute 执行路径。
 
 ## Focused Validation / 聚焦验证
@@ -177,10 +181,10 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 
 ## CPU Fallback / CPU 回退
 - Without `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND`, backend selection defaults to CPU.
-- With `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON`, the custom backend path is enabled. In CUDA-backed builds, CPU fallback for submit/draw is disabled by default; set `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` to override.
+- With `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON`, the custom backend path is enabled. In CUDA-backed builds, CPU fallback for submit/draw/compute is disabled by default; set `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` to override.
 
 - 不开启 `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND` 时，后端选择默认走 CPU。
-- 开启 `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON` 后，会启用自研后端路径；CUDA build 下默认不允许 submit/draw 回退到 CPU，可通过 `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` 覆盖该行为。
+- 开启 `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON` 后，会启用自研后端路径；CUDA build 下默认不允许 submit/draw/compute 回退到 CPU，可通过 `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` 覆盖该行为。
 
 ## Codegen Dumps / 代码生成导出
 - At this stage, generated CUDA-like source and LLVM IR are produced in memory by the emitters.
