@@ -58,6 +58,7 @@ Phase 4: Verification
 | Shell backtick expansion in `rg` command | 1 | Re-ran with `grep -F` and proper quoting |
 
 ## Notes
+- 2026-03-11 new pivot: active next feature work is no longer draw/vk test stabilization; it is real `Vulkan compute dispatch -> CUDA runtime` bring-up, with first acceptance gated on `ComputeTests` narrow cases (`Memcpy`, `GlobalInvocationId`) executing for real in the CUDA build.
 - 2026-03-10 pivot: the active plan is no longer the external Vulkan-Samples ladder. The immediate objective is to stabilize selected repository-owned unit tests in the CUDA-enabled build.
 - 2026-03-10 first stabilization result: the initial failing family in `backend-unittests` was fixed by restoring layout parity between the raster CUDA kernel's invocation struct and host-side `FragmentBootstrapInvocation`.
 - 2026-03-10 second stabilization result: `draw-unittests` has no concrete failing CUDA case when sharded, while `vk-unittests` yielded three selection/smoke expectation fixes, one compute-fixture skip fix, and one discard-test stability fix.
