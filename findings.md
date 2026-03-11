@@ -278,3 +278,22 @@
   - `DrawTest.SubmitWithoutDrawWithPresentThenDestroy` repeats cleanly for 25 iterations in both CPU and CUDA builds.
   - `DrawTest.DrawTwoVerticesWithPresentThenDestroy` also repeats cleanly for 25 iterations in both CPU and CUDA builds.
   - Therefore the remaining non-degenerate present crash requires both the present path and a complete triangle primitive; generic present, empty submit, and incomplete-primitive present are all ruled out.
+
+- New queue/present-path diagnostics on 2026-03-11 further narrowed the failing layer:
+  - Disabling XCB MIT-SHM (`SWIFTSHADER_XCB_DISABLE_SHM=1`) does not fix the crash; it simply makes `RenderWithPresentThenDestroy` fail earlier (iteration 3 in the latest run).
+  - Short-circuiting `XcbSurfaceKHR::present()` itself (`SWIFTSHADER_XCB_SKIP_PRESENT=1`) also does not fix the crash; the test still dies around iteration 18.
+  - Short-circuiting `Queue::present()` after its wait-semaphore section (`SWIFTSHADER_QUEUE_SKIP_PRESENT_BODY=1`) still crashes the complete-triangle present test, while the two-vertex present test remains stable.
+  - Short-circuiting `Queue::present()` immediately after the initial `waitIdle()` (`SWIFTSHADER_QUEUE_SKIP_PRESENT_WAIT=1`) still crashes, now around iteration 2 in the latest run.
+  - But skipping the initial `waitIdle()` itself (`SWIFTSHADER_QUEUE_SKIP_PRESENT_IDLE=1`) no longer crashes quickly; instead the test hangs for minutes in the present path.
+  - Therefore the remaining present issue is no longer best explained by swapchain image release or XCB copy. The strongest current hypothesis is a mismatch in SwiftShader's queue-present synchronization: the renderer completes real triangle draws asynchronously, while the binary-semaphore / `waitIdle()` sequencing in `Queue::present()` is not robust for this path.
+
+- `Renderer::draw()` is definitely asynchronous:
+  - `Renderer::draw()` schedules per-batch work with `marl::schedule(...)` and returns before pixel work finishes.
+  - `Renderer::synchronize()` is the mechanism that waits for all outstanding draw tickets.
+  - `Queue::submitQueue()` currently signals submit semaphores separately from fence completion logic, so the exact ordering between “work really finished”, “binary semaphore becomes visible to present”, and the extra `Queue::waitIdle()` task remains the critical area to fix.
+
+- New 2026-03-11 wait-idle diagnostics narrow the remaining crash below the present layer:
+  - `DrawTest.RenderWaitFenceThenPresentThenDestroy` still crashes under CUDA repeats, so waiting on the submit fence before `queuePresent()` is not sufficient.
+  - `DrawTest.RenderWaitFenceThenPresentWithoutSemaphoreThenDestroy` also still crashes under CUDA repeats, so the present wait semaphore itself is not required to trigger the failure.
+  - `DrawTest.RenderWithoutPresentThenWaitIdleDestroy` crashes under CUDA repeats while passing on CPU, even though `RenderWithoutPresentThenDestroy` remains stable.
+  - Therefore the strongest current boundary is: after a complete triangle draw, an additional explicit `device/queue waitIdle()` is sufficient to trigger the CUDA-only crash; `present()` is one way to hit that path, but it is no longer the root boundary.

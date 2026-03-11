@@ -892,3 +892,41 @@
   - `./build/draw-unittests --gtest_filter='DrawTest.SubmitWithoutDrawWithPresentThenDestroy:DrawTest.DrawTwoVerticesWithPresentThenDestroy' --gtest_repeat=25` passed
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.SubmitWithoutDrawWithPresentThenDestroy:DrawTest.DrawTwoVerticesWithPresentThenDestroy' --gtest_repeat=25)` passed (`EXIT:0`)
 - Current conclusion: the remaining non-degenerate present crash is not “any present” and not “present after any draw”. It specifically requires a complete triangle primitive plus the present path. The separate degenerate-triangle no-present crash remains as another active family.
+
+## 2026-03-11: Queue/present synchronization isolation
+- Added temporary diagnostic env gates in:
+  - `src/WSI/XcbSurfaceKHR.cpp`
+    - `SWIFTSHADER_XCB_DISABLE_SHM`
+    - `SWIFTSHADER_XCB_SKIP_PRESENT`
+  - `src/Vulkan/VkQueue.cpp`
+    - `SWIFTSHADER_QUEUE_SKIP_PRESENT_BODY`
+    - `SWIFTSHADER_QUEUE_SKIP_PRESENT_WAIT`
+    - `SWIFTSHADER_QUEUE_SKIP_PRESENT_IDLE`
+- Also tightened `src/Vulkan/VkQueue.cpp` so signal semaphores are emitted only after `executionBackend->synchronize()`, matching the fact that `Renderer::draw()` schedules work asynchronously.
+- Verification results:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_XCB_DISABLE_SHM=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenDestroy' --gtest_repeat=25)` crashed with `139` during iteration 3
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_XCB_SKIP_PRESENT=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenDestroy' --gtest_repeat=25)` still crashed with `139` during iteration 18
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_QUEUE_SKIP_PRESENT_BODY=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenDestroy' --gtest_repeat=25)` still crashed with `139` during iteration 16
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_QUEUE_SKIP_PRESENT_WAIT=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenDestroy' --gtest_repeat=25)` still crashed with `139` during iteration 2
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_QUEUE_SKIP_PRESENT_BODY=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.DrawTwoVerticesWithPresentThenDestroy' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_QUEUE_SKIP_PRESENT_IDLE=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithPresentThenDestroy' --gtest_repeat=25)` hung instead of crashing; I confirmed the child process stayed alive for minutes and then cleaned up the diagnostic process manually
+- Current conclusion:
+  - The crash survives even when the actual XCB copy/present body is skipped, so the remaining bug is above the surface backend.
+  - The strongest signal now sits in `Queue::present()` synchronization itself: the initial `waitIdle()` hack and the binary-semaphore wait path are both interacting badly with real complete-triangle draws.
+
+## 2026-03-11: Wait-idle boundary isolation
+- Added narrower diagnostics in `tests/VulkanUnitTests/DrawTests.cpp` plus small harness helpers in `tests/VulkanWrapper/DrawTester.*` / `tests/VulkanWrapper/Swapchain.*`:
+  - `DrawTest.RenderWaitFenceThenPresentThenDestroy`
+  - `DrawTest.RenderWaitFenceThenPresentWithoutSemaphoreThenDestroy`
+  - `DrawTest.RenderWithoutPresentThenWaitIdleDestroy`
+- Verification:
+  - `./build/draw-unittests --gtest_filter='DrawTest.RenderWaitFenceThenPresentThenDestroy' --gtest_repeat=25` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWaitFenceThenPresentThenDestroy' --gtest_repeat=25)` still crashed with `139` during iteration 12
+  - `./build/draw-unittests --gtest_filter='DrawTest.RenderWaitFenceThenPresentWithoutSemaphoreThenDestroy' --gtest_repeat=25` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWaitFenceThenPresentWithoutSemaphoreThenDestroy' --gtest_repeat=25)` still crashed with `139` during iteration 10
+  - `./build/draw-unittests --gtest_filter='DrawTest.RenderWithoutPresentThenWaitIdleDestroy' --gtest_repeat=25` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithoutPresentThenWaitIdleDestroy' --gtest_repeat=25)` still crashed with `139` during iteration 10
+- Current conclusion:
+  - Waiting on the submit fence before present does not eliminate the crash.
+  - Removing the present wait semaphore also does not eliminate the crash.
+  - The remaining CUDA-only crash boundary is now tighter than `present()`: after a complete triangle draw, an extra explicit `device.waitIdle()` / `queue.waitIdle()` is already sufficient to reproduce it.

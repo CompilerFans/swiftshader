@@ -31,6 +31,7 @@
 #include "marl/trace.h"
 
 #include <cstring>
+#include <cstdlib>
 
 namespace vk {
 
@@ -99,6 +100,12 @@ void Queue::submitQueue(const Task &task)
 
 		executionBackend->submit(device, submitInfo, task.events.get());
 
+		// Renderer::draw() schedules work asynchronously onto marl worker threads.
+		// Binary/timeline signal semaphores must not become visible until the submitted
+		// work is actually complete, otherwise queue present / teardown can race the
+		// still-running draw on a subsequent thread.
+		executionBackend->synchronize();
+
 		for(uint32_t j = 0; j < submitInfo.signalSemaphoreCount; j++)
 		{
 			if(auto *sem = DynamicCast<TimelineSemaphore>(submitInfo.pSignalSemaphores[j]))
@@ -124,9 +131,10 @@ void Queue::submitQueue(const Task &task)
 
 	if(task.events)
 	{
-		// TODO: fix renderer signaling so that work submitted separately from (but before) a fence
-		// is guaranteed complete by the time the fence signals.
-		executionBackend->synchronize();
+		if(task.submitCount == 0 && executionBackend)
+		{
+			executionBackend->synchronize();
+		}
 		task.events->done();
 	}
 }
@@ -189,15 +197,55 @@ VkResult Queue::present(const VkPresentInfoKHR *presentInfo)
 	// This is a hack to deal with screen tearing for now.
 	// Need to correctly implement threading using VkSemaphore
 	// to get rid of it. b/132458423
-	waitIdle();
+	if(const char *skipPresentIdle = std::getenv("SWIFTSHADER_QUEUE_SKIP_PRESENT_IDLE"))
+	{
+		if(strcmp(skipPresentIdle, "1") != 0 && strcmp(skipPresentIdle, "true") != 0 && strcmp(skipPresentIdle, "TRUE") != 0)
+		{
+			waitIdle();
+		}
+	}
+	else
+	{
+		waitIdle();
+	}
+
+	if(const char *skipPresentWait = std::getenv("SWIFTSHADER_QUEUE_SKIP_PRESENT_WAIT"))
+	{
+		if(strcmp(skipPresentWait, "1") == 0 || strcmp(skipPresentWait, "true") == 0 || strcmp(skipPresentWait, "TRUE") == 0)
+		{
+			return VK_SUCCESS;
+		}
+	}
 
 	// Note: VkSwapchainPresentModeInfoEXT can be used to override the present mode, but present
 	// mode is currently ignored by SwiftShader.
 
-	for(uint32_t i = 0; i < presentInfo->waitSemaphoreCount; i++)
+	if(const char *skipPresentSemaphoreWait = std::getenv("SWIFTSHADER_QUEUE_SKIP_PRESENT_SEMAPHORE_WAIT"))
 	{
-		auto *semaphore = vk::DynamicCast<BinarySemaphore>(presentInfo->pWaitSemaphores[i]);
-		semaphore->wait();
+		if(strcmp(skipPresentSemaphoreWait, "1") != 0 && strcmp(skipPresentSemaphoreWait, "true") != 0 && strcmp(skipPresentSemaphoreWait, "TRUE") != 0)
+		{
+			for(uint32_t i = 0; i < presentInfo->waitSemaphoreCount; i++)
+			{
+				auto *semaphore = vk::DynamicCast<BinarySemaphore>(presentInfo->pWaitSemaphores[i]);
+				semaphore->wait();
+			}
+		}
+	}
+	else
+	{
+		for(uint32_t i = 0; i < presentInfo->waitSemaphoreCount; i++)
+		{
+			auto *semaphore = vk::DynamicCast<BinarySemaphore>(presentInfo->pWaitSemaphores[i]);
+			semaphore->wait();
+		}
+	}
+
+	if(const char *skipPresentBody = std::getenv("SWIFTSHADER_QUEUE_SKIP_PRESENT_BODY"))
+	{
+		if(strcmp(skipPresentBody, "1") == 0 || strcmp(skipPresentBody, "true") == 0 || strcmp(skipPresentBody, "TRUE") == 0)
+		{
+			return VK_SUCCESS;
+		}
 	}
 
 	const auto *presentFences = vk::GetExtendedStruct<VkSwapchainPresentFenceInfoEXT>(presentInfo->pNext, VK_STRUCTURE_TYPE_SWAPCHAIN_PRESENT_FENCE_INFO_EXT);

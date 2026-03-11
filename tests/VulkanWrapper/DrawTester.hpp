@@ -47,6 +47,8 @@ public:
 	void initialize();
 	void acquireFrameWithoutSubmit();
 	void renderFrame();
+	void renderFrameWaitFenceThenPresent();
+	void renderFrameWaitFenceThenPresentWithoutSemaphore();
 	void renderFrameWithoutPresent();
 	void waitForDeviceIdle();
 	std::vector<uint8_t> readbackFrameRgba();
@@ -166,7 +168,7 @@ public:
 	}
 
 private:
-	void submitFrame(bool present);
+	void submitFrame(bool present, bool waitFenceBeforePresent = false, bool skipPresentWaitSemaphore = false);
 	void createSynchronizationPrimitives();
 	void createCommandBuffers(vk::RenderPass renderPass);
 	void prepareVertices();

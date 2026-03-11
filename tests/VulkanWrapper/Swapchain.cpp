@@ -93,3 +93,13 @@ void Swapchain::queuePresent(vk::Queue queue, uint32_t imageIndex, vk::Semaphore
 
 	queue.presentKHR(presentInfo);
 }
+
+void Swapchain::queuePresent(vk::Queue queue, uint32_t imageIndex)
+{
+	vk::PresentInfoKHR presentInfo;
+	presentInfo.swapchainCount = 1;
+	presentInfo.pSwapchains = &swapchain;
+	presentInfo.pImageIndices = &imageIndex;
+
+	queue.presentKHR(presentInfo);
+}

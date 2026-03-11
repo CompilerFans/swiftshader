@@ -21,6 +21,8 @@
 #include <sys/ipc.h>
 #include <sys/shm.h>
 
+#include <cstring>
+#include <cstdlib>
 #include <memory>
 
 namespace vk {
@@ -62,6 +64,14 @@ XcbSurfaceKHR::XcbSurfaceKHR(const VkXcbSurfaceCreateInfoKHR *pCreateInfo, void 
 		{
 			mitSHM = reply && reply->shared_pixmaps;
 			free(reply);
+		}
+	}
+
+	if(const char *disableMitShm = std::getenv("SWIFTSHADER_XCB_DISABLE_SHM"))
+	{
+		if(strcmp(disableMitShm, "1") == 0 || strcmp(disableMitShm, "true") == 0 || strcmp(disableMitShm, "TRUE") == 0)
+		{
+			mitSHM = false;
 		}
 	}
 
@@ -165,6 +175,14 @@ void XcbSurfaceKHR::detachImage(PresentImage *image)
 
 VkResult XcbSurfaceKHR::present(PresentImage *image)
 {
+	if(const char *skipPresent = std::getenv("SWIFTSHADER_XCB_SKIP_PRESENT"))
+	{
+		if(strcmp(skipPresent, "1") == 0 || strcmp(skipPresent, "true") == 0 || strcmp(skipPresent, "TRUE") == 0)
+		{
+			return VK_SUCCESS;
+		}
+	}
+
 	VkExtent2D windowExtent;
 	int depth;
 	// TODO(penghuang): getWindowSizeAndDepth() call needs a sync IPC, try to remove it.

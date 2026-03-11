@@ -28,6 +28,7 @@ public:
 
 	void acquireNextImage(vk::Semaphore presentCompleteSemaphore, uint32_t &imageIndex);
 	void queuePresent(vk::Queue queue, uint32_t imageIndex, vk::Semaphore waitSemaphore);
+	void queuePresent(vk::Queue queue, uint32_t imageIndex);
 
 	size_t imageCount() const
 	{

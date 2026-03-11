@@ -690,6 +690,22 @@ TEST_F(DrawTest, RenderWithPresentThenDestroy)
 	tester.renderFrame();
 }
 
+TEST_F(DrawTest, RenderWaitFenceThenPresentThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+	tester.renderFrameWaitFenceThenPresent();
+}
+
+TEST_F(DrawTest, RenderWaitFenceThenPresentWithoutSemaphoreThenDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+	tester.renderFrameWaitFenceThenPresentWithoutSemaphore();
+}
+
 TEST_F(DrawTest, RenderWithPresentThenWaitIdleDestroy)
 {
 	DrawTester tester;
@@ -705,6 +721,15 @@ TEST_F(DrawTest, RenderWithoutPresentThenDestroy)
 	configureSolidColorTriangleDraw(tester);
 	tester.initialize();
 	tester.renderFrameWithoutPresent();
+}
+
+TEST_F(DrawTest, RenderWithoutPresentThenWaitIdleDestroy)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+	tester.renderFrameWithoutPresent();
+	tester.waitForDeviceIdle();
 }
 
 TEST_F(DrawTest, DynamicRenderingSolidColorTriangle)

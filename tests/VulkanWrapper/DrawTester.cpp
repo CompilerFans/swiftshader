@@ -112,7 +112,7 @@ void DrawTester::initialize()
 	createCommandBuffers(renderPass);
 }
 
-void DrawTester::submitFrame(bool present)
+void DrawTester::submitFrame(bool present, bool waitFenceBeforePresent, bool skipPresentWaitSemaphore)
 {
 	swapchain->acquireNextImage(presentCompleteSemaphore, currentFrameBuffer);
 
@@ -134,7 +134,18 @@ void DrawTester::submitFrame(bool present)
 
 	if(present)
 	{
-		swapchain->queuePresent(queue, currentFrameBuffer, renderCompleteSemaphore);
+		if(waitFenceBeforePresent)
+		{
+			device.waitForFences(1, &waitFences[currentFrameBuffer], VK_TRUE, UINT64_MAX);
+		}
+		if(skipPresentWaitSemaphore)
+		{
+			swapchain->queuePresent(queue, currentFrameBuffer);
+		}
+		else
+		{
+			swapchain->queuePresent(queue, currentFrameBuffer, renderCompleteSemaphore);
+		}
 	}
 	else
 	{
@@ -150,6 +161,16 @@ void DrawTester::acquireFrameWithoutSubmit()
 void DrawTester::renderFrame()
 {
 	submitFrame(true);
+}
+
+void DrawTester::renderFrameWaitFenceThenPresent()
+{
+	submitFrame(true, true);
+}
+
+void DrawTester::renderFrameWaitFenceThenPresentWithoutSemaphore()
+{
+	submitFrame(true, true, true);
 }
 
 void DrawTester::renderFrameWithoutPresent()
