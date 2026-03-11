@@ -48,6 +48,7 @@ namespace fs = std::filesystem;
 #	define OS_ANDROID 1
 #elif defined(__linux__)
 #	include "dlfcn.h"
+#	include <unistd.h>
 #	define OS_LINUX 1
 #elif defined(__Fuchsia__)
 #	include <zircon/dlfcn.h>
@@ -81,45 +82,74 @@ public:
 
 	void set(std::string value)
 	{
-		restore();
-		if(auto ov = getEnv(name.data()))
-		{
-			oldValue = ov;
-		}
-		putEnv((name + std::string("=") + value).c_str());
+		captureOldValueOnce();
+		setValue(value.c_str());
 	}
 
 	void restore()
 	{
-		if(!oldValue.empty())
+		if(!captured) { return; }
+		if(hadOldValue)
 		{
-			putEnv((name + std::string("=") + oldValue).c_str());
-			oldValue.clear();
+			setValue(oldValue.c_str());
 		}
+		else
+		{
+			unsetValue();
+		}
+		captured = false;
+		hadOldValue = false;
+		oldValue.clear();
 	}
 
 private:
-	void putEnv(const char *env)
+	void captureOldValueOnce()
 	{
-		// POSIX putenv needs 'env' to live beyond the call
-		envCopy = env;
+		if(captured) { return; }
+		if(auto ov = getEnv(name.c_str()))
+		{
+			hadOldValue = true;
+			oldValue = ov;
+		}
+		else
+		{
+			hadOldValue = false;
+			oldValue.clear();
+		}
+		captured = true;
+	}
+
+	void setValue(const char *value)
+	{
 #if OS_WINDOWS
-		[[maybe_unused]] auto r = ::_putenv(envCopy.c_str());
+		[[maybe_unused]] auto r = ::_putenv_s(name.c_str(), value);
 		assert(r == 0);
 #else
-		[[maybe_unused]] auto r = ::putenv(const_cast<char *>(envCopy.c_str()));
+		[[maybe_unused]] auto r = ::setenv(name.c_str(), value, 1);
 		assert(r == 0);
 #endif
 	}
 
-	const char *getEnv(const char *name)
+	void unsetValue()
 	{
-		return ::getenv(name);
+#if OS_WINDOWS
+		[[maybe_unused]] auto r = ::_putenv_s(name.c_str(), "");
+		assert(r == 0);
+#else
+		[[maybe_unused]] auto r = ::unsetenv(name.c_str());
+		assert(r == 0);
+#endif
+	}
+
+	const char *getEnv(const char *envName)
+	{
+		return ::getenv(envName);
 	}
 
 	std::string name;
+	bool captured = false;
+	bool hadOldValue = false;
 	std::string oldValue;
-	std::string envCopy;
 };
 
 // Generates a temporary icd.json file that sets library_path at the input driverPath,
@@ -196,10 +226,36 @@ std::vector<const char *> getDriverPaths()
 		     "swiftshader/libvk_swiftshader.dylib",
 		     "libvk_swiftshader.dylib" };
 #elif OS_LINUX
-	return { "./build/Linux/libvk_swiftshader.so",
-		     "swiftshader/libvk_swiftshader.so",
-		     "./libvk_swiftshader.so",
-		     "libvk_swiftshader.so" };
+		static auto executableDir = []() -> fs::path {
+			char buffer[4096];
+			const auto len = ::readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+			if(len <= 0)
+			{
+				return {};
+			}
+			buffer[len] = '\0';
+			return fs::path(buffer).parent_path();
+		};
+
+		std::vector<const char *> paths;
+		static std::string exeLocal;
+		static std::string exeLinuxLocal;
+		static std::string exeSwiftshaderLocal;
+		if(auto dir = executableDir(); !dir.empty())
+		{
+			exeLocal = (dir / "libvk_swiftshader.so").string();
+			exeLinuxLocal = (dir / "Linux" / "libvk_swiftshader.so").string();
+			exeSwiftshaderLocal = (dir / "swiftshader" / "libvk_swiftshader.so").string();
+			paths.push_back(exeLocal.c_str());
+			paths.push_back(exeLinuxLocal.c_str());
+			paths.push_back(exeSwiftshaderLocal.c_str());
+		}
+
+		paths.push_back("./build/Linux/libvk_swiftshader.so");
+		paths.push_back("swiftshader/libvk_swiftshader.so");
+		paths.push_back("./libvk_swiftshader.so");
+		paths.push_back("libvk_swiftshader.so");
+		return paths;
 #elif OS_ANDROID || OS_FUCHSIA
 	return
 	{
