@@ -246,14 +246,14 @@ if(DEFINED ENV{SWIFTSHADER_VULKAN_API_LIBRARY_INSTALL_PATH})
 endif()
 
 # The vk_swiftshader_icd.json manifest file will point to ICD_LIBRARY_PATH.
-# Set ICD_LIBRARY_PATH to be a relative path similar to "./libvk_swiftshader.so", so both files can be moved.
-# A relative path is relative to the manifest file.
-set(ICD_LIBRARY_PATH "${CMAKE_SHARED_LIBRARY_PREFIX}vk_swiftshader${CMAKE_SHARED_LIBRARY_SUFFIX}")
+#
+# Use an absolute path to the library copied under the build directory so the
+# manifest works regardless of the current working directory.
+set(ICD_LIBRARY_PATH "${CMAKE_BINARY_DIR}/${CMAKE_SYSTEM_NAME}/${CMAKE_SHARED_LIBRARY_PREFIX}vk_swiftshader${CMAKE_SHARED_LIBRARY_SUFFIX}")
 if(WIN32)
+    file(TO_NATIVE_PATH "${ICD_LIBRARY_PATH}" ICD_LIBRARY_PATH)
     # The path is output to a JSON file, which requires backslashes to be escaped.
-    set(ICD_LIBRARY_PATH ".\\\\${ICD_LIBRARY_PATH}")
-else()
-    set(ICD_LIBRARY_PATH "./${ICD_LIBRARY_PATH}")
+    string(REPLACE "\\" "\\\\" ICD_LIBRARY_PATH "${ICD_LIBRARY_PATH}")
 endif()
 configure_file(
     "vk_swiftshader_icd.json.tmpl"
