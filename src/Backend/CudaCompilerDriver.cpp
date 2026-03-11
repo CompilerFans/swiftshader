@@ -1,7 +1,11 @@
 #include "CudaCompilerDriver.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cctype>
+#include <cstdarg>
 #include <cerrno>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -17,6 +21,50 @@
 
 namespace backend {
 namespace {
+
+bool envEnabled(const char *name)
+{
+	const char *value = std::getenv(name);
+	if(!value || value[0] == '\0')
+	{
+		return false;
+	}
+
+	std::string normalized(value);
+	std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](unsigned char ch) {
+		return static_cast<char>(std::tolower(ch));
+	});
+	return normalized != "0" && normalized != "false" && normalized != "off" && normalized != "no";
+}
+
+bool shouldTraceCudaCalls()
+{
+	static int cached = -1;
+	if(cached >= 0)
+	{
+		return cached != 0;
+	}
+
+	cached = envEnabled("SWIFTSHADER_CUDA_TRACE_CALLS") ? 1 : 0;
+	return cached != 0;
+}
+
+void traceCuda(const char *format, ...)
+{
+	if(!shouldTraceCudaCalls())
+	{
+		return;
+	}
+
+	std::fputs("[cuda] ", stderr);
+
+	va_list args;
+	va_start(args, format);
+	std::vfprintf(stderr, format, args);
+	va_end(args);
+
+	std::fflush(stderr);
+}
 
 std::string readFile(const std::string &path)
 {
@@ -62,6 +110,18 @@ int spawnProcess(const std::string &executable,
 	if(errorMessage)
 	{
 		errorMessage->clear();
+	}
+
+	if(shouldTraceCudaCalls())
+	{
+		traceCuda("spawn:");
+		std::fprintf(stderr, " %s", executable.c_str());
+		for(const auto &arg : arguments)
+		{
+			std::fprintf(stderr, " %s", arg.c_str());
+		}
+		std::fprintf(stderr, " (log=%s)\n", logPath.c_str());
+		std::fflush(stderr);
 	}
 
 	const int logFd = ::open(logPath.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -120,7 +180,9 @@ int spawnProcess(const std::string &executable,
 		return -1;
 	}
 
-	return commandExitCode(status);
+	const int exitCode = commandExitCode(status);
+	traceCuda("spawn result: exitCode=%d (log=%s)\n", exitCode, logPath.c_str());
+	return exitCode;
 }
 
 }  // namespace
@@ -150,6 +212,8 @@ bool CudaCompilerDriver::keepArtifacts()
 
 CudaCompileResult CudaCompilerDriver::compileToFatbin(const std::string &source, const std::string &gpuArchitecture) const
 {
+	traceCuda("compileToFatbin(arch=%s, bytes=%zu)\n", gpuArchitecture.c_str(), source.size());
+
 	CudaCompileResult result = {};
 	result.workingDirectory = createWorkingDirectory();
 	if(result.workingDirectory.empty())

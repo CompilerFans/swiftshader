@@ -5,6 +5,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -29,6 +30,50 @@ const char *kCudaLibraries[] = {
 };
 
 const char *kDefaultKernelName = "kernel_main";
+
+bool envEnabled(const char *name)
+{
+	const char *value = std::getenv(name);
+	if(!value || value[0] == '\0')
+	{
+		return false;
+	}
+
+	std::string normalized(value);
+	std::transform(normalized.begin(), normalized.end(), normalized.begin(), [](unsigned char ch) {
+		return static_cast<char>(std::tolower(ch));
+	});
+	return normalized != "0" && normalized != "false" && normalized != "off" && normalized != "no";
+}
+
+bool shouldTraceCudaCalls()
+{
+	static int cached = -1;
+	if(cached >= 0)
+	{
+		return cached != 0;
+	}
+
+	cached = envEnabled("SWIFTSHADER_CUDA_TRACE_CALLS") ? 1 : 0;
+	return cached != 0;
+}
+
+void traceCuda(const char *format, ...)
+{
+	if(!shouldTraceCudaCalls())
+	{
+		return;
+	}
+
+	std::fputs("[cuda] ", stderr);
+
+	va_list args;
+	va_start(args, format);
+	std::vfprintf(stderr, format, args);
+	va_end(args);
+
+	std::fflush(stderr);
+}
 
 void recordLaunchStamp()
 {
@@ -219,12 +264,16 @@ struct CudaRuntimeAPI::Impl
 
 	void initialize()
 	{
+		traceCuda("initialize runtime\n");
+
 		cudaLibrary = loadLibrary("", kCudaLibraries, "cuInit");
 		if(!cudaLibrary)
 		{
+			traceCuda("loadLibrary(libcuda) failed\n");
 			error = "failed to load libcuda.so";
 			return;
 		}
+		traceCuda("loaded libcuda\n");
 
 		getFuncAddress(cudaLibrary, "cuInit", &driver.cuInit);
 		getFuncAddress(cudaLibrary, "cuDeviceGetCount", &driver.cuDeviceGetCount);
@@ -281,9 +330,11 @@ struct CudaRuntimeAPI::Impl
 		   !driver.cuModuleGetFunction || !driver.cuLaunchKernel || !driver.cuMemAlloc ||
 		   !driver.cuMemFree || !driver.cuMemcpyHtoD || !driver.cuMemcpyDtoH)
 		{
+			traceCuda("failed to resolve required CUDA driver entry points\n");
 			error = "failed to resolve required CUDA driver entry points";
 			return;
 		}
+		traceCuda("resolved CUDA driver entry points\n");
 
 		if(!check(driver.cuInit(0), "cuInit"))
 		{
@@ -295,6 +346,7 @@ struct CudaRuntimeAPI::Impl
 		{
 			return;
 		}
+		traceCuda("cuDeviceGetCount reported %d device(s)\n", deviceCount);
 		if(deviceCount <= 0)
 		{
 			error = "no CUDA device available";
@@ -305,6 +357,7 @@ struct CudaRuntimeAPI::Impl
 		{
 			return;
 		}
+		traceCuda("selected CUDA device 0\n");
 
 		if(driver.cuDevicePrimaryCtxRetain && driver.cuDevicePrimaryCtxRelease)
 		{
@@ -321,6 +374,11 @@ struct CudaRuntimeAPI::Impl
 				return;
 			}
 			usesPrimaryContext = false;
+			traceCuda("created CUDA context\n");
+		}
+		else
+		{
+			traceCuda("retained CUDA primary context\n");
 		}
 
 		if(!makeCurrent())
@@ -337,6 +395,7 @@ struct CudaRuntimeAPI::Impl
 		}
 
 		gpuArchitecture = "sm_" + std::to_string(major) + std::to_string(minor);
+		traceCuda("compute capability %d.%d (%s)\n", major, minor, gpuArchitecture.c_str());
 		available = true;
 	}
 
@@ -349,6 +408,7 @@ struct CudaRuntimeAPI::Impl
 	{
 		if(result == CUDA_SUCCESS)
 		{
+			traceCuda("%s -> CUDA_SUCCESS\n", operation);
 			return true;
 		}
 
@@ -361,6 +421,19 @@ struct CudaRuntimeAPI::Impl
 		if(driver.cuGetErrorString)
 		{
 			driver.cuGetErrorString(result, &errorString);
+		}
+
+		if(errorName && errorString)
+		{
+			traceCuda("%s -> %s (%s)\n", operation, errorName, errorString);
+		}
+		else if(errorName)
+		{
+			traceCuda("%s -> %s\n", operation, errorName);
+		}
+		else
+		{
+			traceCuda("%s -> error %d\n", operation, static_cast<int>(result));
 		}
 
 		std::string description = operation;
@@ -432,14 +505,18 @@ ModuleHandle CudaRuntimeAPI::createModule(const std::string &sourceOrIR, const s
 		return {};
 	}
 
+	traceCuda("createModule(entryPoint=%s, bytes=%zu)\n", entryPoint.c_str(), sourceOrIR.size());
+
 	dumpCudaSource(sourceOrIR);
 
 	auto compile = impl->compiler.compileToFatbin(sourceOrIR, impl->gpuArchitecture);
 	if(!compile.succeeded)
 	{
 		impl->error = compile.errorMessage;
+		traceCuda("nvcc compilation failed\n");
 		return {};
 	}
+	traceCuda("nvcc compilation succeeded (fatbin=%s, log=%s)\n", compile.modulePath.c_str(), compile.logPath.c_str());
 
 	CUmodule module = nullptr;
 	if(!impl->check(impl->driver.cuModuleLoad(&module, compile.modulePath.c_str()), "cuModuleLoad"))
@@ -459,6 +536,9 @@ ModuleHandle CudaRuntimeAPI::createModule(const std::string &sourceOrIR, const s
 	auto handle = ModuleHandle{ impl->nextModuleId++ };
 	impl->modules.emplace(handle.id, module);
 	impl->moduleEntrypoints.emplace(handle.id, entryPoint);
+	traceCuda("created module id=%llu (entryPoint=%s)\n",
+	          static_cast<unsigned long long>(handle.id),
+	          entryPoint.c_str());
 	gLastModuleSource = sourceOrIR;
 	return handle;
 }
@@ -471,6 +551,8 @@ DeviceMemoryHandle CudaRuntimeAPI::allocateMemory(size_t numBytes)
 		return {};
 	}
 
+	traceCuda("allocateMemory(bytes=%zu)\n", numBytes);
+
 	CUdeviceptr allocation = 0;
 	if(!impl->check(impl->driver.cuMemAlloc(&allocation, numBytes), "cuMemAlloc"))
 	{
@@ -479,6 +561,9 @@ DeviceMemoryHandle CudaRuntimeAPI::allocateMemory(size_t numBytes)
 
 	auto handle = DeviceMemoryHandle{ impl->nextMemoryId++ };
 	impl->allocations.emplace(handle.id, allocation);
+	traceCuda("allocated id=%llu addr=0x%llx\n",
+	          static_cast<unsigned long long>(handle.id),
+	          static_cast<unsigned long long>(allocation));
 	return handle;
 }
 
@@ -491,7 +576,10 @@ void CudaRuntimeAPI::freeMemory(DeviceMemoryHandle memory)
 		return;
 	}
 
-	impl->driver.cuMemFree(it->second);
+	traceCuda("freeMemory(id=%llu addr=0x%llx)\n",
+	          static_cast<unsigned long long>(memory.id),
+	          static_cast<unsigned long long>(it->second));
+	impl->check(impl->driver.cuMemFree(it->second), "cuMemFree");
 	impl->allocations.erase(it);
 }
 
@@ -504,6 +592,7 @@ void CudaRuntimeAPI::copyHostToMemory(DeviceMemoryHandle memory, const void *sou
 		return;
 	}
 
+	traceCuda("copyHostToMemory(id=%llu bytes=%zu)\n", static_cast<unsigned long long>(memory.id), numBytes);
 	impl->check(impl->driver.cuMemcpyHtoD(it->second, source, numBytes), "cuMemcpyHtoD");
 }
 
@@ -516,6 +605,7 @@ void CudaRuntimeAPI::copyMemoryToHost(void *destination, DeviceMemoryHandle memo
 		return;
 	}
 
+	traceCuda("copyMemoryToHost(id=%llu bytes=%zu)\n", static_cast<unsigned long long>(memory.id), numBytes);
 	impl->check(impl->driver.cuMemcpyDtoH(destination, it->second, numBytes), "cuMemcpyDtoH");
 }
 
@@ -539,9 +629,20 @@ void CudaRuntimeAPI::launch(ModuleHandle moduleHandle, const LaunchRecord &recor
 		return;
 	}
 
+	traceCuda("launch(module=%llu, grid=(%u,%u,%u), block=(%u,%u,%u), args=%zu)\n",
+	          static_cast<unsigned long long>(moduleHandle.id),
+	          std::max(record.groupCountX, 1u),
+	          std::max(record.groupCountY, 1u),
+	          std::max(record.groupCountZ, 1u),
+	          std::max(record.blockCountX, 1u),
+	          std::max(record.blockCountY, 1u),
+	          std::max(record.blockCountZ, 1u),
+	          arguments.size());
+
 	auto moduleIt = impl->modules.find(moduleHandle.id);
 	if(moduleIt == impl->modules.end())
 	{
+		traceCuda("launch skipped: unknown module id=%llu\n", static_cast<unsigned long long>(moduleHandle.id));
 		return;
 	}
 	auto entryPointIt = impl->moduleEntrypoints.find(moduleHandle.id);
@@ -588,6 +689,7 @@ void CudaRuntimeAPI::synchronize()
 	std::lock_guard<std::mutex> lock(impl->mutex);
 	if(impl->available && impl->makeCurrent())
 	{
+		traceCuda("synchronize()\n");
 		impl->check(impl->driver.cuCtxSynchronize(), "cuCtxSynchronize");
 	}
 }

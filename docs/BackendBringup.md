@@ -78,6 +78,8 @@ This document describes the current bootstrap flow for the custom GPU backend sc
   - Append one line per kernel launch to the specified file.
 - `SWIFTSHADER_CUDA_DISABLE_WARMUP`
   - Disable the startup warmup launch done by the CUDA runtime bootstrap.
+- `SWIFTSHADER_CUDA_TRACE_CALLS`
+  - When set, print CUDA runtime bring-up and key CUDA driver calls to `stderr` (for example: `cuInit`, context creation, `cuModuleLoad`, `cuLaunchKernel`, memory copies).
 
 - `SWIFTSHADER_CUDA_DUMP_SOURCE`
   - 为空或未设置时，会把生成的 CUDA 源码打印到 `stderr`。
@@ -88,6 +90,8 @@ This document describes the current bootstrap flow for the custom GPU backend sc
   - 每次 kernel launch 向指定文件追加一行标记。
 - `SWIFTSHADER_CUDA_DISABLE_WARMUP`
   - 关闭 CUDA runtime bootstrap 默认的启动预热 launch。
+- `SWIFTSHADER_CUDA_TRACE_CALLS`
+  - 设置后会把 CUDA runtime bring-up 和关键 CUDA driver 调用打印到 `stderr`（例如：`cuInit`、context 创建、`cuModuleLoad`、`cuLaunchKernel`、内存拷贝）。
 
 ## Custom GPU Bring-up Environment Variables / 自研 GPU Bring-up 环境变量
 - `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP`
