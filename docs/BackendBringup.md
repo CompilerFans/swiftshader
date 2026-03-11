@@ -35,6 +35,9 @@ This document describes the current bootstrap flow for the custom GPU backend sc
   - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle`
 - Focused draw coverage:
   - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
+- Vulkan app smoke (`vkcube`):
+  - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 60`
+  - Expect `/tmp/vkcube_cuda_stamps.txt` to be non-empty.
 - Benchmark helper:
   - `tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --scene=color --seconds=10`
 
@@ -44,6 +47,9 @@ This document describes the current bootstrap flow for the custom GPU backend sc
   - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle`
 - 聚焦绘制覆盖：
   - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
+- Vulkan 应用烟测（`vkcube`）：
+  - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 60`
+  - 期望 `/tmp/vkcube_cuda_stamps.txt` 非空。
 - Benchmark 辅助脚本：
   - `tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --scene=color --seconds=10`
 

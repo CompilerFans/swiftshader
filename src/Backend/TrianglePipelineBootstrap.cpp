@@ -7,6 +7,8 @@
 #include <array>
 #include <cmath>
 #include <cstring>
+#include <cstdlib>
+#include <cstdio>
 #include <vector>
 
 namespace backend {
@@ -152,26 +154,58 @@ std::array<RasterBootstrapVertex, 4> toPointQuad(const GraphicsBootstrapVertexOu
 	return quad;
 }
 
+bool shouldTraceBootstrap()
+{
+	const char *value = std::getenv("SWIFTSHADER_CUDA_TRACE_TRIANGLE_BOOTSTRAP");
+	return value != nullptr && value[0] != '\0';
+}
+
+void traceBootstrapFailure(const char *reason, const sw::Stream &positionStream, VkPrimitiveTopology topology, uint32_t primitiveCount, VkIndexType indexType, const void *indexData)
+{
+	if(!shouldTraceBootstrap())
+	{
+		return;
+	}
+
+	std::fprintf(stderr,
+	             "[cuda-bootstrap] TrianglePipelineBootstrap skipped: %s (topology=%u, primitives=%u, pos.buffer=%p, pos.format=%u, pos.rate=%u, pos.stride=%u, pos.binding=%u, indexType=%u, indexData=%p)\n",
+	             reason,
+	             static_cast<unsigned int>(topology),
+	             primitiveCount,
+	             positionStream.buffer,
+	             static_cast<unsigned int>(positionStream.format),
+	             static_cast<unsigned int>(positionStream.inputRate),
+	             positionStream.vertexStride,
+	             positionStream.binding,
+	             static_cast<unsigned int>(indexType),
+	             indexData);
+}
+
 }  // namespace
 
 bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize, const sw::Stream *texCoordStream)
 {
 	if(config == nullptr || positionStream.buffer == nullptr)
 	{
+		traceBootstrapFailure(config == nullptr ? "null config" : "null position buffer", positionStream, topology, primitiveCount, indexType, indexData);
 		return false;
 	}
 	if((topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST && topology != VK_PRIMITIVE_TOPOLOGY_POINT_LIST && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP && topology != VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN && topology != VK_PRIMITIVE_TOPOLOGY_LINE_LIST && topology != VK_PRIMITIVE_TOPOLOGY_LINE_STRIP) || primitiveCount == 0)
 	{
+		traceBootstrapFailure(primitiveCount == 0 ? "zero primitive count" : "unsupported topology", positionStream, topology, primitiveCount, indexType, indexData);
 		return false;
 	}
 	if(positionStream.inputRate != VK_VERTEX_INPUT_RATE_VERTEX || positionStream.vertexStride == 0)
 	{
+		traceBootstrapFailure(positionStream.inputRate != VK_VERTEX_INPUT_RATE_VERTEX ? "position stream is not per-vertex" : "position stream stride is zero",
+		                      positionStream, topology, primitiveCount, indexType, indexData);
 		return false;
 	}
 
 	const uint32_t componentCount = positionComponentCount(positionStream.format);
 	if(componentCount == 0)
 	{
+		traceBootstrapFailure("unsupported position format", positionStream, topology, primitiveCount, indexType, indexData);
 		return false;
 	}
 

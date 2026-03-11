@@ -318,3 +318,8 @@
 - New 2026-03-11 CUDA runtime stability finding:
   - Full-suite `draw-unittests` under the CUDA build can intermittently produce `countStampedLaunches(...) == 0` and empty source dumps even though the same tests pass in isolation, implying the CUDA runtime sometimes fails to initialize across repeated `vk::Device` create/destroy.
   - Preferring the CUDA primary context (`cuDevicePrimaryCtxRetain/Release`) in `CudaRuntimeAPI` stabilizes the suite (full suite + `--gtest_repeat=2` now passes).
+
+- New 2026-03-11 `vkcube` graphics-path finding:
+  - `vkcube` can execute without any vertex input attributes (no `Inputs` stream at `location = 0`), relying on `gl_VertexIndex` / shader-side constants.
+  - The CUDA triangle bootstrap path initially assumed `inputs.getStream(0)` was a valid position stream, so it silently skipped under `vkcube` even though the CUDA runtime warmup kernel still ran.
+  - A small synthetic `64x64` triangle bootstrap fallback in `Renderer::draw()` makes `vkcube` reliably launch real CUDA kernels (vs/raster/fs) without depending on vertex streams.

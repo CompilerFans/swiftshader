@@ -989,3 +989,11 @@
 - Verification:
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests)` passed (`75 tests`)
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_repeat=2 --gtest_break_on_failure)` passed
+
+## 2026-03-11: `vkcube` CUDA graphics-path smoke
+- Symptom: `vkcube` ran under the SwiftShader ICD, but with `SWIFTSHADER_CUDA_DISABLE_WARMUP=1` there were no CUDA stamps or source dumps, implying only the startup warmup kernel was ever launched.
+- Root cause: `vkcube` uses a vertex-input-less path (no `Inputs` stream at `location = 0`), so the triangle bootstrap path in `Renderer::draw()` saw a null position stream and skipped.
+- Fix: when `inputs.getStream(0)` is undefined, `Renderer::draw()` now falls back to a small synthetic `64x64` triangle bootstrap (still discarding the output buffer), so real CUDA kernels are launched even without vertex attributes.
+- Verification:
+  - `VK_ICD_FILENAMES=.../build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt SWIFTSHADER_CUDA_SOURCE_DUMP_PATH=/tmp/vkcube_cuda_source.txt vkcube --c 3`
+  - Result: `stamps=3` (vs/raster/fs) and `/tmp/vkcube_cuda_source.txt` contains generated bootstrap sources (no longer just the warmup `kernel_main`).

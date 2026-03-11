@@ -714,11 +714,21 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 				tryGetBootstrapVertexPointSizeConstant(*bootstrapVertexShader, &bootstrapPointSize);
 			}
 
-			if(runtime->isHardwareBacked() &&
-			   backend::runTrianglePipelineBootstrap(*runtime, inputs.getStream(0), colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE, bootstrapPointSize, texCoordStream))
-			{
-				customGraphicsBootstrapDone = true;
-			}
+				const sw::Stream &positionStream = inputs.getStream(0);
+				bool bootstrapSucceeded = false;
+				if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
+				{
+					bootstrapSucceeded = backend::runTrianglePipelineBootstrap(*runtime, positionStream, colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE, bootstrapPointSize, texCoordStream);
+				}
+				else
+				{
+					bootstrapSucceeded = backend::runTrianglePipelineBootstrap(*runtime, 64u, 64u, nullptr);
+				}
+
+				if(runtime->isHardwareBacked() && bootstrapSucceeded)
+				{
+					customGraphicsBootstrapDone = true;
+				}
 		}
 	}
 
