@@ -4,7 +4,7 @@
 调整当前开发主线：优先把 SwiftShader 仓库自带的一批单元测试在 `build-cuda-bootstrap/` 这类 CUDA 自定义后端构建里跑通，并以仓库内测试通过作为主要验收标准；不再把“CPU 基线是否也失败/崩溃”作为本轮推进的决策门槛。
 
 ## Current Phase
-Phase 6: Gerrit Submission
+Phase 7: Next (Compute bring-up)
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -38,9 +38,14 @@ Phase 6: Gerrit Submission
 - **Status:** complete
 
 ### Phase 6: Gerrit Submission
-- [ ] Commit CUDA runtime stability fix
-- [ ] Push to Gerrit (`refs/for/master`)
-- **Status:** in_progress
+- [x] Commit CUDA runtime stability fix
+- [x] Push to Gerrit (`refs/for/master`)
+- **Status:** complete
+
+### Phase 7: Next (Compute bring-up)
+- [ ] Wire Vulkan compute dispatch to CUDA runtime
+- [ ] Unskip compute unit tests under CUDA build
+- **Status:** pending
 
 ## Key Questions
 1. 哪一批 SwiftShader 自带测试最适合作为当前 CUDA 构建的第一组稳定化目标？
