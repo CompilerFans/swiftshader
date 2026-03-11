@@ -77,6 +77,33 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 - `SWIFTSHADER_CUDA_DISABLE_WARMUP`
   - 关闭 CUDA runtime bootstrap 默认的启动预热 launch。
 
+## Compute Builtin Mapping / Compute Builtin 映射
+- Vulkan compute dispatch dimensions:
+  - `vkCmdDispatch(groupCountX, groupCountY, groupCountZ)` sets `gl_NumWorkGroups`.
+  - `layout(local_size_x=..., local_size_y=..., local_size_z=...) in;` sets `gl_WorkGroupSize`.
+  - CUDA mapping: `gridDim == gl_NumWorkGroups`, `blockDim == gl_WorkGroupSize`.
+- Workgroup and invocation IDs:
+  - `gl_WorkGroupID` ↔ `blockIdx`
+  - `gl_LocalInvocationID` ↔ `threadIdx`
+  - `gl_GlobalInvocationID = gl_WorkGroupID * gl_WorkGroupSize + gl_LocalInvocationID` (component-wise) ↔ `blockIdx * blockDim + threadIdx`
+  - `gl_LocalInvocationIndex = ((threadIdx.z * blockDim.y) + threadIdx.y) * blockDim.x + threadIdx.x`
+- `vkCmdDispatchBase(baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ)`:
+  - `gl_WorkGroupID = baseGroup + blockIdx`, so `gl_GlobalInvocationID = (baseGroup + blockIdx) * blockDim + threadIdx`.
+- SwiftShader CPU reference: `src/Pipeline/ComputeProgram.cpp` computes `gl_GlobalInvocationId` the same way (see `ComputeProgram::setSubgroupBuiltins()`).
+
+- Vulkan compute dispatch 的维度语义：
+  - `vkCmdDispatch(groupCountX, groupCountY, groupCountZ)` 对应 `gl_NumWorkGroups`。
+  - `layout(local_size_x=..., local_size_y=..., local_size_z=...) in;` 对应 `gl_WorkGroupSize`。
+  - CUDA 映射：`gridDim == gl_NumWorkGroups`，`blockDim == gl_WorkGroupSize`。
+- Workgroup / invocation ID：
+  - `gl_WorkGroupID` ↔ `blockIdx`
+  - `gl_LocalInvocationID` ↔ `threadIdx`
+  - `gl_GlobalInvocationID = gl_WorkGroupID * gl_WorkGroupSize + gl_LocalInvocationID`（逐分量）↔ `blockIdx * blockDim + threadIdx`
+  - `gl_LocalInvocationIndex = ((threadIdx.z * blockDim.y) + threadIdx.y) * blockDim.x + threadIdx.x`
+- `vkCmdDispatchBase(baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ)`：
+  - `gl_WorkGroupID = baseGroup + blockIdx`，因此 `gl_GlobalInvocationID = (baseGroup + blockIdx) * blockDim + threadIdx`。
+- SwiftShader CPU 参考实现：`src/Pipeline/ComputeProgram.cpp` 里的 builtin 计算与上述公式一致（见 `ComputeProgram::setSubgroupBuiltins()`）。
+
 ## Current Behavior / 当前行为
 - The custom backend flag enables backend scaffolding code paths and compile definitions.
 - CPU execution remains available as the fallback path for graphics and presentation.
