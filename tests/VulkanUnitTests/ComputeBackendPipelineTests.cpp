@@ -45,11 +45,11 @@ std::vector<uint32_t> minimalComputeShaderBinary()
 		spv::MagicNumber,
 		0x00010300,
 		0,
-		4,
+		5,
 		0,
 		(2u << 16) | spv::OpCapability, spv::CapabilityShader,
 		(3u << 16) | spv::OpMemoryModel, spv::AddressingModelLogical, spv::MemoryModelGLSL450,
-		(6u << 16) | spv::OpEntryPoint, spv::ExecutionModelGLCompute, 1u, 0x6E69616Du,
+		(5u << 16) | spv::OpEntryPoint, spv::ExecutionModelGLCompute, 1u, 0x6E69616Du, 0u,
 		(6u << 16) | spv::OpExecutionMode, 1u, spv::ExecutionModeLocalSize, 1u, 1u, 1u,
 		(2u << 16) | spv::OpTypeVoid, 2u,
 		(3u << 16) | spv::OpTypeFunction, 3u, 2u,
@@ -84,10 +84,6 @@ Driver ComputeBackendPipelineTest::driver;
 
 TEST_F(ComputeBackendPipelineTest, BuildBackendExecutableWithoutDispatch)
 {
-#if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
-	GTEST_SKIP() << "Real CUDA-backed Vulkan compute tests are deferred until shared-library dispatch is integrated.";
-#endif
-
 	const VkInstanceCreateInfo createInfo = {
 		VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO, nullptr, 0, nullptr, 0, nullptr, 0, nullptr,
 	};
@@ -129,10 +125,9 @@ TEST_F(ComputeBackendPipelineTest, BuildBackendExecutableWithoutDispatch)
 TEST_F(ComputeBackendPipelineTest, DispatchUsesFakeRuntimeWhenCustomBackendEnabled)
 {
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
-	GTEST_SKIP() << "Real CUDA-backed Vulkan compute dispatch is not wired end-to-end yet.";
-
 	auto stampPath = makeCudaLaunchStampPath("compute");
 	std::filesystem::remove(stampPath);
+	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
 	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
 #else
 	backend::FakeRuntimeAPI::resetGlobalCapture();
@@ -176,6 +171,7 @@ TEST_F(ComputeBackendPipelineTest, DispatchUsesFakeRuntimeWhenCustomBackendEnabl
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
 	EXPECT_GT(countStampedLaunches(stampPath), 0u);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
 #else
 	EXPECT_TRUE(backend::FakeRuntimeAPI::globalLastLaunch().module.valid());
 	EXPECT_EQ(backend::FakeRuntimeAPI::globalLastLaunch().groupCountX, 3u);

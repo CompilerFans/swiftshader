@@ -722,7 +722,7 @@ VkResult ComputePipeline::compileShaders(const VkAllocationCallbacks *pAllocator
 	if(semantic)
 	{
 		sw::ParsedSpirvInfo parsed = { semantic->stage(), semantic->entryPoint() };
-		backendExecutable = backend::ComputeExecutable::create(parsed);
+		backendExecutable = backend::ComputeExecutable::create(parsed, shaderKey.getBinary());
 	}
 
 	pipelineCreationFeedback.stageCreationEnds(0);
@@ -739,6 +739,8 @@ void ComputePipeline::run(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t bas
 {
 	if(backendExecutable && device->getRuntimeAPI())
 	{
+		auto &runtime = *device->getRuntimeAPI();
+
 		backend::ComputeDispatchInfo dispatch = {};
 		dispatch.baseGroupX = baseGroupX;
 		dispatch.baseGroupY = baseGroupY;
@@ -746,10 +748,82 @@ void ComputePipeline::run(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t bas
 		dispatch.groupCountX = groupCountX;
 		dispatch.groupCountY = groupCountY;
 		dispatch.groupCountZ = groupCountZ;
+		dispatch.blockCountX = shader->getWorkgroupSizeX();
+		dispatch.blockCountY = shader->getWorkgroupSizeY();
+		dispatch.blockCountZ = shader->getWorkgroupSizeZ();
 		dispatch.bindingCount = std::count_if(descriptorSets.begin(), descriptorSets.end(), [](auto *binding) { return binding != nullptr; });
 		dispatch.argumentWords = sizeof(pushConstants.data) / sizeof(uint32_t);
-		backendExecutable->dispatch(*device->getRuntimeAPI(), dispatch);
-		return;
+
+		if(runtime.isHardwareBacked())
+		{
+			switch(backendExecutable->kind())
+			{
+			case backend::ComputeExecutable::Kind::Empty:
+				backendExecutable->dispatch(runtime, dispatch);
+				return;
+
+			case backend::ComputeExecutable::Kind::BufferMemcpy:
+				{
+					constexpr uint32_t kTestSet = 0;
+					constexpr uint32_t kInputBinding = 0;
+					constexpr uint32_t kOutputBinding = 1;
+
+					if(descriptorSets[kTestSet] &&
+					   (layout->getDescriptorType(kTestSet, kInputBinding) == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER) &&
+					   (layout->getDescriptorType(kTestSet, kOutputBinding) == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER))
+					{
+						const auto *setData = descriptorSets[kTestSet];
+						const auto inputOffset = layout->getBindingOffset(kTestSet, kInputBinding);
+						const auto outputOffset = layout->getBindingOffset(kTestSet, kOutputBinding);
+
+						const auto *inputDescriptor = reinterpret_cast<const vk::BufferDescriptor *>(setData + inputOffset);
+						const auto *outputDescriptor = reinterpret_cast<const vk::BufferDescriptor *>(setData + outputOffset);
+
+						dispatch.inputBuffer = inputDescriptor->ptr;
+						dispatch.outputBuffer = outputDescriptor->ptr;
+						dispatch.inputSizeInBytes = std::max(inputDescriptor->sizeInBytes, 0);
+						dispatch.outputSizeInBytes = std::max(outputDescriptor->sizeInBytes, 0);
+
+						if(layout->isDescriptorDynamic(kTestSet, kInputBinding))
+						{
+							const uint32_t dynamicIndex = layout->getDynamicOffsetIndex(kTestSet, kInputBinding);
+							const uint32_t dynamicOffset = descriptorDynamicOffsets[dynamicIndex];
+							dispatch.inputBuffer = static_cast<const uint8_t *>(dispatch.inputBuffer) + dynamicOffset;
+							if(inputDescriptor->robustnessSize > 0)
+							{
+								dispatch.inputSizeInBytes = std::min<size_t>(dispatch.inputSizeInBytes, std::max(inputDescriptor->robustnessSize - static_cast<int>(dynamicOffset), 0));
+							}
+						}
+
+						if(layout->isDescriptorDynamic(kTestSet, kOutputBinding))
+						{
+							const uint32_t dynamicIndex = layout->getDynamicOffsetIndex(kTestSet, kOutputBinding);
+							const uint32_t dynamicOffset = descriptorDynamicOffsets[dynamicIndex];
+							dispatch.outputBuffer = static_cast<uint8_t *>(dispatch.outputBuffer) + dynamicOffset;
+							if(outputDescriptor->robustnessSize > 0)
+							{
+								dispatch.outputSizeInBytes = std::min<size_t>(dispatch.outputSizeInBytes, std::max(outputDescriptor->robustnessSize - static_cast<int>(dynamicOffset), 0));
+							}
+						}
+
+						if(dispatch.inputBuffer && dispatch.outputBuffer && dispatch.inputSizeInBytes && dispatch.outputSizeInBytes)
+						{
+							backendExecutable->dispatch(runtime, dispatch);
+							return;
+						}
+					}
+				}
+				break;
+
+			case backend::ComputeExecutable::Kind::Unsupported:
+			default:
+				break;
+			}
+		}
+		else
+		{
+			backendExecutable->dispatch(runtime, dispatch);
+		}
 	}
 
 	ASSERT_OR_RETURN(program != nullptr);

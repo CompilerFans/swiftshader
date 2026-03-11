@@ -3,11 +3,14 @@
 #include "Pipeline/SemanticIRBuilder.hpp"
 
 #include <gtest/gtest.h>
+#include <spirv/unified1/spirv.hpp>
 
 TEST(ComputeDispatchValidation, FakeRuntimeCapturesLaunchAndBindings)
 {
 	sw::ParsedSpirvInfo parsed = { VK_SHADER_STAGE_COMPUTE_BIT, "main" };
-	auto executable = backend::ComputeExecutable::create(parsed);
+	const uint32_t words[] = { spv::MagicNumber, 0x00010300, 0, 4, 0 };
+	sw::SpirvBinary spirv(words, sizeof(words) / sizeof(words[0]));
+	auto executable = backend::ComputeExecutable::create(parsed, spirv);
 
 	ASSERT_NE(executable, nullptr);
 	ASSERT_TRUE(executable->valid());

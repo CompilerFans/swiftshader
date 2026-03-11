@@ -14,6 +14,8 @@
 
 #include "Driver.hpp"
 
+#include <filesystem>
+
 #if defined(_WIN32)
 #	include "Windows.h"
 #	define OS_WINDOWS 1
@@ -25,6 +27,7 @@
 #	define OS_ANDROID 1
 #elif defined(__linux__)
 #	include "dlfcn.h"
+#	include <unistd.h>
 #	define OS_LINUX 1
 #elif defined(__Fuchsia__)
 #	include <zircon/dlfcn.h>
@@ -85,6 +88,29 @@ bool Driver::loadSwiftShader()
 	       load("swiftshader/libvk_swiftshader.dylib") ||
 	       load("libvk_swiftshader.dylib");
 #elif OS_LINUX
+	auto executableDir = []() -> std::filesystem::path {
+		char buffer[4096];
+		const auto len = ::readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+		if(len <= 0)
+		{
+			return {};
+		}
+		buffer[len] = '\0';
+		return std::filesystem::path(buffer).parent_path();
+	};
+
+	if(auto dir = executableDir(); !dir.empty())
+	{
+		// Prefer the library shipped alongside the test executable so unit tests
+		// validate the same build output directory (e.g. CMake build folders).
+		if(load((dir / "libvk_swiftshader.so").c_str()) ||
+		   load((dir / "Linux" / "libvk_swiftshader.so").c_str()) ||
+		   load((dir / "swiftshader" / "libvk_swiftshader.so").c_str()))
+		{
+			return true;
+		}
+	}
+
 	return load("./build/Linux/libvk_swiftshader.so") ||
 	       load("swiftshader/libvk_swiftshader.so") ||
 	       load("./libvk_swiftshader.so") ||
