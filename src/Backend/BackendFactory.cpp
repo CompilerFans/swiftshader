@@ -5,6 +5,7 @@
 #endif
 #include "FakeRuntimeAPI.hpp"
 #include "PresentAdapter.hpp"
+#include "System/Debug.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -103,6 +104,10 @@ std::unique_ptr<RuntimeAPI> createRuntimeAPI()
 		return runtime;
 	}
 	traceCuda(runtime->initializationError().c_str());
+	if(!envEnabled("SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK"))
+	{
+		sw::abort("CUDA runtime unavailable: %s\n", runtime->initializationError().c_str());
+	}
 	return nullptr;
 #	else
 	return std::make_unique<FakeRuntimeAPI>();

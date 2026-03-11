@@ -2,6 +2,7 @@
 #include "GraphicsBackend.hpp"
 
 #include "Backend/ResourceStateTracker.hpp"
+#include "BackendConfig.hpp"
 #include "Device/Renderer.hpp"
 #include "System/Debug.hpp"
 #include "Vulkan/VkCommandBuffer.hpp"
@@ -23,6 +24,12 @@ bool shouldTraceCpuSubmit()
 bool shouldRequireCustomSubmit()
 {
 	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT");
+	return value != nullptr && value[0] != '\0';
+}
+
+bool shouldAllowCpuFallback()
+{
+	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK");
 	return value != nullptr && value[0] != '\0';
 }
 
@@ -73,6 +80,12 @@ public:
 		{
 			std::fprintf(stderr, "[cpu-backend] submit\n");
 		}
+#if SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND && SWIFTSHADER_CUSTOM_GPU_USE_CUDA
+		if(!shouldAllowCpuFallback())
+		{
+			sw::abort("CPU execution backend selected in CUDA mode. Set SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 to override.\n");
+		}
+#endif
 		if(shouldRequireCustomSubmit())
 		{
 			sw::abort("SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT=1 but CPU execution backend was selected\n");

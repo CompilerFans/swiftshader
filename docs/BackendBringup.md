@@ -32,9 +32,9 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 - Backend runtime smoke:
   - `./build-cuda-bootstrap/backend-unittests`
 - Draw smoke:
-  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle`
+  - `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle`
 - Focused draw coverage:
-  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
+  - `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
 - Vulkan app smoke (`vkcube`):
   - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 60`
   - Expect `/tmp/vkcube_cuda_stamps.txt` to be non-empty.
@@ -47,9 +47,9 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 - 后端 runtime 烟测：
   - `./build-cuda-bootstrap/backend-unittests`
 - 绘制烟测：
-  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle`
+  - `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle`
 - 聚焦绘制覆盖：
-  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
+  - `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
 - Vulkan 应用烟测（`vkcube`）：
   - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 60`
   - 期望 `/tmp/vkcube_cuda_stamps.txt` 非空。
@@ -94,6 +94,9 @@ This document describes the current bootstrap flow for the custom GPU backend sc
   - 设置后会把 CUDA runtime bring-up 和关键 CUDA driver 调用打印到 `stderr`（例如：`cuInit`、context 创建、`cuModuleLoad`、`cuLaunchKernel`、内存拷贝）。
 
 ## Custom GPU Bring-up Environment Variables / 自研 GPU Bring-up 环境变量
+- `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK`
+  - Allow CPU fallback paths even when running a CUDA-backed build (disables the default CUDA-mode aborts).
+  - Useful for debugging or running CPU-based tests with a CUDA-enabled build.
 - `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP`
   - Attempt a minimal CUDA triangle-pipeline bootstrap per draw and write the RGBA output back into the first color attachment (location 0), skipping the CPU `DrawCall::run()` path when successful.
   - Intended for bring-up only; it does **not** implement full Vulkan shader/pipeline semantics yet.
@@ -110,6 +113,9 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 - `SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT`
   - Abort if the CPU execution backend is selected for queue submit.
 
+- `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK`
+  - 即使在 CUDA build 下也允许走 CPU 回退路径（关闭 CUDA 模式下默认的 abort）。
+  - 适用于调试或在 CUDA build 下跑 CPU 相关测试。
 - `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP`
   - 每次 draw 尝试执行最小的 CUDA triangle-pipeline bootstrap，并把 RGBA 输出写回到第一个 color attachment（location 0）；成功时跳过 CPU 的 `DrawCall::run()`。
   - 仅用于 bring-up；目前**不**具备完整 Vulkan shader/pipeline 语义。
@@ -155,11 +161,11 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 
 ## Current Behavior / 当前行为
 - The custom backend flag enables backend scaffolding code paths and compile definitions.
-- CPU execution remains available as the fallback path for graphics and presentation.
+- In CUDA-backed builds, CPU fallback for queue submit and graphics draw is disabled by default (CPU submit/draw aborts). Set `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` to re-enable CPU fallback.
 - Compute backend bootstrap produces backend executables and fake-runtime dispatch validation, but does not yet replace the full CPU compute execution path.
 
 - 自研后端开关会启用后端骨架相关代码路径和编译定义。
-- 图形与 present 仍保留 CPU fallback 路径。
+- CUDA build 下默认切断 queue submit 和图形 draw 的 CPU fallback（CPU submit/draw 会 abort）；可通过 `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` 重新允许 CPU fallback。
 - compute 后端 bootstrap 已能生成 backend executable 并完成 fake runtime dispatch 验证，但尚未完整替代 CPU compute 执行路径。
 
 ## Focused Validation / 聚焦验证
@@ -171,10 +177,10 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 
 ## CPU Fallback / CPU 回退
 - Without `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND`, backend selection defaults to CPU.
-- With `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON`, the custom backend path is enabled, but unsupported pieces still fall back to CPU-owned behavior where the current bootstrap provides that path.
+- With `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON`, the custom backend path is enabled. In CUDA-backed builds, CPU fallback for submit/draw is disabled by default; set `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` to override.
 
 - 不开启 `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND` 时，后端选择默认走 CPU。
-- 开启 `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON` 后，会启用自研后端路径；但当前 bootstrap 尚未覆盖的部分，仍可能回退到 CPU 持有的行为。
+- 开启 `SWIFTSHADER_ENABLE_CUSTOM_GPU_BACKEND=ON` 后，会启用自研后端路径；CUDA build 下默认不允许 submit/draw 回退到 CPU，可通过 `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` 覆盖该行为。
 
 ## Codegen Dumps / 代码生成导出
 - At this stage, generated CUDA-like source and LLVM IR are produced in memory by the emitters.

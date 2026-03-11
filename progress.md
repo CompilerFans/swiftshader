@@ -1019,3 +1019,14 @@
 - Verification:
   - `VK_ICD_FILENAMES=.../build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT=1 SWIFTSHADER_CUSTOM_GPU_TRACE_CUSTOM_SUBMIT=1 SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_SUBMIT=1 vkcube --c 3`
   - Result: `submit via custom execution backend` lines, and no `cpu-backend submit` lines.
+
+## 2026-03-12: Disallow CPU fallback in CUDA mode
+- In CUDA-backed builds, CPU fallback for queue submit and CPU `DrawCall::run()` is disabled by default:
+  - `Renderer::draw()` forces the triangle bootstrap render-to-attachment path and aborts if it cannot render/write-back.
+  - `CpuExecutionBackend::submit()` aborts if the CPU backend is selected.
+  - `BackendFactory::createRuntimeAPI()` aborts if the CUDA runtime cannot be created.
+- Override for debugging / tests:
+  - `SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1` re-enables CPU fallback paths.
+- Verification:
+  - Strict CUDA mode: `VK_ICD_FILENAMES=.../build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER=1 vkcube --c 3` produced 3 `rendered=1 wrote=1` lines and `stamps=9`.
+  - Allow fallback: `... SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW=1 vkcube --c 1` printed `[custom-gpu] cpu DrawCall::run`.

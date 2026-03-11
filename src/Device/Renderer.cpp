@@ -81,6 +81,11 @@ bool shouldTraceCpuDraw()
 	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW");
 }
 
+bool shouldAllowCpuFallback()
+{
+	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK");
+}
+
 bool writeTriangleBootstrapColorToAttachment(const std::vector<uint8_t> &colorBuffer, uint32_t width, uint32_t height, vk::ImageView *colorAttachment, const VkRect2D &renderArea, int layer)
 {
 	if(!colorAttachment || width == 0 || height == 0 || colorBuffer.empty())
@@ -771,95 +776,103 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 		data->scissorY1 = clamp<int>(scissor.offset.y + scissor.extent.height, y0, y1);
 	}
 
-	if(!customGraphicsBootstrapDone && !hasRasterizerDiscard && !shouldRenderTriangleBootstrapToColorAttachment())
+	if(!customGraphicsBootstrapDone && !hasRasterizerDiscard)
 	{
 		if(auto *runtime = device->getRuntimeAPI())
 		{
-			backend::FragmentBootstrapConfig fragmentBootstrapConfig = {};
-			const backend::FragmentBootstrapConfig *fragmentBootstrapConfigPtr = nullptr;
-			if(const sw::SpirvShader *bootstrapFragmentShader = pipeline->getShader(VK_SHADER_STAGE_FRAGMENT_BIT).get())
+			const bool forceTriangleBootstrap = runtime->isHardwareBacked() && !shouldAllowCpuFallback();
+			if(!forceTriangleBootstrap && !shouldRenderTriangleBootstrapToColorAttachment())
 			{
-				if(tryBuildBootstrapTextureConfig(*bootstrapFragmentShader, fragmentState->getPipelineLayout(), inputs.getDescriptorSets(), device, &fragmentBootstrapConfig) ||
-				   tryBuildBootstrapFragmentConfig(*bootstrapFragmentShader, &fragmentBootstrapConfig))
+				backend::FragmentBootstrapConfig fragmentBootstrapConfig = {};
+				const backend::FragmentBootstrapConfig *fragmentBootstrapConfigPtr = nullptr;
+				if(const sw::SpirvShader *bootstrapFragmentShader = pipeline->getShader(VK_SHADER_STAGE_FRAGMENT_BIT).get())
 				{
-					fragmentBootstrapConfigPtr = &fragmentBootstrapConfig;
+					if(tryBuildBootstrapTextureConfig(*bootstrapFragmentShader, fragmentState->getPipelineLayout(), inputs.getDescriptorSets(), device, &fragmentBootstrapConfig) ||
+					   tryBuildBootstrapFragmentConfig(*bootstrapFragmentShader, &fragmentBootstrapConfig))
+					{
+						fragmentBootstrapConfigPtr = &fragmentBootstrapConfig;
+					}
 				}
-			}
-			const sw::Stream *colorStream = nullptr;
-			const sw::Stream *texCoordStream = nullptr;
-			if(draw->fragmentPipelineLayout != draw->preRasterizationPipelineLayout)
-			{
-				vk::DescriptorSet::PrepareForSampling(draw->descriptorSetObjects, draw->fragmentPipelineLayout, device);
-			}
-			if(fragmentBootstrapConfigPtr && fragmentBootstrapConfig.shaderKind == backend::FragmentBootstrapShaderKind::Texture2DColor)
-			{
-				if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
+				const sw::Stream *colorStream = nullptr;
+				const sw::Stream *texCoordStream = nullptr;
+				if(draw->fragmentPipelineLayout != draw->preRasterizationPipelineLayout)
 				{
-					texCoordStream = &inputs.getStream(1);
+					vk::DescriptorSet::PrepareForSampling(draw->descriptorSetObjects, draw->fragmentPipelineLayout, device);
 				}
-			}
-			else if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
-			{
-				colorStream = &inputs.getStream(1);
-			}
+				if(fragmentBootstrapConfigPtr && fragmentBootstrapConfig.shaderKind == backend::FragmentBootstrapShaderKind::Texture2DColor)
+				{
+					if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
+					{
+						texCoordStream = &inputs.getStream(1);
+					}
+				}
+				else if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
+				{
+					colorStream = &inputs.getStream(1);
+				}
 
-			float bootstrapPointSize = 64.0f;
-			if(const sw::SpirvShader *bootstrapVertexShader = pipeline->getShader(VK_SHADER_STAGE_VERTEX_BIT).get())
-			{
-				tryGetBootstrapVertexPointSizeConstant(*bootstrapVertexShader, &bootstrapPointSize);
-			}
+				float bootstrapPointSize = 64.0f;
+				if(const sw::SpirvShader *bootstrapVertexShader = pipeline->getShader(VK_SHADER_STAGE_VERTEX_BIT).get())
+				{
+					tryGetBootstrapVertexPointSizeConstant(*bootstrapVertexShader, &bootstrapPointSize);
+				}
 
-			const sw::Stream &positionStream = inputs.getStream(0);
-			bool bootstrapSucceeded = false;
-			if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
-			{
-				bootstrapSucceeded = backend::runTrianglePipelineBootstrap(*runtime, positionStream, colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE, bootstrapPointSize, texCoordStream);
-			}
-			else
-			{
-				bootstrapSucceeded = backend::runTrianglePipelineBootstrap(*runtime, 64u, 64u, nullptr);
-			}
+				const sw::Stream &positionStream = inputs.getStream(0);
+				bool bootstrapSucceeded = false;
+				if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
+				{
+					bootstrapSucceeded = backend::runTrianglePipelineBootstrap(*runtime, positionStream, colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE, bootstrapPointSize, texCoordStream);
+				}
+				else
+				{
+					bootstrapSucceeded = backend::runTrianglePipelineBootstrap(*runtime, 64u, 64u, nullptr);
+				}
 
-			if(runtime->isHardwareBacked() && bootstrapSucceeded)
-			{
-				customGraphicsBootstrapDone = true;
+				if(runtime->isHardwareBacked() && bootstrapSucceeded)
+				{
+					customGraphicsBootstrapDone = true;
+				}
 			}
 		}
 	}
 
-	if(!hasRasterizerDiscard && shouldRenderTriangleBootstrapToColorAttachment())
+	if(!hasRasterizerDiscard)
 	{
 		if(auto *runtime = device->getRuntimeAPI())
 		{
-			const vk::Attachments attachments = pipeline->getAttachments();
-			vk::ImageView *colorAttachment = attachments.colorBuffer[0];
-			std::vector<uint8_t> bootstrapColorBuffer;
-			const sw::Stream &positionStream = inputs.getStream(0);
-			bool rendered = false;
-			if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
+			const bool forceTriangleBootstrap = runtime->isHardwareBacked() && !shouldAllowCpuFallback();
+			if(forceTriangleBootstrap || shouldRenderTriangleBootstrapToColorAttachment())
 			{
-				rendered = backend::runTrianglePipelineBootstrap(*runtime, positionStream, nullptr, draw->topology, count, renderArea, &bootstrapColorBuffer, nullptr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE);
-			}
-			else
-			{
-				rendered = backend::runTrianglePipelineBootstrap(*runtime, renderArea.extent.width, renderArea.extent.height, &bootstrapColorBuffer);
-			}
+				const vk::Attachments attachments = pipeline->getAttachments();
+				vk::ImageView *colorAttachment = attachments.colorBuffer[0];
+				std::vector<uint8_t> bootstrapColorBuffer;
+				const sw::Stream &positionStream = inputs.getStream(0);
+				bool rendered = false;
+				if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
+				{
+					rendered = backend::runTrianglePipelineBootstrap(*runtime, positionStream, nullptr, draw->topology, count, renderArea, &bootstrapColorBuffer, nullptr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE);
+				}
+				else
+				{
+					rendered = backend::runTrianglePipelineBootstrap(*runtime, renderArea.extent.width, renderArea.extent.height, &bootstrapColorBuffer);
+				}
 
-			const bool wrote = rendered && runtime->isHardwareBacked() && writeTriangleBootstrapColorToAttachment(bootstrapColorBuffer, renderArea.extent.width, renderArea.extent.height, colorAttachment, renderArea, layer);
-			if(shouldTraceTriangleBootstrapRender())
-			{
-				std::fprintf(stderr, "[custom-gpu] triangle bootstrap render: rendered=%d wrote=%d\n", rendered ? 1 : 0, wrote ? 1 : 0);
-			}
-			if(wrote)
-			{
-				return;
-			}
-				if(shouldRequireTriangleBootstrap())
+				const bool wrote = rendered && runtime->isHardwareBacked() && writeTriangleBootstrapColorToAttachment(bootstrapColorBuffer, renderArea.extent.width, renderArea.extent.height, colorAttachment, renderArea, layer);
+				if(shouldTraceTriangleBootstrapRender())
+				{
+					std::fprintf(stderr, "[custom-gpu] triangle bootstrap render: rendered=%d wrote=%d\n", rendered ? 1 : 0, wrote ? 1 : 0);
+				}
+				if(wrote)
+				{
+					return;
+				}
+				if(forceTriangleBootstrap || shouldRequireTriangleBootstrap())
 				{
 					sw::abort("SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP failed (rendered=%d, wrote=%d)\n", rendered ? 1 : 0, wrote ? 1 : 0);
 				}
 			}
 		}
+	}
 
 	if(!hasRasterizerDiscard)
 	{
@@ -1004,14 +1017,22 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 		data->pushConstants = pushConstants;
 	}
 
-		draw->events = events;
+	draw->events = events;
 
-		if(shouldTraceCpuDraw())
+	if(auto *runtime = device->getRuntimeAPI())
+	{
+		if(runtime->isHardwareBacked() && !shouldAllowCpuFallback())
 		{
-			std::fprintf(stderr, "[custom-gpu] cpu DrawCall::run\n");
+			sw::abort("CPU DrawCall::run reached in CUDA mode. Set SWIFTSHADER_CUSTOM_GPU_ALLOW_CPU_FALLBACK=1 to override.\n");
 		}
-		DrawCall::run(device, draw, &drawTickets, clusterQueues);
 	}
+
+	if(shouldTraceCpuDraw())
+	{
+		std::fprintf(stderr, "[custom-gpu] cpu DrawCall::run\n");
+	}
+	DrawCall::run(device, draw, &drawTickets, clusterQueues);
+}
 
 void DrawCall::setup()
 {
