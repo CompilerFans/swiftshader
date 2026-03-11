@@ -51,7 +51,6 @@ public:
 	void renderFrameWaitFenceThenPresentWithoutSemaphore();
 	void renderFrameWithoutPresent();
 	void waitForDeviceIdle();
-	void skipDestructorWaitIdleForTesting();
 	std::vector<uint8_t> readbackFrameRgba();
 	std::array<uint8_t, 4> readbackPixel(uint32_t x, uint32_t y);
 	void saveFrame(const std::filesystem::path &path);
@@ -207,7 +206,6 @@ private:
 	bool pushConstantEnabled = false;
 	bool vertexInputDynamicStateEnabled = false;
 	bool dynamicRenderingEnabled = false;
-	bool skipDestructorWaitIdle = false;
 	vk::ShaderStageFlags pushConstantStages = {};
 	uint32_t pushConstantSize = 0;
 	std::array<uint8_t, 128> pushConstantData = {};

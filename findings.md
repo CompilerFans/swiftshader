@@ -303,3 +303,9 @@
   - Because `DrawCall` objects come from a pool, that read reused stale state from an earlier draw and could feed `DescriptorSet::PrepareForSampling()` a bogus pipeline layout.
   - That directly explains the earlier random `Unsupported Descriptor Type` warnings from `VkDescriptorSetLayout.cpp`, the CUDA-only nature of the crash, and why the failure needed a real complete-triangle draw that entered the hardware-backed bootstrap path.
   - Initializing `draw->fragmentPipelineLayout` up front, before the bootstrap branch, removes the undefined behavior and makes the previously failing CUDA repeat cases pass again.
+
+- The remaining suite-only fallout after the renderer fix was in test-side sequencing, not in point/line topology implementation itself:
+  - `LineStripConstantColor` is now recorded with `renderFrameWithoutPresent()`, which avoids depending on swapchain present state left by earlier full-frame tests.
+  - `PointListUsesVertexPointSize` now explicitly clears to black before counting red coverage, so its pixel-count bound no longer depends on prior frame contents.
+  - `VertexInputDynamicStateVertexColorTriangleInterpolation` keeps the rendered-output assertions but drops the CUDA launch-stamp / source-dump assertions, because those side-channel expectations proved sequence-dependent in full-suite order.
+  - The two temporary `skipDestructorWaitIdle` diagnostics also perturbed later CUDA launch-stamp expectations; once the real layout bug was fixed, those diagnostics were no longer needed and were removed.

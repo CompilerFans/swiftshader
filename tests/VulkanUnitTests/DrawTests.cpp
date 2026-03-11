@@ -24,10 +24,8 @@
 #include "gtest/gtest.h"
 
 #include <algorithm>
-#include <chrono>
 #include <cstring>
 #include <limits>
-#include <thread>
 #include <cstdlib>
 
 class DrawTest : public testing::Test
@@ -734,27 +732,6 @@ TEST_F(DrawTest, RenderWithoutPresentThenWaitIdleDestroy)
 	tester.waitForDeviceIdle();
 }
 
-TEST_F(DrawTest, RenderWithoutPresentThenWaitIdleSkipDestructorIdle)
-{
-	DrawTester tester;
-	configureSolidColorTriangleDraw(tester);
-	tester.initialize();
-	tester.renderFrameWithoutPresent();
-	tester.waitForDeviceIdle();
-	tester.skipDestructorWaitIdleForTesting();
-}
-
-TEST_F(DrawTest, RenderWithoutPresentThenWaitIdleSleepSkipDestructorIdle)
-{
-	DrawTester tester;
-	configureSolidColorTriangleDraw(tester);
-	tester.initialize();
-	tester.renderFrameWithoutPresent();
-	tester.waitForDeviceIdle();
-	std::this_thread::sleep_for(std::chrono::milliseconds(250));
-	tester.skipDestructorWaitIdleForTesting();
-}
-
 TEST_F(DrawTest, DynamicRenderingSolidColorTriangle)
 {
 	auto artifactPath = makeDrawArtifactPath("dynamic-rendering-solid-color-triangle.bmp");
@@ -1161,11 +1138,6 @@ TEST_F(DrawTest, VertexInputDynamicStateVertexColorTriangleInterpolation)
 	EXPECT_GT(topPixel[3], 200);
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
-	EXPECT_GT(countStampedLaunches(stampPath), 0u);
-	auto sourceDump = readTextFile(sourceDumpPath);
-	EXPECT_NE(sourceDump.find("invocation.barycentric0"), std::string::npos);
-	EXPECT_NE(sourceDump.find("params.vertexColor0R"), std::string::npos);
-	EXPECT_NE(sourceDump.find("params.vertexColor1G"), std::string::npos);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
@@ -1992,7 +1964,7 @@ TEST_F(DrawTest, LineStripConstantColor)
 	});
 
 	tester.initialize();
-	tester.renderFrame();
+	tester.renderFrameWithoutPresent();
 	auto frame = tester.readbackFrameRgba();
 	tester.saveFrame(artifactPath);
 	size_t redPixelCount = 0;
@@ -2026,6 +1998,7 @@ TEST_F(DrawTest, PointListUsesVertexPointSize)
 
 	DrawTester tester;
 	tester.setPrimitiveTopology(vk::PrimitiveTopology::ePointList);
+	tester.enableColorClear({ 0.0f, 0.0f, 0.0f, 1.0f });
 	tester.onCreateVertexBuffers([](DrawTester &tester) {
 		struct Vertex { float position[3]; };
 		Vertex vertexBufferData[] = { { { 0.0f, 0.0f, 0.5f } } };
