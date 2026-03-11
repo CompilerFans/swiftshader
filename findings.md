@@ -314,3 +314,7 @@
   - Graphics-facing coverage is now green again once `DrawTest.FragmentShaderDiscardsLeftHalfByFragCoord` drops its CUDA launch-stamp / source-dump assertion and keeps only the rendered-output checks; the earlier failure in `vk-unittests` full-suite order was again a side-channel observability issue, not a pixel mismatch.
   - The parameterized Vulkan compute suite (`SwiftShaderVulkanBufferToBufferComputeTest`) is not a real regression in rendered/returned values versus the intended CUDA backend contract; it exercises end-to-end Vulkan compute dispatch, which is still explicitly not wired for `SWIFTSHADER_CUSTOM_GPU_USE_CUDA`, matching the existing skips in `ComputeBackendPipelineTests`.
   - Therefore the correct near-term stabilization is to skip the compute parameter suite under `SWIFTSHADER_CUSTOM_GPU_USE_CUDA` with the same concrete reason string, instead of pretending those tests are meaningful coverage today.
+
+- New 2026-03-11 CUDA runtime stability finding:
+  - Full-suite `draw-unittests` under the CUDA build can intermittently produce `countStampedLaunches(...) == 0` and empty source dumps even though the same tests pass in isolation, implying the CUDA runtime sometimes fails to initialize across repeated `vk::Device` create/destroy.
+  - Preferring the CUDA primary context (`cuDevicePrimaryCtxRetain/Release`) in `CudaRuntimeAPI` stabilizes the suite (full suite + `--gtest_repeat=2` now passes).

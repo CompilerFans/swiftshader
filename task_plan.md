@@ -4,7 +4,7 @@
 调整当前开发主线：优先把 SwiftShader 仓库自带的一批单元测试在 `build-cuda-bootstrap/` 这类 CUDA 自定义后端构建里跑通，并以仓库内测试通过作为主要验收标准；不再把“CPU 基线是否也失败/崩溃”作为本轮推进的决策门槛。
 
 ## Current Phase
-Phase 4: Verification
+Phase 6: Gerrit Submission
 
 ## Phases
 ### Phase 1: Requirements & Discovery
@@ -37,6 +37,11 @@ Phase 4: Verification
 - [x] Confirm planning files reflect the latest state
 - **Status:** complete
 
+### Phase 6: Gerrit Submission
+- [ ] Commit CUDA runtime stability fix
+- [ ] Push to Gerrit (`refs/for/master`)
+- **Status:** in_progress
+
 ## Key Questions
 1. 哪一批 SwiftShader 自带测试最适合作为当前 CUDA 构建的第一组稳定化目标？
 2. 当前失败更集中在测试 harness、后端接线，还是某个具体图形/描述符/状态族？
@@ -56,6 +61,7 @@ Phase 4: Verification
 | `cmake --build build-custom ...` failed with missing cache | 1 | Re-ran `cmake -S . -B build-custom` to recreate cache, then resumed incremental build |
 | `rm -rf build-custom .cache` blocked by policy | 1 | Used Python `shutil.rmtree()` instead |
 | Shell backtick expansion in `rg` command | 1 | Re-ran with `grep -F` and proper quoting |
+| `draw-unittests` intermittently saw `countStampedLaunches(...) == 0` | 1 | Prefer CUDA primary context via `cuDevicePrimaryCtxRetain/Release`, fallback to `cuCtxCreate` |
 
 ## Notes
 - 2026-03-11 new pivot: active next feature work is no longer draw/vk test stabilization; it is real `Vulkan compute dispatch -> CUDA runtime` bring-up, with first acceptance gated on `ComputeTests` narrow cases (`Memcpy`, `GlobalInvocationId`) executing for real in the CUDA build.

@@ -980,3 +980,12 @@
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./vk-unittests --gtest_filter='ComputeParams/SwiftShaderVulkanBufferToBufferComputeTest.GlobalInvocationId/0')` skipped with the expected CUDA compute-dispatch message
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./vk-unittests --gtest_filter='ComputeParams/SwiftShaderVulkanBufferToBufferComputeTest.Memcpy/1')` skipped with the expected CUDA compute-dispatch message
   - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./vk-unittests --gtest_fail_fast)` passed (`83` passed, `138` skipped)
+
+## 2026-03-11: Stabilize CUDA launch-stamp flake (primary context)
+- Symptom: full-suite `draw-unittests` in `build-cuda-bootstrap/` intermittently failed CUDA stamp/source-dump expectations (`countStampedLaunches(...) == 0` / missing `textureData`), implying no CUDA module/launch happened for some tests.
+- Fix: `CudaRuntimeAPI` now prefers the CUDA primary context (`cuDevicePrimaryCtxRetain` / `cuDevicePrimaryCtxRelease`) and falls back to `cuCtxCreate` when the primary-context API is unavailable.
+- Rebuild:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel 8`
+- Verification:
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests)` passed (`75 tests`)
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_repeat=2 --gtest_break_on_failure)` passed

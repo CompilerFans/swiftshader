@@ -129,6 +129,8 @@ struct CudaRuntimeAPI::Impl
 	using CuCtxDestroyFn = CUresult(CUDAAPI *)(CUcontext);
 	using CuCtxSetCurrentFn = CUresult(CUDAAPI *)(CUcontext);
 	using CuCtxSynchronizeFn = CUresult(CUDAAPI *)(void);
+	using CuDevicePrimaryCtxRetainFn = CUresult(CUDAAPI *)(CUcontext *, CUdevice);
+	using CuDevicePrimaryCtxReleaseFn = CUresult(CUDAAPI *)(CUdevice);
 	using CuModuleLoadFn = CUresult(CUDAAPI *)(CUmodule *, const char *);
 	using CuModuleUnloadFn = CUresult(CUDAAPI *)(CUmodule);
 	using CuModuleGetFunctionFn = CUresult(CUDAAPI *)(CUfunction *, CUmodule, const char *);
@@ -150,6 +152,8 @@ struct CudaRuntimeAPI::Impl
 		CuCtxDestroyFn cuCtxDestroy = nullptr;
 		CuCtxSetCurrentFn cuCtxSetCurrent = nullptr;
 		CuCtxSynchronizeFn cuCtxSynchronize = nullptr;
+		CuDevicePrimaryCtxRetainFn cuDevicePrimaryCtxRetain = nullptr;
+		CuDevicePrimaryCtxReleaseFn cuDevicePrimaryCtxRelease = nullptr;
 		CuModuleLoadFn cuModuleLoad = nullptr;
 		CuModuleUnloadFn cuModuleUnload = nullptr;
 		CuModuleGetFunctionFn cuModuleGetFunction = nullptr;
@@ -166,6 +170,7 @@ struct CudaRuntimeAPI::Impl
 	DriverTable driver = {};
 	CUdevice device = 0;
 	CUcontext context = nullptr;
+	bool usesPrimaryContext = false;
 	bool available = false;
 	std::string error;
 	std::string gpuArchitecture;
@@ -196,7 +201,14 @@ struct CudaRuntimeAPI::Impl
 			{
 				driver.cuMemFree(entry.second);
 			}
-			driver.cuCtxDestroy(context);
+			if(usesPrimaryContext && driver.cuDevicePrimaryCtxRelease)
+			{
+				driver.cuDevicePrimaryCtxRelease(device);
+			}
+			else
+			{
+				driver.cuCtxDestroy(context);
+			}
 		}
 
 		if(cudaLibrary)
@@ -230,6 +242,12 @@ struct CudaRuntimeAPI::Impl
 		}
 		getFuncAddress(cudaLibrary, "cuCtxSetCurrent", &driver.cuCtxSetCurrent);
 		getFuncAddress(cudaLibrary, "cuCtxSynchronize", &driver.cuCtxSynchronize);
+		getFuncAddress(cudaLibrary, "cuDevicePrimaryCtxRetain", &driver.cuDevicePrimaryCtxRetain);
+		getFuncAddress(cudaLibrary, "cuDevicePrimaryCtxRelease_v2", &driver.cuDevicePrimaryCtxRelease);
+		if(!driver.cuDevicePrimaryCtxRelease)
+		{
+			getFuncAddress(cudaLibrary, "cuDevicePrimaryCtxRelease", &driver.cuDevicePrimaryCtxRelease);
+		}
 		getFuncAddress(cudaLibrary, "cuModuleLoad", &driver.cuModuleLoad);
 		getFuncAddress(cudaLibrary, "cuModuleUnload", &driver.cuModuleUnload);
 		getFuncAddress(cudaLibrary, "cuModuleGetFunction", &driver.cuModuleGetFunction);
@@ -287,10 +305,24 @@ struct CudaRuntimeAPI::Impl
 		{
 			return;
 		}
-		if(!check(driver.cuCtxCreate(&context, 0, device), "cuCtxCreate"))
+
+		if(driver.cuDevicePrimaryCtxRetain && driver.cuDevicePrimaryCtxRelease)
 		{
-			return;
+			if(driver.cuDevicePrimaryCtxRetain(&context, device) == CUDA_SUCCESS)
+			{
+				usesPrimaryContext = true;
+			}
 		}
+
+		if(!context)
+		{
+			if(!check(driver.cuCtxCreate(&context, 0, device), "cuCtxCreate"))
+			{
+				return;
+			}
+			usesPrimaryContext = false;
+		}
+
 		if(!makeCurrent())
 		{
 			return;
