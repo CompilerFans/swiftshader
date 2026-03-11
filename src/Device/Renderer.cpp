@@ -40,6 +40,9 @@
 #include "marl/defer.h"
 #include "marl/trace.h"
 
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <unordered_set>
 
 #undef max
@@ -51,6 +54,98 @@ unsigned int maxPrimitives = 1 << 21;
 
 namespace sw {
 namespace {
+
+bool envVarEnabled(const char *name)
+{
+	const char *value = std::getenv(name);
+	return value != nullptr && value[0] != '\0';
+}
+
+bool shouldRenderTriangleBootstrapToColorAttachment()
+{
+	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP");
+}
+
+bool shouldRequireTriangleBootstrap()
+{
+	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_REQUIRE_TRIANGLE_BOOTSTRAP");
+}
+
+bool shouldTraceTriangleBootstrapRender()
+{
+	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER");
+}
+
+bool shouldTraceCpuDraw()
+{
+	return envVarEnabled("SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW");
+}
+
+bool writeTriangleBootstrapColorToAttachment(const std::vector<uint8_t> &colorBuffer, uint32_t width, uint32_t height, vk::ImageView *colorAttachment, const VkRect2D &renderArea, int layer)
+{
+	if(!colorAttachment || width == 0 || height == 0 || colorBuffer.empty())
+	{
+		return false;
+	}
+	if(renderArea.offset.x < 0 || renderArea.offset.y < 0)
+	{
+		return false;
+	}
+	if(colorAttachment->getSampleCount() != 1)
+	{
+		return false;
+	}
+
+	const size_t expectedBytes = static_cast<size_t>(width) * height * 4u;
+	if(colorBuffer.size() < expectedBytes)
+	{
+		return false;
+	}
+
+	const VkFormat format = colorAttachment->getFormat(VK_IMAGE_ASPECT_COLOR_BIT);
+	const bool isRgba = (format == VK_FORMAT_R8G8B8A8_UNORM || format == VK_FORMAT_R8G8B8A8_SRGB);
+	const bool isBgra = (format == VK_FORMAT_B8G8R8A8_UNORM || format == VK_FORMAT_B8G8R8A8_SRGB);
+	if(!isRgba && !isBgra)
+	{
+		return false;
+	}
+
+	const uint32_t rowPitchBytes = colorAttachment->rowPitchBytes(VK_IMAGE_ASPECT_COLOR_BIT, 0);
+	if(rowPitchBytes < width * 4u)
+	{
+		return false;
+	}
+
+	uint8_t *dstBase = static_cast<uint8_t *>(colorAttachment->getOffsetPointer({ renderArea.offset.x, renderArea.offset.y, 0 }, VK_IMAGE_ASPECT_COLOR_BIT, 0, layer));
+	const uint8_t *srcBase = colorBuffer.data();
+	for(uint32_t y = 0; y < height; y++)
+	{
+		uint8_t *dstRow = dstBase + static_cast<size_t>(y) * rowPitchBytes;
+		const uint8_t *srcRow = srcBase + static_cast<size_t>(y) * width * 4u;
+		for(uint32_t x = 0; x < width; x++)
+		{
+			const uint8_t srcA = srcRow[x * 4u + 3u];
+			if(srcA == 0u)
+			{
+				continue;
+			}
+			if(isRgba)
+			{
+				std::memcpy(dstRow + x * 4u, srcRow + x * 4u, 4u);
+			}
+			else
+			{
+				dstRow[x * 4u + 0u] = srcRow[x * 4u + 2u];
+				dstRow[x * 4u + 1u] = srcRow[x * 4u + 1u];
+				dstRow[x * 4u + 2u] = srcRow[x * 4u + 0u];
+				dstRow[x * 4u + 3u] = srcA;
+			}
+		}
+	}
+
+	colorAttachment->contentsChanged(vk::Image::DIRECT_MEMORY_ACCESS);
+	return true;
+}
 
 bool tryGetBootstrapVertexPointSizeConstant(const SpirvShader &shader, float *pointSize)
 {
@@ -676,7 +771,7 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 		data->scissorY1 = clamp<int>(scissor.offset.y + scissor.extent.height, y0, y1);
 	}
 
-	if(!customGraphicsBootstrapDone && !hasRasterizerDiscard)
+	if(!customGraphicsBootstrapDone && !hasRasterizerDiscard && !shouldRenderTriangleBootstrapToColorAttachment())
 	{
 		if(auto *runtime = device->getRuntimeAPI())
 		{
@@ -714,21 +809,55 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 				tryGetBootstrapVertexPointSizeConstant(*bootstrapVertexShader, &bootstrapPointSize);
 			}
 
-				const sw::Stream &positionStream = inputs.getStream(0);
-				bool bootstrapSucceeded = false;
-				if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
-				{
-					bootstrapSucceeded = backend::runTrianglePipelineBootstrap(*runtime, positionStream, colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE, bootstrapPointSize, texCoordStream);
-				}
-				else
-				{
-					bootstrapSucceeded = backend::runTrianglePipelineBootstrap(*runtime, 64u, 64u, nullptr);
-				}
+			const sw::Stream &positionStream = inputs.getStream(0);
+			bool bootstrapSucceeded = false;
+			if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
+			{
+				bootstrapSucceeded = backend::runTrianglePipelineBootstrap(*runtime, positionStream, colorStream, draw->topology, count, renderArea, nullptr, fragmentBootstrapConfigPtr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE, bootstrapPointSize, texCoordStream);
+			}
+			else
+			{
+				bootstrapSucceeded = backend::runTrianglePipelineBootstrap(*runtime, 64u, 64u, nullptr);
+			}
 
-				if(runtime->isHardwareBacked() && bootstrapSucceeded)
-				{
-					customGraphicsBootstrapDone = true;
-				}
+			if(runtime->isHardwareBacked() && bootstrapSucceeded)
+			{
+				customGraphicsBootstrapDone = true;
+			}
+		}
+	}
+
+	if(!hasRasterizerDiscard && shouldRenderTriangleBootstrapToColorAttachment())
+	{
+		if(auto *runtime = device->getRuntimeAPI())
+		{
+			const vk::Attachments attachments = pipeline->getAttachments();
+			vk::ImageView *colorAttachment = attachments.colorBuffer[0];
+			std::vector<uint8_t> bootstrapColorBuffer;
+			const sw::Stream &positionStream = inputs.getStream(0);
+			bool rendered = false;
+			if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
+			{
+				rendered = backend::runTrianglePipelineBootstrap(*runtime, positionStream, nullptr, draw->topology, count, renderArea, &bootstrapColorBuffer, nullptr, indexBuffer, draw->indexType, baseVertex, preRasterizationState.getFrontFace() == VK_FRONT_FACE_COUNTER_CLOCKWISE);
+			}
+			else
+			{
+				rendered = backend::runTrianglePipelineBootstrap(*runtime, renderArea.extent.width, renderArea.extent.height, &bootstrapColorBuffer);
+			}
+
+			const bool wrote = rendered && runtime->isHardwareBacked() && writeTriangleBootstrapColorToAttachment(bootstrapColorBuffer, renderArea.extent.width, renderArea.extent.height, colorAttachment, renderArea, layer);
+			if(shouldTraceTriangleBootstrapRender())
+			{
+				std::fprintf(stderr, "[custom-gpu] triangle bootstrap render: rendered=%d wrote=%d\n", rendered ? 1 : 0, wrote ? 1 : 0);
+			}
+			if(wrote)
+			{
+				return;
+			}
+			if(shouldRequireTriangleBootstrap())
+			{
+				UNSUPPORTED("SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP failed (rendered=%d, wrote=%d)", rendered ? 1 : 0, wrote ? 1 : 0);
+			}
 		}
 	}
 
@@ -875,10 +1004,14 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 		data->pushConstants = pushConstants;
 	}
 
-	draw->events = events;
+		draw->events = events;
 
-	DrawCall::run(device, draw, &drawTickets, clusterQueues);
-}
+		if(shouldTraceCpuDraw())
+		{
+			std::fprintf(stderr, "[custom-gpu] cpu DrawCall::run\n");
+		}
+		DrawCall::run(device, draw, &drawTickets, clusterQueues);
+	}
 
 void DrawCall::setup()
 {

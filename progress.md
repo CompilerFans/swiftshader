@@ -997,3 +997,14 @@
 - Verification:
   - `VK_ICD_FILENAMES=.../build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt SWIFTSHADER_CUDA_SOURCE_DUMP_PATH=/tmp/vkcube_cuda_source.txt vkcube --c 3`
   - Result: `stamps=3` (vs/raster/fs) and `/tmp/vkcube_cuda_source.txt` contains generated bootstrap sources (no longer just the warmup `kernel_main`).
+
+## 2026-03-11: `vkcube` GPU-render bring-up (swapchain write-back)
+- Added a bring-up-only render path that runs the CUDA triangle bootstrap per draw and writes the resulting RGBA buffer back into the first color attachment, skipping the CPU `DrawCall::run()` when successful:
+  - `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP=1`
+- Added optional diagnostics:
+  - `SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER=1` prints `rendered/wrote` per draw.
+  - `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW=1` prints when CPU `DrawCall::run()` is used.
+  - `SWIFTSHADER_CUSTOM_GPU_REQUIRE_TRIANGLE_BOOTSTRAP=1` aborts if the bootstrap render/write-back fails.
+- Verification:
+  - `VK_ICD_FILENAMES=.../build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP=1 SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER=1 SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW=1 vkcube --c 3`
+  - Result: three `triangle bootstrap render: rendered=1 wrote=1` lines, no `cpu DrawCall::run` lines, and `stamps=9` (3 launches per frame).

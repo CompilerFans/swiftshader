@@ -323,3 +323,7 @@
   - `vkcube` can execute without any vertex input attributes (no `Inputs` stream at `location = 0`), relying on `gl_VertexIndex` / shader-side constants.
   - The CUDA triangle bootstrap path initially assumed `inputs.getStream(0)` was a valid position stream, so it silently skipped under `vkcube` even though the CUDA runtime warmup kernel still ran.
   - A small synthetic `64x64` triangle bootstrap fallback in `Renderer::draw()` makes `vkcube` reliably launch real CUDA kernels (vs/raster/fs) without depending on vertex streams.
+
+- New 2026-03-11 GPU-render bring-up finding:
+  - Setting `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP=1` makes `Renderer::draw()` run the CUDA triangle bootstrap per draw, write the resulting RGBA buffer back into the first color attachment (location 0), and skip the CPU `DrawCall::run()` when successful.
+  - This provides an end-to-end proof that `vkcube` can produce presentable swapchain pixels from CUDA kernels (GPU compute), even though full Vulkan shader/pipeline semantics are still not implemented by the bootstrap path.

@@ -38,6 +38,9 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 - Vulkan app smoke (`vkcube`):
   - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 60`
   - Expect `/tmp/vkcube_cuda_stamps.txt` to be non-empty.
+- Vulkan app GPU-render bring-up (`vkcube`, triangle bootstrap writes to swapchain):
+  - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP=1 SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER=1 SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW=1 vkcube --c 3`
+  - Expect one `[custom-gpu] triangle bootstrap render: rendered=1 wrote=1` line per frame, and no `[custom-gpu] cpu DrawCall::run` lines.
 - Benchmark helper:
   - `tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --scene=color --seconds=10`
 
@@ -50,6 +53,9 @@ This document describes the current bootstrap flow for the custom GPU backend sc
 - Vulkan 应用烟测（`vkcube`）：
   - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 60`
   - 期望 `/tmp/vkcube_cuda_stamps.txt` 非空。
+- Vulkan 应用 GPU-render bring-up（`vkcube`，triangle bootstrap 写回 swapchain）：
+  - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP=1 SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER=1 SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW=1 vkcube --c 3`
+  - 期望每帧输出一行 `[custom-gpu] triangle bootstrap render: rendered=1 wrote=1`，且不出现 `[custom-gpu] cpu DrawCall::run`。
 - Benchmark 辅助脚本：
   - `tests/VulkanBenchmarks/run-animated-triangle-benchmark.sh --backend=cuda --scene=color --seconds=10`
 
@@ -82,6 +88,35 @@ This document describes the current bootstrap flow for the custom GPU backend sc
   - 每次 kernel launch 向指定文件追加一行标记。
 - `SWIFTSHADER_CUDA_DISABLE_WARMUP`
   - 关闭 CUDA runtime bootstrap 默认的启动预热 launch。
+
+## Custom GPU Bring-up Environment Variables / 自研 GPU Bring-up 环境变量
+- `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP`
+  - Attempt a minimal CUDA triangle-pipeline bootstrap per draw and write the RGBA output back into the first color attachment (location 0), skipping the CPU `DrawCall::run()` path when successful.
+  - Intended for bring-up only; it does **not** implement full Vulkan shader/pipeline semantics yet.
+- `SWIFTSHADER_CUSTOM_GPU_REQUIRE_TRIANGLE_BOOTSTRAP`
+  - Abort if `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP` cannot render and write back successfully.
+- `SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER`
+  - Print a per-draw line: `[custom-gpu] triangle bootstrap render: rendered=... wrote=...`.
+- `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW`
+  - Print when the CPU graphics path is used: `[custom-gpu] cpu DrawCall::run`.
+- `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_SUBMIT`
+  - Print when the custom execution backend still falls back to CPU submit: `[custom-gpu] submit falling back to CPU backend`.
+- `SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT`
+  - Abort if the custom execution backend would fall back to CPU submit.
+
+- `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP`
+  - 每次 draw 尝试执行最小的 CUDA triangle-pipeline bootstrap，并把 RGBA 输出写回到第一个 color attachment（location 0）；成功时跳过 CPU 的 `DrawCall::run()`。
+  - 仅用于 bring-up；目前**不**具备完整 Vulkan shader/pipeline 语义。
+- `SWIFTSHADER_CUSTOM_GPU_REQUIRE_TRIANGLE_BOOTSTRAP`
+  - 当 `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP` 无法成功渲染并写回时直接 abort。
+- `SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER`
+  - 每次 draw 打印一行：`[custom-gpu] triangle bootstrap render: rendered=... wrote=...`。
+- `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW`
+  - 当 CPU 图形路径被使用时打印：`[custom-gpu] cpu DrawCall::run`。
+- `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_SUBMIT`
+  - 当自研执行后端仍回退到 CPU submit 时打印：`[custom-gpu] submit falling back to CPU backend`。
+- `SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT`
+  - 当自研执行后端要回退到 CPU submit 时直接 abort。
 
 ## Compute Builtin Mapping / Compute Builtin 映射
 - Vulkan compute dispatch dimensions:
