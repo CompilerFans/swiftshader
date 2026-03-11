@@ -854,12 +854,12 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 			{
 				return;
 			}
-			if(shouldRequireTriangleBootstrap())
-			{
-				UNSUPPORTED("SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP failed (rendered=%d, wrote=%d)", rendered ? 1 : 0, wrote ? 1 : 0);
+				if(shouldRequireTriangleBootstrap())
+				{
+					sw::abort("SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP failed (rendered=%d, wrote=%d)\n", rendered ? 1 : 0, wrote ? 1 : 0);
+				}
 			}
 		}
-	}
 
 	if(!hasRasterizerDiscard)
 	{

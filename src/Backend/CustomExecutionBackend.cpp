@@ -1,9 +1,12 @@
-#include "Backend/RuntimeAPI.hpp"
-#include "GraphicsBootstrap.hpp"
-#include "TrianglePipelineBootstrap.hpp"
-#include "System/Debug.hpp"
-#include "Vulkan/VkDevice.hpp"
+#include "Vulkan/VulkanPlatform.hpp"
 #include "GraphicsBackend.hpp"
+
+#include "Backend/RuntimeAPI.hpp"
+#include "Device/Renderer.hpp"
+#include "System/Debug.hpp"
+#include "Vulkan/VkCommandBuffer.hpp"
+#include "Vulkan/VkDevice.hpp"
+#include "Vulkan/VkStructConversion.hpp"
 
 #include <cstdio>
 #include <cstdlib>
@@ -11,15 +14,9 @@
 namespace backend {
 namespace {
 
-bool shouldTraceCpuSubmit()
+bool shouldTraceCustomSubmit()
 {
-	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_SUBMIT");
-	return value != nullptr && value[0] != '\0';
-}
-
-bool shouldRequireCustomSubmit()
-{
-	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT");
+	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_TRACE_CUSTOM_SUBMIT");
 	return value != nullptr && value[0] != '\0';
 }
 
@@ -27,21 +24,26 @@ class CustomExecutionBackend : public ExecutionBackend
 {
 public:
 	explicit CustomExecutionBackend(vk::Device *device)
-	    : cpuBackend(createCpuExecutionBackend(device))
-	    , runtime(device ? device->getRuntimeAPI() : nullptr)
+	    : runtime(device ? device->getRuntimeAPI() : nullptr)
 	{}
 
 	void submit(vk::Device *device, vk::SubmitInfo &submitInfo, sw::CountedEvent *events) override
 	{
-		if(shouldTraceCpuSubmit())
+		if(shouldTraceCustomSubmit())
 		{
-			std::fprintf(stderr, "[custom-gpu] submit falling back to CPU backend\n");
+			std::fprintf(stderr, "[custom-gpu] submit via custom execution backend\n");
 		}
-		if(shouldRequireCustomSubmit())
+
+		ensureRenderer(device);
+
+		vk::CommandBuffer::ExecutionState executionState;
+		executionState.renderer = renderer.get();
+		executionState.executionBackend = this;
+		executionState.events = events;
+		for(uint32_t j = 0; j < submitInfo.commandBufferCount; j++)
 		{
-			UNSUPPORTED("CustomExecutionBackend submit still falls back to CPU backend (set SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT=0 to allow fallback)");
+			vk::Cast(submitInfo.pCommandBuffers[j])->submit(executionState);
 		}
-		cpuBackend->submit(device, submitInfo, events);
 	}
 
 	void synchronize() override
@@ -50,11 +52,22 @@ public:
 		{
 			runtime->synchronize();
 		}
-		cpuBackend->synchronize();
+		if(renderer)
+		{
+			renderer->synchronize();
+		}
 	}
 
 private:
-	std::unique_ptr<ExecutionBackend> cpuBackend;
+	void ensureRenderer(vk::Device *device)
+	{
+		if(!renderer && device)
+		{
+			renderer.reset(new sw::Renderer(device));
+		}
+	}
+
+	std::unique_ptr<sw::Renderer> renderer;
 	RuntimeAPI *runtime = nullptr;
 };
 

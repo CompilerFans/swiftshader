@@ -3,12 +3,28 @@
 
 #include "Backend/ResourceStateTracker.hpp"
 #include "Device/Renderer.hpp"
+#include "System/Debug.hpp"
 #include "Vulkan/VkCommandBuffer.hpp"
 #include "Vulkan/VkQueue.hpp"
 #include "Vulkan/VkStructConversion.hpp"
 
+#include <cstdio>
+#include <cstdlib>
+
 namespace backend {
 namespace {
+
+bool shouldTraceCpuSubmit()
+{
+	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_SUBMIT");
+	return value != nullptr && value[0] != '\0';
+}
+
+bool shouldRequireCustomSubmit()
+{
+	const char *value = std::getenv("SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT");
+	return value != nullptr && value[0] != '\0';
+}
 
 class CpuGraphicsBackend : public GraphicsBackend
 {
@@ -53,6 +69,15 @@ public:
 
 	void submit(vk::Device *device, vk::SubmitInfo &submitInfo, sw::CountedEvent *events) override
 	{
+		if(shouldTraceCpuSubmit())
+		{
+			std::fprintf(stderr, "[cpu-backend] submit\n");
+		}
+		if(shouldRequireCustomSubmit())
+		{
+			sw::abort("SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT=1 but CPU execution backend was selected\n");
+		}
+
 		vk::CommandBuffer::ExecutionState executionState;
 		executionState.renderer = graphics->renderer();
 		executionState.executionBackend = this;

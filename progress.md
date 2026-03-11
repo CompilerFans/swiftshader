@@ -1008,3 +1008,14 @@
 - Verification:
   - `VK_ICD_FILENAMES=.../build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP=1 SWIFTSHADER_CUSTOM_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER=1 SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW=1 vkcube --c 3`
   - Result: three `triangle bootstrap render: rendered=1 wrote=1` lines, no `cpu DrawCall::run` lines, and `stamps=9` (3 launches per frame).
+
+## 2026-03-11: Custom execution backend submit (cut CPU submit driver)
+- `CustomExecutionBackend::submit()` now executes command buffers directly (via `vk::CommandBuffer::submit`) and no longer delegates to the CPU execution backend.
+- Added submit tracing:
+  - `SWIFTSHADER_CUSTOM_GPU_TRACE_CUSTOM_SUBMIT=1` prints `[custom-gpu] submit via custom execution backend`.
+  - `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_SUBMIT=1` prints `[cpu-backend] submit` when the CPU backend is used.
+- Enforced backend selection:
+  - `SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT=1` aborts if the CPU execution backend is selected.
+- Verification:
+  - `VK_ICD_FILENAMES=.../build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT=1 SWIFTSHADER_CUSTOM_GPU_TRACE_CUSTOM_SUBMIT=1 SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_SUBMIT=1 vkcube --c 3`
+  - Result: `submit via custom execution backend` lines, and no `cpu-backend submit` lines.

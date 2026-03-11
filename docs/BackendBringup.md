@@ -99,10 +99,12 @@ This document describes the current bootstrap flow for the custom GPU backend sc
   - Print a per-draw line: `[custom-gpu] triangle bootstrap render: rendered=... wrote=...`.
 - `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW`
   - Print when the CPU graphics path is used: `[custom-gpu] cpu DrawCall::run`.
+- `SWIFTSHADER_CUSTOM_GPU_TRACE_CUSTOM_SUBMIT`
+  - Print when the custom execution backend handles a queue submit: `[custom-gpu] submit via custom execution backend`.
 - `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_SUBMIT`
-  - Print when the custom execution backend still falls back to CPU submit: `[custom-gpu] submit falling back to CPU backend`.
+  - Print when the CPU execution backend handles a queue submit: `[cpu-backend] submit`.
 - `SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT`
-  - Abort if the custom execution backend would fall back to CPU submit.
+  - Abort if the CPU execution backend is selected for queue submit.
 
 - `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP`
   - 每次 draw 尝试执行最小的 CUDA triangle-pipeline bootstrap，并把 RGBA 输出写回到第一个 color attachment（location 0）；成功时跳过 CPU 的 `DrawCall::run()`。
@@ -113,10 +115,12 @@ This document describes the current bootstrap flow for the custom GPU backend sc
   - 每次 draw 打印一行：`[custom-gpu] triangle bootstrap render: rendered=... wrote=...`。
 - `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_DRAW`
   - 当 CPU 图形路径被使用时打印：`[custom-gpu] cpu DrawCall::run`。
+- `SWIFTSHADER_CUSTOM_GPU_TRACE_CUSTOM_SUBMIT`
+  - 当自研执行后端处理一次 queue submit 时打印：`[custom-gpu] submit via custom execution backend`。
 - `SWIFTSHADER_CUSTOM_GPU_TRACE_CPU_SUBMIT`
-  - 当自研执行后端仍回退到 CPU submit 时打印：`[custom-gpu] submit falling back to CPU backend`。
+  - 当 CPU 执行后端处理一次 queue submit 时打印：`[cpu-backend] submit`。
 - `SWIFTSHADER_CUSTOM_GPU_REQUIRE_CUSTOM_SUBMIT`
-  - 当自研执行后端要回退到 CPU submit 时直接 abort。
+  - 当 queue submit 选择到 CPU 执行后端时直接 abort。
 
 ## Compute Builtin Mapping / Compute Builtin 映射
 - Vulkan compute dispatch dimensions:
