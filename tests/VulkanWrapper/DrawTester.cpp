@@ -34,7 +34,10 @@ DrawTester::~DrawTester()
 		return;
 	}
 
-	device.waitIdle();
+	if(!skipDestructorWaitIdle)
+	{
+		device.waitIdle();
+	}
 
 	device.freeCommandBuffers(commandPool, commandBuffers);
 
@@ -181,6 +184,11 @@ void DrawTester::renderFrameWithoutPresent()
 void DrawTester::waitForDeviceIdle()
 {
 	device.waitIdle();
+}
+
+void DrawTester::skipDestructorWaitIdleForTesting()
+{
+	skipDestructorWaitIdle = true;
 }
 
 std::vector<uint8_t> DrawTester::readbackFrameRgba()

@@ -297,3 +297,9 @@
   - `DrawTest.RenderWaitFenceThenPresentWithoutSemaphoreThenDestroy` also still crashes under CUDA repeats, so the present wait semaphore itself is not required to trigger the failure.
   - `DrawTest.RenderWithoutPresentThenWaitIdleDestroy` crashes under CUDA repeats while passing on CPU, even though `RenderWithoutPresentThenDestroy` remains stable.
   - Therefore the strongest current boundary is: after a complete triangle draw, an additional explicit `device/queue waitIdle()` is sufficient to trigger the CUDA-only crash; `present()` is one way to hit that path, but it is no longer the root boundary.
+
+- Root cause of the remaining CUDA draw repeat crash is now identified in `Renderer::draw()`:
+  - The CUDA-only bootstrap branch (`runTrianglePipelineBootstrap`) consulted `draw->fragmentPipelineLayout` before that field was initialized for the current draw.
+  - Because `DrawCall` objects come from a pool, that read reused stale state from an earlier draw and could feed `DescriptorSet::PrepareForSampling()` a bogus pipeline layout.
+  - That directly explains the earlier random `Unsupported Descriptor Type` warnings from `VkDescriptorSetLayout.cpp`, the CUDA-only nature of the crash, and why the failure needed a real complete-triangle draw that entered the hardware-backed bootstrap path.
+  - Initializing `draw->fragmentPipelineLayout` up front, before the bootstrap branch, removes the undefined behavior and makes the previously failing CUDA repeat cases pass again.

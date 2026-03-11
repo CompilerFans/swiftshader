@@ -930,3 +930,18 @@
   - Waiting on the submit fence before present does not eliminate the crash.
   - Removing the present wait semaphore also does not eliminate the crash.
   - The remaining CUDA-only crash boundary is now tighter than `present()`: after a complete triangle draw, an extra explicit `device.waitIdle()` / `queue.waitIdle()` is already sufficient to reproduce it.
+
+## 2026-03-11: CUDA wait-idle crash root cause fixed
+- Re-read `src/Device/Renderer.cpp` around the CUDA bootstrap branch instead of continuing to chase `present()` / `waitIdle()` symptoms.
+- Found the actual bug: `Renderer::draw()` called `DescriptorSet::PrepareForSampling(..., draw->fragmentPipelineLayout, ...)` inside the hardware-backed triangle bootstrap path before `draw->fragmentPipelineLayout` had been assigned for the current draw.
+- Because `DrawCall` instances are pooled, that field could contain stale data from an earlier draw. In the CUDA path this stale layout then flowed into descriptor parsing, matching the earlier random `Unsupported Descriptor Type` warnings from `src/Vulkan/VkDescriptorSetLayout.cpp`.
+- Fixed the root cause by initializing `draw->fragmentPipelineLayout` immediately after `draw->preRasterizationPipelineLayout`, before the bootstrap branch can read it. Removed the temporary `Renderer` active-draw instrumentation after the real bug was confirmed.
+- Rebuilt with:
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel 4`
+- Verification:
+  - `./build/draw-unittests --gtest_filter='DrawTest.RenderWithoutPresentThenWaitIdleSkipDestructorIdle' --gtest_repeat=25` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithoutPresentThenWaitIdleSkipDestructorIdle' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.RenderWithoutPresentThenWaitIdleDestroy' --gtest_repeat=25)` passed
+  - `(cd build-cuda-bootstrap && SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./draw-unittests --gtest_filter='DrawTest.SolidColorTriangle' --gtest_repeat=25)` passed
+- Failed side experiment:
+  - `cmake --build build-cuda-asan --target draw-unittests --parallel` and the analogous `backend-unittests` build both hit host OOM (`cc1plus` killed), so ASan was not useful for this round.

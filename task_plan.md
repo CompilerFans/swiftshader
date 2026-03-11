@@ -233,3 +233,5 @@ Phase 4: Verification
 - Current sample-aligned milestone: `texture_loading` now also has repo-local instanced textured draw coverage, not just static and descriptor-updated single-draw cases.
 
 - Current sample-aligned milestone: the local overlap between `vertex_dynamic_state`, `instancing`, and `texture_loading` is now covered by a repo-local instanced textured draw using dynamic vertex input.
+
+- 2026-03-11 draw-lifecycle root-cause milestone: the remaining CUDA repeat crash was not a `present()` / `waitIdle()` synchronization bug after all. The hardware-backed triangle bootstrap path in `Renderer::draw()` was reading pooled `DrawCall::fragmentPipelineLayout` before assigning it for the current draw, which fed stale layout state into descriptor preparation. Initializing that field before the bootstrap branch made the previously red CUDA repeat cases green again.

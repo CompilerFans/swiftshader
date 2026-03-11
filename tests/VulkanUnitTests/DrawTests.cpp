@@ -24,8 +24,10 @@
 #include "gtest/gtest.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <limits>
+#include <thread>
 #include <cstdlib>
 
 class DrawTest : public testing::Test
@@ -730,6 +732,27 @@ TEST_F(DrawTest, RenderWithoutPresentThenWaitIdleDestroy)
 	tester.initialize();
 	tester.renderFrameWithoutPresent();
 	tester.waitForDeviceIdle();
+}
+
+TEST_F(DrawTest, RenderWithoutPresentThenWaitIdleSkipDestructorIdle)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+	tester.renderFrameWithoutPresent();
+	tester.waitForDeviceIdle();
+	tester.skipDestructorWaitIdleForTesting();
+}
+
+TEST_F(DrawTest, RenderWithoutPresentThenWaitIdleSleepSkipDestructorIdle)
+{
+	DrawTester tester;
+	configureSolidColorTriangleDraw(tester);
+	tester.initialize();
+	tester.renderFrameWithoutPresent();
+	tester.waitForDeviceIdle();
+	std::this_thread::sleep_for(std::chrono::milliseconds(250));
+	tester.skipDestructorWaitIdleForTesting();
 }
 
 TEST_F(DrawTest, DynamicRenderingSolidColorTriangle)

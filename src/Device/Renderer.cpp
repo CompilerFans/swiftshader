@@ -602,6 +602,7 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 	draw->lineRasterizationMode = preRasterizationState.getLineRasterizationMode();
 	draw->descriptorSetObjects = inputs.getDescriptorSetObjects();
 	draw->preRasterizationPipelineLayout = preRasterizationState.getPipelineLayout();
+	draw->fragmentPipelineLayout = hasRasterizerDiscard ? nullptr : fragmentState->getPipelineLayout();
 	draw->depthClipEnable = preRasterizationState.getDepthClipEnable();
 	draw->depthClipNegativeOneToOne = preRasterizationState.getDepthClipNegativeOneToOne();
 	data->lineWidth = preRasterizationState.getLineWidth();
@@ -759,7 +760,6 @@ void Renderer::draw(const vk::GraphicsPipeline *pipeline, const vk::DynamicState
 		draw->setupRoutine = setupRoutine;
 		draw->pixelRoutine = pixelRoutine;
 		draw->setupPrimitives = setupPrimitives;
-		draw->fragmentPipelineLayout = fragmentState->getPipelineLayout();
 
 		if(pixelState.stencilActive)
 		{
@@ -927,6 +927,7 @@ void DrawCall::teardown(vk::Device *device)
 			vk::DescriptorSet::ContentsChanged(descriptorSetObjects, fragmentPipelineLayout, device);
 		}
 	}
+
 }
 
 void DrawCall::run(vk::Device *device, const marl::Loan<DrawCall> &draw, marl::Ticket::Queue *tickets, marl::Ticket::Queue clusterQueues[MaxClusterCount])
