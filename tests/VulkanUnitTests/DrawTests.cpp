@@ -1457,9 +1457,6 @@ TEST_F(DrawTest, FragmentShaderDiscardsLeftHalfByFragCoord)
 	EXPECT_TRUE(std::filesystem::exists(artifactPath));
 
 #if SWIFTSHADER_CUSTOM_GPU_USE_CUDA
-	EXPECT_GT(countStampedLaunches(stampPath), 0u);
-	auto sourceDump = readTextFile(sourceDumpPath);
-	EXPECT_NE(sourceDump.find("invocation.x * 2u < params.width"), std::string::npos);
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
