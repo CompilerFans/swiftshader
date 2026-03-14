@@ -507,3 +507,7 @@
 - New 2026-03-14 draw-test stability finding:
   - The new strict-GPU death tests are correct semantically, but when mixed with prior draw tests they can hit gtest's default `fork()`-based death-test path after worker threads already exist; in this environment that child sometimes dies early with `CUDA_ERROR_NOT_INITIALIZED`.
   - For these CUDA-backed draw death tests, locally forcing `death_test_style = threadsafe` is the stable choice; it preserves the intended assertion target (`triangle bootstrap ...`) instead of failing on unrelated CUDA runtime initialization noise.
+
+- New 2026-03-14 translator-infrastructure finding:
+  - LLPC’s translator is most valuable to SwiftShader as a semantic reference, not as a library to embed directly. The useful parts are its stage-aware entry translation, decoration/resource metadata mapping, and image descriptor extraction flow; the costly part is its tight coupling to `lgc::Builder`, pipeline context, and AMD middle-end assumptions.
+  - MLIR’s `SPIRVToLLVMDialectConversion` is the right downstream direction for a serious compiler pipeline, but its current documented gaps around image types, matrix types, and decoration/member-layout conversion mean SwiftShader still needs a richer normalized compiler IR before that lowering can carry real graphics shaders end-to-end.

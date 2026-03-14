@@ -208,4 +208,5 @@ Phase 21: Attachment lifecycle/state tracking (complete)
 - 2026-03-14 会话恢复已确认：Phase 19/20 对应实现仍在当前工作区，且 focused `backend-unittests` / `vk-unittests` / `draw-unittests` 全绿；之前未同步的主要问题是 `Current Phase` 指针仍停在旧的 Phase 19。
 - 2026-03-14 compiler sidecar 新增收口：独立 `ShaderCompiler` 现已支持最小 vertex standalone compile 路径，`shader-compiler` tool 也已支持 `--stage vertex` 的 CUDA-like / LLVM IR skeleton 输出；该离线能力仍是架构预留和 smoke 验证，不改变主线 `GraphicsExecutable` 当前 phase。
 - 2026-03-14 attachment lifecycle 切片已收口：`TriangleBootstrapDraw` 现已消费 `GraphicsDrawCall::colorAttachment0`，并显式 gate `present/storeOp/layout`；strict GPU draw 对 `storeOp = DONT_CARE` 的 render pass / dynamic rendering 两条路径都已由测试锁住。
+- 2026-03-14 `ShaderCompiler` 目录下已补充 `TranslatorReference.md`，把 LLPC translator 与 MLIR SPIR-V -> LLVM 路线的可借鉴语义和能力边界落成实现参考，供后续“标准 SPIR-V -> normalized IR -> LLVM/backend”开发使用。
 - 后续主线保留为：把 `GraphicsExecutable` 从 metadata scaffold 演进成正式 graphics execution 入口，以及 transfer/copy/blit/resolve/present 的 backend ownership 和更明确的 backend memory/resource model。

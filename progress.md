@@ -33,6 +33,14 @@
   - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`23` tests)
   - `./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.DynamicRenderingSolidColorTriangle:DrawTest.StrictGpuTriangleBootstrapRejectsRenderPassColorStoreDontCare:DrawTest.StrictGpuTriangleBootstrapRejectsDynamicRenderingColorStoreDontCare:DrawTest.TexturedTriangleNearest'` passed (`4` tests)
   - `git diff --check` passed
+- 基础设施研究落盘：
+  - 新增 `src/Pipeline/ShaderCompiler/TranslatorReference.md`
+  - 基于本地 `third_party/llpc/llpc/translator` 和 `third_party/llvm-project/mlir/docs/SPIRVToLLVMDialectConversion.md` 记录了：
+    - LLPC translator 的 entry-point/stage-aware 设计
+    - decoration/builtin/resource metadata 到 LLVM 的映射方式
+    - image/sample lowering 的 descriptor-extraction 路径
+    - MLIR SPIR-V -> LLVM 的能力边界与当前缺口
+    - 对 SwiftShader 独立 `ShaderCompiler` 模块的推荐分层
 - 会话恢复：
   - 读取并核对 `task_plan.md`、`progress.md`、`findings.md`，确认图形执行重构主线已经推进到 Phase 20 完成，但 `Current Phase` 仍停在旧的 Phase 19。
   - 结合 `git status --short` / `git diff --stat` 确认当前脏树正是前一轮 graphics execution refactor + module cache + pipeline introspection 的实现集合，不是新的未记录分叉。
