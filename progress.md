@@ -5,13 +5,33 @@
   - 先新增并验证 RED test：`ShaderCompiler.CompilesVertexAssemblyToCudaLikeSource`，确认缺口是 `ShaderCompiler` 尚无 `compileGraphicsVertex(...)`。
   - 新增 `ShaderCompiler::compileGraphicsVertex(...)`，路径为 `ShaderModuleInput -> SpirvBinary -> SemanticIRBuilder(VK_SHADER_STAGE_VERTEX_BIT) -> lowerToKernelIR(...) -> emitter`。
   - standalone tool 新增并验证 RED/GREEN：`ShaderCompilerTool.CompilesVertexAssemblyToCudaLikeSource`，`runShaderCompilerTool(...)` 现已支持 `--stage vertex`。
+  - 继续补齐 vertex LLVM skeleton：
+    - 新增 RED/GREEN：`CodegenEmitter.EmitsVertexStageLlvmIR`
+    - 新增 RED/GREEN：`ShaderCompiler.CompilesVertexAssemblyToLlvmIR`
+    - 新增 RED/GREEN：`ShaderCompilerTool.CompilesVertexAssemblyToLlvmIR`
+    - `LlvmIREmitter` 现已为 vertex 输出最小 `VsParams` / `vs_main` / `vs_entry` skeleton，离线 LLVM 路径不再退回泛化的 `kernel_main`
   - 当前离线最小能力边界：
     - fragment: `spvasm/spvbin -> cuda/llvm`
-    - vertex: `spvasm -> cuda`
+    - vertex: `spvasm -> cuda/llvm`
 - 当前 focused 验证：
   - `cmake --build build-cuda-bootstrap --target backend-unittests vk-unittests shader-compiler --parallel 1` passed
   - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsExecutable.*:SpirvToCompilerAnalysis.*:KernelIR.*:CodegenEmitter.*:AbiParity.*:ShaderCompiler.*:ShaderCompilerTool.*'` passed (`64` tests)
   - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`23` tests)
+  - `git diff --check` passed
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsExecutable.*:SpirvToCompilerAnalysis.*:KernelIR.*:CodegenEmitter.*:AbiParity.*:ShaderCompiler.*:ShaderCompilerTool.*'` re-passed after vertex LLVM work (`67` tests)
+- Phase 21 attachment lifecycle/store gate 收口：
+  - 现有 RED tests `DrawTest.StrictGpuTriangleBootstrapRejectsRenderPassColorStoreDontCare` / `DrawTest.StrictGpuTriangleBootstrapRejectsDynamicRenderingColorStoreDontCare` 已确认并转绿。
+  - `TriangleBootstrapDraw` 不再从 pipeline attachments 反查 color attachment，而是消费 `GraphicsDrawCall::colorAttachment0`。
+  - 新增 backend 单测：
+    - `TriangleBootstrapDrawPolicy.AcceptsStoreLayoutForPresentAttachment`
+    - `TriangleBootstrapDrawPolicy.AcceptsGeneralLayoutForPresentAttachment`
+    - `TriangleBootstrapDrawPolicy.RejectsDontCareStoreOp`
+    - `TriangleBootstrapDrawPolicy.RejectsNonWritableLayout`
+  - draw death tests 的组合运行最初出现假阴性，根因是 gtest 默认 death-test style 在已有线程时走 `fork()`，子进程 CUDA 初始化报 `CUDA_ERROR_NOT_INITIALIZED`；已用局部 `ScopedDeathTestStyle("threadsafe")` 固定这两个 case。
+- 当前统一 focused 验证：
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsExecutable.*:SpirvToCompilerAnalysis.*:KernelIR.*:CodegenEmitter.*:AbiParity.*:ShaderCompiler.*:ShaderCompilerTool.*:TriangleBootstrapDraw*'` passed (`75` tests)
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`23` tests)
+  - `./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.DynamicRenderingSolidColorTriangle:DrawTest.StrictGpuTriangleBootstrapRejectsRenderPassColorStoreDontCare:DrawTest.StrictGpuTriangleBootstrapRejectsDynamicRenderingColorStoreDontCare:DrawTest.TexturedTriangleNearest'` passed (`4` tests)
   - `git diff --check` passed
 - 会话恢复：
   - 读取并核对 `task_plan.md`、`progress.md`、`findings.md`，确认图形执行重构主线已经推进到 Phase 20 完成，但 `Current Phase` 仍停在旧的 Phase 19。

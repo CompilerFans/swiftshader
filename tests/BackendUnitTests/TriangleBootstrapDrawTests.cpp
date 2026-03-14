@@ -37,3 +37,47 @@ TEST(TriangleBootstrapDrawPlan, PropagatesExplicitRenderRequirement)
 	EXPECT_EQ(plan.pass, backend::TriangleBootstrapPass::RenderToColorAttachment);
 	EXPECT_TRUE(plan.requireSuccessfulWriteback);
 }
+
+TEST(TriangleBootstrapDrawPolicy, AcceptsStoreLayoutForPresentAttachment)
+{
+	backend::GraphicsColorAttachmentTarget target = {};
+	target.imageView = reinterpret_cast<vk::ImageView *>(0x1);
+	target.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	target.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	target.present = true;
+
+	EXPECT_TRUE(backend::canWriteTriangleBootstrapColorAttachment(target));
+}
+
+TEST(TriangleBootstrapDrawPolicy, AcceptsGeneralLayoutForPresentAttachment)
+{
+	backend::GraphicsColorAttachmentTarget target = {};
+	target.imageView = reinterpret_cast<vk::ImageView *>(0x1);
+	target.layout = VK_IMAGE_LAYOUT_GENERAL;
+	target.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	target.present = true;
+
+	EXPECT_TRUE(backend::canWriteTriangleBootstrapColorAttachment(target));
+}
+
+TEST(TriangleBootstrapDrawPolicy, RejectsDontCareStoreOp)
+{
+	backend::GraphicsColorAttachmentTarget target = {};
+	target.imageView = reinterpret_cast<vk::ImageView *>(0x1);
+	target.layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
+	target.storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+	target.present = true;
+
+	EXPECT_FALSE(backend::canWriteTriangleBootstrapColorAttachment(target));
+}
+
+TEST(TriangleBootstrapDrawPolicy, RejectsNonWritableLayout)
+{
+	backend::GraphicsColorAttachmentTarget target = {};
+	target.imageView = reinterpret_cast<vk::ImageView *>(0x1);
+	target.layout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+	target.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
+	target.present = true;
+
+	EXPECT_FALSE(backend::canWriteTriangleBootstrapColorAttachment(target));
+}

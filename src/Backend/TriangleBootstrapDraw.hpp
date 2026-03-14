@@ -24,6 +24,28 @@ struct TriangleBootstrapPlan
 	bool requireSuccessfulWriteback = false;
 };
 
+inline bool canWriteTriangleBootstrapColorAttachment(const GraphicsColorAttachmentTarget &target)
+{
+	if(!target.present || target.imageView == nullptr)
+	{
+		return false;
+	}
+
+	if(target.storeOp != VK_ATTACHMENT_STORE_OP_STORE)
+	{
+		return false;
+	}
+
+	switch(target.layout)
+	{
+	case VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL:
+	case VK_IMAGE_LAYOUT_GENERAL:
+		return true;
+	default:
+		return false;
+	}
+}
+
 inline TriangleBootstrapPlan planTriangleBootstrapDraw(GraphicsDrawRoute route,
                                                        bool renderTriangleBootstrap,
                                                        bool requireTriangleBootstrap,

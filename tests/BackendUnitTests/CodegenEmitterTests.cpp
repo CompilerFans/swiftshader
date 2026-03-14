@@ -75,3 +75,21 @@ TEST(CodegenEmitter, EmitsVec2VertexInputFallbackForMissingZ)
     EXPECT_NE(text.find("VertexInput inVertex = { position[0], position[1], 0.0f };"), std::string::npos);
     EXPECT_EQ(text.find("position[2]"), std::string::npos);
 }
+
+TEST(CodegenEmitter, EmitsVertexStageLlvmIR)
+{
+    sw::KernelIRModule module;
+    sw::VertexLoweringInfo vertexInfo{};
+    vertexInfo.usesPositionAttribute = true;
+    vertexInfo.positionAttributeLocation = 0;
+    vertexInfo.positionBinding = 0;
+    vertexInfo.positionInputComponentCount = 3;
+    vertexInfo.vertexStride = 12;
+    vertexInfo.positionOffset = 0;
+    vertexInfo.usesVertexIndex = true;
+    module.setVertexLoweringInfo(vertexInfo);
+
+    std::string text = sw::emitLlvmIR(module);
+    EXPECT_NE(text.find("%struct.VsParams = type"), std::string::npos);
+    EXPECT_NE(text.find("define void @vs_entry(%struct.VsParams* %params)"), std::string::npos);
+}

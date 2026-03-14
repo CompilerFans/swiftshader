@@ -398,13 +398,28 @@ bool tryTriangleBootstrapDraw(vk::Device *device,
 
 		requiresTextureFragmentConfig = executable->hasTexturePlan() && executable->texturePlan().bootstrapSupported;
 
-		const vk::Attachments attachments = draw.pipeline->getAttachments();
-		colorAttachment = attachments.colorBuffer[0];
-		if(colorAttachment == nullptr)
+		colorAttachment = draw.colorAttachment0.imageView;
+		if(!draw.colorAttachment0.present || colorAttachment == nullptr)
 		{
 			if(plan.requireSuccessfulWriteback)
 			{
 				sw::abort("triangle bootstrap unsupported: missing color attachment 0\n");
+			}
+			return false;
+		}
+		if(draw.colorAttachment0.storeOp != VK_ATTACHMENT_STORE_OP_STORE)
+		{
+			if(plan.requireSuccessfulWriteback)
+			{
+				sw::abort("triangle bootstrap unsupported: color attachment storeOp must be STORE\n");
+			}
+			return false;
+		}
+		if(!canWriteTriangleBootstrapColorAttachment(draw.colorAttachment0))
+		{
+			if(plan.requireSuccessfulWriteback)
+			{
+				sw::abort("triangle bootstrap unsupported: color attachment layout must allow write-back\n");
 			}
 			return false;
 		}

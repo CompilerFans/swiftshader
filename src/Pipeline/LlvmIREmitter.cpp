@@ -61,6 +61,48 @@ std::string emitTextureFragmentLlvmIR(const CompilerAnalysisInfo &analysis)
 	return ir.str();
 }
 
+std::string emitVertexLlvmIR(const VertexLoweringInfo &vertex, const CompilerAnalysisInfo &analysis)
+{
+	std::ostringstream ir;
+	emitCompilerAnalysisGlobals(ir, analysis);
+	if(vertex.usesVertexIndex)
+	{
+		ir << "@swiftshader.uses_vertex_index = internal constant i1 true\n";
+	}
+	if(vertex.usesInstanceIndex)
+	{
+		ir << "@swiftshader.uses_instance_index = internal constant i1 true\n";
+	}
+	if(vertex.constantOffsetX != 0.0f)
+	{
+		ir << "@swiftshader.vertex_offset_x = internal constant float " << emitLlvmFloatLiteral(vertex.constantOffsetX) << "\n";
+	}
+	if(vertex.constantOffsetY != 0.0f)
+	{
+		ir << "@swiftshader.vertex_offset_y = internal constant float " << emitLlvmFloatLiteral(vertex.constantOffsetY) << "\n";
+	}
+	if(vertex.constantOffsetZ != 0.0f)
+	{
+		ir << "@swiftshader.vertex_offset_z = internal constant float " << emitLlvmFloatLiteral(vertex.constantOffsetZ) << "\n";
+	}
+	ir << "%struct.VertexInput = type { float, float, float }\n";
+	ir << "%struct.VertexOutput = type { float, float, float, float }\n";
+	ir << "%struct.VsParams = type { i8*, %struct.VertexOutput*, i32, i32, i32, i32 }\n";
+	ir << "define internal void @vs_main(%struct.VsParams* %params, i32 %vertexIndex, %struct.VertexInput* %inVertex, %struct.VertexOutput* %outVertex) {\n";
+	ir << "entry:\n";
+	ir << "  ret void\n";
+	ir << "}\n";
+	ir << "define void @vs_entry(%struct.VsParams* %params) {\n";
+	ir << "entry:\n";
+	if(vertex.usesPositionAttribute)
+	{
+		ir << "  ; reads location 0 position from params.vertexData with stride/offset\n";
+	}
+	ir << "  ret void\n";
+	ir << "}\n";
+	return ir.str();
+}
+
 std::string emitFragCoordQuadrantsFragmentLlvmIR(const CompilerAnalysisInfo &analysis)
 {
 	std::ostringstream ir;
@@ -207,6 +249,10 @@ std::string emitLlvmIR(const KernelIRModule &module)
 	if(analysis.staticFragmentKind == ShaderStaticFragmentKind::InterpolatedColorBlueNearFragDepth)
 	{
 		return emitInterpolatedColorFragDepthFragmentLlvmIR(analysis);
+	}
+	if(module.hasVertexLoweringInfo())
+	{
+		return emitVertexLlvmIR(module.vertexLoweringInfo(), analysis);
 	}
 
 	std::ostringstream ir;

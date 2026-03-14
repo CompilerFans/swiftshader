@@ -34,6 +34,24 @@ class DrawTest : public testing::Test
 
 namespace {
 
+class ScopedDeathTestStyle
+{
+public:
+	explicit ScopedDeathTestStyle(const char *style)
+	    : previousStyle(::testing::GTEST_FLAG(death_test_style))
+	{
+		::testing::GTEST_FLAG(death_test_style) = style;
+	}
+
+	~ScopedDeathTestStyle()
+	{
+		::testing::GTEST_FLAG(death_test_style) = previousStyle;
+	}
+
+private:
+	std::string previousStyle;
+};
+
 std::filesystem::path makeDrawArtifactPath(const char *name)
 {
 	auto dir = std::filesystem::current_path() / "draw-test-artifacts";
@@ -811,6 +829,7 @@ TEST_F(DrawTest, DynamicRenderingSolidColorTriangle)
 TEST_F(DrawTest, StrictGpuTriangleBootstrapRejectsRenderPassColorStoreDontCare)
 {
 #if SWIFTSHADER_GPU_USE_CUDA
+	ScopedDeathTestStyle deathTestStyle("threadsafe");
 	::setenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP", "1", 1);
 	::setenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP", "1", 1);
 	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
@@ -835,6 +854,7 @@ TEST_F(DrawTest, StrictGpuTriangleBootstrapRejectsRenderPassColorStoreDontCare)
 TEST_F(DrawTest, StrictGpuTriangleBootstrapRejectsDynamicRenderingColorStoreDontCare)
 {
 #if SWIFTSHADER_GPU_USE_CUDA
+	ScopedDeathTestStyle deathTestStyle("threadsafe");
 	::setenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP", "1", 1);
 	::setenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP", "1", 1);
 	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);

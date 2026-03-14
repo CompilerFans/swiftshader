@@ -500,6 +500,17 @@ TEST(ShaderCompiler, CompilesVertexAssemblyToCudaLikeSource)
 	EXPECT_NE(result.text.find("params.vertexData + vertexIndex * params.vertexStride + params.positionOffset"), std::string::npos);
 }
 
+TEST(ShaderCompiler, CompilesVertexAssemblyToLlvmIR)
+{
+	sw::ShaderCompiler compiler;
+	auto result = compiler.compileGraphicsVertex(sw::ShaderModuleInput::fromAssembly("main", kVertexPositionAssembly),
+	                                             sw::CodegenTarget::LlvmIR);
+
+	EXPECT_TRUE(result.kernelIR.hasVertexLoweringInfo());
+	EXPECT_NE(result.text.find("%struct.VsParams = type"), std::string::npos);
+	EXPECT_NE(result.text.find("define void @vs_entry(%struct.VsParams* %params)"), std::string::npos);
+}
+
 TEST(ShaderCompiler, EmitsTextureFragmentCudaKernelForSupportedCombinedSamplerPath)
 {
 	sw::ShaderCompiler compiler;

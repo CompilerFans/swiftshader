@@ -266,3 +266,22 @@ TEST(ShaderCompilerTool, CompilesVertexAssemblyToCudaLikeSource)
     EXPECT_NE(out.str().find("extern \"C\" __global__ void vs_entry"), std::string::npos);
     EXPECT_TRUE(err.str().empty());
 }
+
+TEST(ShaderCompilerTool, CompilesVertexAssemblyToLlvmIR)
+{
+    TempFile input(kVertexPositionAssembly);
+    std::ostringstream out;
+    std::ostringstream err;
+
+    const std::vector<std::string> args = {
+        "--stage", "vertex",
+        "--entry-point", "main",
+        "--input-format", "spvasm",
+        "--output-format", "llvm",
+        "--input", input.path,
+    };
+
+    EXPECT_EQ(sw::runShaderCompilerTool(args, out, err), 0);
+    EXPECT_NE(out.str().find("define void @vs_entry(%struct.VsParams* %params)"), std::string::npos);
+    EXPECT_TRUE(err.str().empty());
+}

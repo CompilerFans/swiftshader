@@ -4,7 +4,7 @@
 沿着“backend-owned graphics execution”主线持续收口：前几刀已经把 draw 路由收进 `ExecutionBackend`、让 `Renderer::draw()` 变成 CPU-only，并把 triangle bootstrap 的 shader-only 与 texture metadata 逐步迁进 `GraphicsExecutable`；当前重心继续沿 sampled-image resource plan 推进，一方面用真实 sample-use provenance 收口 plan 输入，另一方面开始让 separate image/sampler 真正驱动 strict GPU draw。
 
 ## Current Phase
-Phase 21: Attachment lifecycle/state tracking (planning)
+Phase 21: Attachment lifecycle/state tracking (complete)
 
 ## Phases
 ### Phase 1: Discovery
@@ -149,10 +149,10 @@ Phase 21: Attachment lifecycle/state tracking (planning)
 
 ### Phase 21: Attachment lifecycle/state tracking (planning)
 - [x] 写 offscreen color attachment lifecycle/state tracking 设计与实现计划（见 `docs/plans/2026-03-14-graphics-attachment-lifecycle-design.md` / `docs/plans/2026-03-14-graphics-attachment-lifecycle-implementation.md`）
-- [ ] 先写失败测试，锁住 clear/store/layout 的最小 backend-owned 闭环（先覆盖离屏 color attachment）
-- [ ] 把 strict GPU triangle bootstrap 的 color write-back 从 ad-hoc helper 推进到可跟踪的 attachment lifecycle scaffold
-- [ ] 扩 focused draw / Vulkan 验证，覆盖 render pass 与 dynamic rendering 下的 offscreen color attachment 路径
-- **Status:** in_progress
+- [x] 先写失败测试，锁住 clear/store/layout 的最小 backend-owned 闭环（先覆盖离屏 color attachment）
+- [x] 把 strict GPU triangle bootstrap 的 color write-back 从 ad-hoc helper 推进到可跟踪的 attachment lifecycle scaffold
+- [x] 扩 focused draw / Vulkan 验证，覆盖 render pass 与 dynamic rendering 下的 offscreen color attachment 路径
+- **Status:** complete
 
 ### Phase 22: Compiler analysis module extraction (planning)
 - [x] 写 compiler analysis 独立模块设计与实现计划（见 `docs/plans/2026-03-14-compiler-analysis-module-design.md` / `docs/plans/2026-03-14-compiler-analysis-module-implementation.md`）
@@ -206,5 +206,6 @@ Phase 21: Attachment lifecycle/state tracking (planning)
 - 当前第八个切片也已完成：texture bootstrap metadata 现在允许极小的 sample passthrough value chain；`vec4 sampledColor = texture(...); outColor = sampledColor;` 这类语义等价 shader 不再被误判为 unsupported。
 - 当前第九个切片也已完成：`GraphicsBackendPipeline` 现在显式覆盖 separate image/sampler negative case，锁住该 descriptor 形态继续留在当前 narrow texture-bootstrap path 之外。
 - 2026-03-14 会话恢复已确认：Phase 19/20 对应实现仍在当前工作区，且 focused `backend-unittests` / `vk-unittests` / `draw-unittests` 全绿；之前未同步的主要问题是 `Current Phase` 指针仍停在旧的 Phase 19。
-- 2026-03-14 compiler sidecar 新增收口：独立 `ShaderCompiler` 现已支持最小 vertex standalone compile 路径，`shader-compiler` tool 也已支持 `--stage vertex` 的 CUDA-like 输出；该离线能力仍是架构预留和 smoke 验证，不改变主线 `GraphicsExecutable` 当前 phase。
+- 2026-03-14 compiler sidecar 新增收口：独立 `ShaderCompiler` 现已支持最小 vertex standalone compile 路径，`shader-compiler` tool 也已支持 `--stage vertex` 的 CUDA-like / LLVM IR skeleton 输出；该离线能力仍是架构预留和 smoke 验证，不改变主线 `GraphicsExecutable` 当前 phase。
+- 2026-03-14 attachment lifecycle 切片已收口：`TriangleBootstrapDraw` 现已消费 `GraphicsDrawCall::colorAttachment0`，并显式 gate `present/storeOp/layout`；strict GPU draw 对 `storeOp = DONT_CARE` 的 render pass / dynamic rendering 两条路径都已由测试锁住。
 - 后续主线保留为：把 `GraphicsExecutable` 从 metadata scaffold 演进成正式 graphics execution 入口，以及 transfer/copy/blit/resolve/present 的 backend ownership 和更明确的 backend memory/resource model。

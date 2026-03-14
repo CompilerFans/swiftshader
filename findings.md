@@ -498,4 +498,12 @@
 
 - New 2026-03-14 tooling finding:
   - The standalone `shader-compiler` CLI can safely support `--stage vertex` as a thin dispatch layer over the extracted compiler module, without pulling any Vulkan pipeline/runtime dependencies into the offline path.
-  - The current honest offline support boundary is still narrow: fragment covers `spvasm/spvbin -> cuda/llvm`, while vertex is only verified for `spvasm -> cuda`. Vertex LLVM skeleton emission remains a later slice.
+  - The current honest offline support boundary is still narrow but now symmetric at the skeleton level: fragment covers `spvasm/spvbin -> cuda/llvm`, while vertex is verified for `spvasm -> cuda/llvm`. Vertex LLVM still emits only an ABI-shaped skeleton, not real instruction-level lowering.
+
+- New 2026-03-14 attachment-lifecycle finding:
+  - The `GraphicsColorAttachmentTarget` contract and `CmdDrawBase::draw()` extraction were already in place, but `TriangleBootstrapDraw` was still bypassing them by probing `pipeline->getAttachments().colorBuffer[0]` directly. The missing behavior was not extraction, but actually consuming the extracted contract at write-back time.
+  - Promoting the gate to a small pure helper (`present + imageView + storeOp + layout`) made it easy to add backend unit coverage without dragging Vulkan runtime symbols into `backend-unittests`.
+
+- New 2026-03-14 draw-test stability finding:
+  - The new strict-GPU death tests are correct semantically, but when mixed with prior draw tests they can hit gtest's default `fork()`-based death-test path after worker threads already exist; in this environment that child sometimes dies early with `CUDA_ERROR_NOT_INITIALIZED`.
+  - For these CUDA-backed draw death tests, locally forcing `death_test_style = threadsafe` is the stable choice; it preserves the intended assertion target (`triangle bootstrap ...`) instead of failing on unrelated CUDA runtime initialization noise.
