@@ -16,6 +16,7 @@
 
 #include "Backend/BackendFactory.hpp"
 
+#include "Vulkan/VkDevice.hpp"
 #include "Vulkan/VkDeviceMemory.hpp"
 #include "Vulkan/VkFence.hpp"
 #include "Vulkan/VkImage.hpp"
@@ -91,6 +92,7 @@ void SwapchainKHR::resetImages()
 
 VkResult SwapchainKHR::createImages(VkDevice device, const VkSwapchainCreateInfoKHR *pCreateInfo)
 {
+	this->device = vk::Cast(device);
 	resetImages();
 
 	VkImageCreateInfo imageInfo = {};
@@ -198,9 +200,9 @@ VkResult SwapchainKHR::getNextImage(uint64_t timeout, BinarySemaphore *semaphore
 		if(currentImage.isAvailable())
 		{
 			currentImage.setStatus(DRAWING);
-			if(presentAdapter)
+			if(presentAdapter && device)
 			{
-				presentAdapter->acquire(resourceStateTracker, reinterpret_cast<uint64_t>(currentImage.getImage()));
+				presentAdapter->acquire(device->getResourceStateTracker(), reinterpret_cast<uint64_t>(currentImage.getImage()));
 			}
 			*pImageIndex = i;
 
@@ -225,9 +227,9 @@ VkResult SwapchainKHR::present(uint32_t index)
 {
 	auto &image = images[index];
 	image.setStatus(PRESENTING);
-	if(presentAdapter)
+	if(presentAdapter && device)
 	{
-		presentAdapter->present(resourceStateTracker, reinterpret_cast<uint64_t>(image.getImage()));
+		presentAdapter->present(device->getResourceStateTracker(), reinterpret_cast<uint64_t>(image.getImage()));
 	}
 	VkResult result = surface->present(&image);
 

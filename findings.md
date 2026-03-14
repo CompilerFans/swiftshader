@@ -522,3 +522,7 @@
     - pure backend unit tests for dependency-info -> tracker semantics
     - compile/link of `vk-unittests`
     - a focused draw regression (`DynamicRenderingSolidColorTriangle`) to ensure the now-stateful barrier path does not break existing rendering
+
+- New 2026-03-14 shared-tracker finding:
+  - After the first two Direction-1 slices, resource-state tracking was still structurally split: `ExecutionState` had one tracker copy while `VkSwapchainKHR` had another. That meant barrier transitions and present transitions were both recorded, but not in the same state store.
+  - Making `ResourceStateTracker` a shared-state value type is the lowest-risk way to converge these paths without immediately redesigning the whole queue/device ownership model. It lets `vk::Device`, submit-time execution state, and swapchain/present all observe the same logical image layout map while keeping call sites almost unchanged.

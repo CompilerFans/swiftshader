@@ -4,7 +4,7 @@
 沿着“backend-owned graphics execution”主线持续收口：前几刀已经把 draw 路由收进 `ExecutionBackend`、让 `Renderer::draw()` 变成 CPU-only，并把 triangle bootstrap 的 shader-only 与 texture metadata 逐步迁进 `GraphicsExecutable`；当前重心继续沿 sampled-image resource plan 推进，一方面用真实 sample-use provenance 收口 plan 输入，另一方面开始让 separate image/sampler 真正驱动 strict GPU draw。
 
 ## Current Phase
-Phase 24: Command-buffer image barrier state tracking (complete)
+Phase 25: Shared device resource state tracking (complete)
 
 ## Phases
 ### Phase 1: Discovery
@@ -174,6 +174,12 @@ Phase 24: Command-buffer image barrier state tracking (complete)
 - [x] 跑 focused backend / Vulkan / draw 验证，确认现有 dynamic rendering 路径未回归
 - **Status:** complete
 
+### Phase 25: Shared device resource state tracking
+- [x] 先写失败测试，锁住 `ResourceStateTracker` copy 后的共享语义
+- [x] 把 `ResourceStateTracker` 改成共享底层 state，并让 device / swapchain / execution state 消费同一份 tracker store
+- [x] 跑 focused backend / Vulkan / draw 验证，确认 present capture 与 dynamic rendering 路径未回归
+- **Status:** complete
+
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
@@ -197,6 +203,7 @@ Phase 24: Command-buffer image barrier state tracking (complete)
 | 当前三方向优先级：先做 framework refactor（方向 1），再做直接服务于 framework 的 compiler 语义扩展（方向 3），vkcts 仅做 focused 验收（方向 2） | 当前最大瓶颈是 graphics execution framework 仍主要停在 bootstrap helper；先扩大测试面只会得到大量结构性失败，先扩 compiler 也会被执行框架吞掉收益 |
 | Direction 1 的下一刀选择 swapchain/present lifecycle tracking | `PresentAdapter + ResourceStateTracker` 已接入 `VkSwapchainKHR`，但 acquire/present 语义仍是空心的 `GENERAL`；这是纯框架改动，能继续推进 backend-owned graphics/present ownership |
 | Direction 1 的第二刀选择 command-buffer image barrier state tracking | `ExecutionState.resourceStateTracker` 已存在，但 `CmdPipelineBarrier` 之前只是全管线同步，不携带/消费 barrier 数据；先把 image layout transition 纳入 tracker，比继续堆 metadata 更接近真正的 backend-owned execution state |
+| Direction 1 的第三刀选择 shared device resource-state store | 仅有 barrier tracking 和 swapchain tracking 还不够；如果 tracker 仍按对象各自复制存储，状态不会跨 submit/present 连续。先把 tracker 做成共享底层 state，再把 device/swapchain/execution path 接到同一份 store，才有资格继续扩 queue/present/resource lifecycle |
 
 ## Key Questions
 1. `GraphicsExecutable` 下一步要承载哪些真正执行期信息，而不是只停留在 metadata？
@@ -228,4 +235,5 @@ Phase 24: Command-buffer image barrier state tracking (complete)
 - 2026-03-14 主线方向已收口：下一阶段优先继续 framework refactor，不扩大为全面 vkcts 覆盖，也不把主力切到更广的 shader 语义扩展；compiler 工作只做直接解锁 framework 的部分。
 - 2026-03-14 Direction 1 已启动：先从 `PresentAdapter + ResourceStateTracker + VkSwapchainKHR` 的 swapchain lifecycle contract 开刀，把 acquire/present 的逻辑 layout 变成可测试的 backend-owned 状态；后续更大的 framework 切口应继续推进 command-buffer barrier / execution path 对 resource state 的接入。
 - 2026-03-14 Direction 1 第二刀已收口：`CmdPipelineBarrier` 现已持有 `vk::DependencyInfo` 并把 image barrier layout transition 写入 `ExecutionState.resourceStateTracker`；后续更大的框架切口可继续扩到 wait-events / queue submit / present path 的统一 state model。
+- 2026-03-14 Direction 1 第三刀已收口：`ResourceStateTracker` 现已共享底层 state，`vk::Device`、`VkSwapchainKHR`、以及 submit-time `ExecutionState` 都开始接到同一个 tracker store；这样 acquire/present 与 command-buffer barrier 终于不会各记各的状态。
 - 后续主线保留为：把 `GraphicsExecutable` 从 metadata scaffold 演进成正式 graphics execution 入口，以及 transfer/copy/blit/resolve/present 的 backend ownership 和更明确的 backend memory/resource model。

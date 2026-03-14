@@ -56,6 +56,10 @@ public:
 		executionState.renderer = renderer.get();
 		executionState.executionBackend = this;
 		executionState.events = events;
+		if(device)
+		{
+			executionState.resourceStateTracker = device->getResourceStateTracker();
+		}
 		for(uint32_t j = 0; j < submitInfo.commandBufferCount; j++)
 		{
 			vk::Cast(submitInfo.pCommandBuffers[j])->submit(executionState);

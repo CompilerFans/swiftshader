@@ -63,6 +63,18 @@
     - `./build-cuda-bootstrap/backend-unittests --gtest_filter='PresentAdapter*:*ResourceStateTracker*'` passed (`5` tests)
     - `./build-cuda-bootstrap/vk-unittests --gtest_filter='PresentAdapterCaptureTest.*:PresentAdapter.*'` passed (`2` tests)
     - `./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.DynamicRenderingSolidColorTriangle'` passed (`1` test)
+- Direction 1 第三刀：shared device resource-state store
+  - 新增 RED/GREEN：
+    - `ResourceStateTracker.CopiesShareLogicalLayoutState`
+    - `PresentAdapterFactory.AcquireAndPresentUpdateSharedTrackerCopies`
+  - `ResourceStateTracker` 现已从独立值语义 map 改成共享底层 state 的轻量句柄。
+  - `vk::Device` 新增 device-owned `ResourceStateTracker` store 和 getter。
+  - `CpuExecutionBackend` / `GpuExecutionBackend` 在 submit 时把 `ExecutionState.resourceStateTracker` 绑定到 device tracker。
+  - `VkSwapchainKHR` 不再持有自己的私有 tracker，而是通过 `device->getResourceStateTracker()` 驱动 `PresentAdapter::acquire/present`。
+  - 当前 focused 验证：
+    - `./build-cuda-bootstrap/backend-unittests --gtest_filter='PresentAdapterFactory.*:ResourceStateTracker.*'` passed (`7` tests)
+    - `./build-cuda-bootstrap/vk-unittests --gtest_filter='PresentAdapterCaptureTest.*:PresentAdapter.*'` passed (`2` tests)
+    - `./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.DynamicRenderingSolidColorTriangle'` passed (`1` test)
 - 会话恢复：
   - 读取并核对 `task_plan.md`、`progress.md`、`findings.md`，确认图形执行重构主线已经推进到 Phase 20 完成，但 `Current Phase` 仍停在旧的 Phase 19。
   - 结合 `git status --short` / `git diff --stat` 确认当前脏树正是前一轮 graphics execution refactor + module cache + pipeline introspection 的实现集合，不是新的未记录分叉。

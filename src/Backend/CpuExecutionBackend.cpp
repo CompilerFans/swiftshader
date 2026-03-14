@@ -6,6 +6,7 @@
 #include "Device/Renderer.hpp"
 #include "System/Debug.hpp"
 #include "Vulkan/VkCommandBuffer.hpp"
+#include "Vulkan/VkDevice.hpp"
 #include "Vulkan/VkQueue.hpp"
 #include "Vulkan/VkStructConversion.hpp"
 
@@ -103,6 +104,10 @@ public:
 		executionState.renderer = graphics->renderer();
 		executionState.executionBackend = this;
 		executionState.events = events;
+		if(device)
+		{
+			executionState.resourceStateTracker = device->getResourceStateTracker();
+		}
 		for(uint32_t j = 0; j < submitInfo.commandBufferCount; j++)
 		{
 			vk::Cast(submitInfo.pCommandBuffers[j])->submit(executionState);

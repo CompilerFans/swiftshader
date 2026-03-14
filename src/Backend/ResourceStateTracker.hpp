@@ -4,6 +4,7 @@
 #include "Vulkan/VulkanPlatform.hpp"
 
 #include <cstdint>
+#include <memory>
 #include <type_traits>
 #include <unordered_map>
 
@@ -38,10 +39,14 @@ inline uint64_t trackedResourceHandleId(Handle handle)
 class ResourceStateTracker
 {
 public:
+	ResourceStateTracker()
+	    : imageLayouts(std::make_shared<ImageLayoutMap>())
+	{}
+
 	void transitionImage(uint64_t imageId, VkImageLayout oldLayout, VkImageLayout newLayout)
 	{
 		(void)oldLayout;
-		imageLayouts[imageId] = newLayout;
+		(*imageLayouts)[imageId] = newLayout;
 		recordResourceStateTrackerImageTransition(imageId, oldLayout, newLayout);
 	}
 
@@ -66,12 +71,13 @@ public:
 
 	VkImageLayout layoutForImage(uint64_t imageId) const
 	{
-		auto it = imageLayouts.find(imageId);
-		return (it != imageLayouts.end()) ? it->second : VK_IMAGE_LAYOUT_UNDEFINED;
+		auto it = imageLayouts->find(imageId);
+		return (it != imageLayouts->end()) ? it->second : VK_IMAGE_LAYOUT_UNDEFINED;
 	}
 
 private:
-	std::unordered_map<uint64_t, VkImageLayout> imageLayouts;
+	using ImageLayoutMap = std::unordered_map<uint64_t, VkImageLayout>;
+	std::shared_ptr<ImageLayoutMap> imageLayouts;
 };
 
 }  // namespace backend

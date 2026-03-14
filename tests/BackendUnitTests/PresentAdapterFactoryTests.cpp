@@ -24,6 +24,19 @@ TEST(PresentAdapterFactory, UpdatesLayoutOnAcquireAndPresent)
     EXPECT_EQ(tracker.layoutForImage(7), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }
 
+TEST(PresentAdapterFactory, AcquireAndPresentUpdateSharedTrackerCopies)
+{
+    auto adapter = backend::createPresentAdapter();
+    backend::ResourceStateTracker tracker;
+    backend::ResourceStateTracker sharedCopy = tracker;
+
+    adapter->acquire(tracker, 13);
+    EXPECT_EQ(sharedCopy.layoutForImage(13), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+
+    adapter->present(tracker, 13);
+    EXPECT_EQ(sharedCopy.layoutForImage(13), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+}
+
 #if SWIFTSHADER_ENABLE_GPU_BACKEND
 TEST(PresentAdapterFactory, GpuAdapterCapturesAcquireAndPresent)
 {

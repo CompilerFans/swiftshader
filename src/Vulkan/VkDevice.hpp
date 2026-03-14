@@ -16,6 +16,7 @@
 #define VK_DEVICE_HPP_
 
 #include "Backend/RuntimeAPI.hpp"
+#include "Backend/ResourceStateTracker.hpp"
 #include "VkImageView.hpp"
 #include "VkSampler.hpp"
 #include "Device/Blitter.hpp"
@@ -65,6 +66,8 @@ public:
 	const VkPhysicalDeviceFeatures &getEnabledFeatures() const { return enabledFeatures; }
 	sw::Blitter *getBlitter() const { return blitter.get(); }
 	backend::RuntimeAPI *getRuntimeAPI() const { return runtimeAPI.get(); }
+	backend::ResourceStateTracker &getResourceStateTracker() { return resourceStateTracker; }
+	const backend::ResourceStateTracker &getResourceStateTracker() const { return resourceStateTracker; }
 
 	void registerImageView(ImageView *imageView);
 	void unregisterImageView(ImageView *imageView);
@@ -184,6 +187,7 @@ private:
 	std::shared_ptr<marl::Scheduler> scheduler;
 	std::unique_ptr<SamplingRoutineCache> samplingRoutineCache;
 	std::unique_ptr<SamplerIndexer> samplerIndexer;
+	backend::ResourceStateTracker resourceStateTracker = {};
 
 	marl::mutex imageViewSetMutex;
 	std::unordered_set<ImageView *> imageViewSet GUARDED_BY(imageViewSetMutex);

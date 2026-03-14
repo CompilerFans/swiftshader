@@ -57,8 +57,8 @@ private:
 	PresentImage *images = nullptr;
 	uint32_t imageCount = 0;
 	bool retired = false;
+	Device *device = nullptr;
 
-	backend::ResourceStateTracker resourceStateTracker = {};
 	std::unique_ptr<backend::PresentAdapter> presentAdapter;
 
 	void resetImages();

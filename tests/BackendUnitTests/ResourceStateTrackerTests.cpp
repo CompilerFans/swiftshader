@@ -32,6 +32,18 @@ TEST(ResourceStateTracker, TransitionUpdatesLogicalLayout)
     EXPECT_EQ(tracker.layoutForImage(1), VK_IMAGE_LAYOUT_GENERAL);
 }
 
+TEST(ResourceStateTracker, CopiesShareLogicalLayoutState)
+{
+    backend::ResourceStateTracker tracker;
+    backend::ResourceStateTracker sharedCopy = tracker;
+
+    tracker.transitionImage(9, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_GENERAL);
+    EXPECT_EQ(sharedCopy.layoutForImage(9), VK_IMAGE_LAYOUT_GENERAL);
+
+    sharedCopy.transitionImage(9, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    EXPECT_EQ(tracker.layoutForImage(9), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+}
+
 TEST(ResourceStateTracker, TracksImageBarriersFromDependencyInfo)
 {
     backend::ResourceStateTracker tracker;
