@@ -295,6 +295,8 @@ struct TriangleBootstrapInvocationConfig
 	const FragmentBootstrapConfig *fragmentConfigPtr = nullptr;
 	const sw::Stream *colorStream = nullptr;
 	const sw::Stream *texCoordStream = nullptr;
+	bool vertexPushConstantOffsetEnabled = false;
+	GraphicsBootstrapRuntimeConfig vertexRuntimeConfig = {};
 	float pointSize = 64.0f;
 };
 
@@ -331,6 +333,9 @@ TriangleBootstrapInvocationConfig buildTriangleBootstrapInvocationConfig(const v
 			}
 		}
 	}
+	config.vertexPushConstantOffsetEnabled =
+	    preRasterizationState.getPipelineLayout() &&
+	    preRasterizationState.getPipelineLayout()->hasPushConstantStage(VK_SHADER_STAGE_VERTEX_BIT, sizeof(float) * 2u);
 
 	if(config.fragmentConfigPtr && config.fragmentConfig.shaderKind == FragmentBootstrapShaderKind::Texture2DColor)
 	{
@@ -462,11 +467,17 @@ bool tryTriangleBootstrapDraw(vk::Device *device,
 	const vk::Inputs &inputs = draw.pipeline->getInputs();
 	vk::DescriptorSet::PrepareForSampling(inputs.getDescriptorSetObjects(), preRasterizationState.getPipelineLayout(), device);
 
-	const TriangleBootstrapInvocationConfig config = buildTriangleBootstrapInvocationConfig(*draw.pipeline,
-	                                                                                       preRasterizationState,
-	                                                                                       fragmentState,
-	                                                                                       inputs,
-	                                                                                       device);
+	TriangleBootstrapInvocationConfig config = buildTriangleBootstrapInvocationConfig(*draw.pipeline,
+	                                                                                 preRasterizationState,
+	                                                                                 fragmentState,
+	                                                                                 inputs,
+	                                                                                 device);
+	if(config.vertexPushConstantOffsetEnabled && draw.pushConstants != nullptr)
+	{
+		const auto *pushConstants = reinterpret_cast<const vk::Pipeline::PushConstantStorage *>(draw.pushConstants);
+		config.vertexRuntimeConfig.offsetX = *reinterpret_cast<const float *>(&pushConstants->data[0]);
+		config.vertexRuntimeConfig.offsetY = *reinterpret_cast<const float *>(&pushConstants->data[4]);
+	}
 	if(plan.pass == TriangleBootstrapPass::RenderToColorAttachment)
 	{
 		if(config.fragmentConfigPtr == nullptr)
@@ -506,7 +517,16 @@ bool tryTriangleBootstrapDraw(vk::Device *device,
 		bool bootstrapSucceeded = false;
 		if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
 		{
-			bootstrapSucceeded = runTrianglePipelineBootstrap(runtime, positionStream, config.colorStream, topology, draw.count, draw.renderArea, nullptr, config.fragmentConfigPtr, draw.indexBuffer, indexType, draw.baseVertex, frontFaceCounterClockwise, config.pointSize, config.texCoordStream);
+			TrianglePipelineBootstrapConfig bootstrapConfig = {};
+			if(!buildTrianglePipelineBootstrapConfig(positionStream, config.colorStream, topology, draw.count, draw.renderArea, &bootstrapConfig, config.fragmentConfigPtr, draw.indexBuffer, indexType, draw.baseVertex, frontFaceCounterClockwise, config.pointSize, config.texCoordStream))
+			{
+				bootstrapSucceeded = false;
+			}
+			else
+			{
+				bootstrapConfig.runtimeConfig = config.vertexRuntimeConfig;
+				bootstrapSucceeded = runTrianglePipelineBootstrap(runtime, bootstrapConfig, nullptr);
+			}
 		}
 		else
 		{
@@ -524,7 +544,16 @@ bool tryTriangleBootstrapDraw(vk::Device *device,
 	bool rendered = false;
 	if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
 	{
-		rendered = runTrianglePipelineBootstrap(runtime, positionStream, config.colorStream, topology, draw.count, draw.renderArea, &bootstrapColorBuffer, config.fragmentConfigPtr, draw.indexBuffer, indexType, draw.baseVertex, frontFaceCounterClockwise, config.pointSize, config.texCoordStream);
+		TrianglePipelineBootstrapConfig bootstrapConfig = {};
+		if(!buildTrianglePipelineBootstrapConfig(positionStream, config.colorStream, topology, draw.count, draw.renderArea, &bootstrapConfig, config.fragmentConfigPtr, draw.indexBuffer, indexType, draw.baseVertex, frontFaceCounterClockwise, config.pointSize, config.texCoordStream))
+		{
+			rendered = false;
+		}
+		else
+		{
+			bootstrapConfig.runtimeConfig = config.vertexRuntimeConfig;
+			rendered = runTrianglePipelineBootstrap(runtime, bootstrapConfig, &bootstrapColorBuffer);
+		}
 	}
 	else
 	{
@@ -534,7 +563,15 @@ bool tryTriangleBootstrapDraw(vk::Device *device,
 	const bool wrote = rendered && runtime.isHardwareBacked() && writeTriangleBootstrapColorToAttachment(bootstrapColorBuffer, draw.renderArea.extent.width, draw.renderArea.extent.height, colorAttachment, draw.renderArea, draw.layer);
 	if(shouldTraceTriangleBootstrapRender())
 	{
-		std::fprintf(stderr, "[gpu] triangle bootstrap render: rendered=%d wrote=%d\n", rendered ? 1 : 0, wrote ? 1 : 0);
+		std::fprintf(stderr,
+		             "[gpu] triangle bootstrap render: rendered=%d wrote=%d pushPtr=%p pushOffsetEnabled=%d vertexOffset=(%f,%f,%f)\n",
+		             rendered ? 1 : 0,
+		             wrote ? 1 : 0,
+		             draw.pushConstants,
+		             config.vertexPushConstantOffsetEnabled ? 1 : 0,
+		             config.vertexRuntimeConfig.offsetX,
+		             config.vertexRuntimeConfig.offsetY,
+		             config.vertexRuntimeConfig.offsetZ);
 	}
 	if(wrote)
 	{

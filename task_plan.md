@@ -4,7 +4,7 @@
 沿着“backend-owned graphics execution”主线持续收口：前几刀已经把 draw 路由收进 `ExecutionBackend`、让 `Renderer::draw()` 变成 CPU-only，并把 triangle bootstrap 的 shader-only 与 texture metadata 逐步迁进 `GraphicsExecutable`；当前重心继续沿 sampled-image resource plan 推进，一方面用真实 sample-use provenance 收口 plan 输入，另一方面开始让 separate image/sampler 真正驱动 strict GPU draw。
 
 ## Current Phase
-Phase 26: Vkcube-like derivative texture fragment support (complete)
+Phase 27: Vertex push-constant bootstrap runtime support (complete)
 
 ## Phases
 ### Phase 1: Discovery
@@ -187,6 +187,12 @@ Phase 26: Vkcube-like derivative texture fragment support (complete)
 - [x] 用真实 `vkcube` 做 focused smoke，确认 strict GPU render path 不再在 `TextureSamplingUnsupported, Derivatives` 上直接 abort
 - **Status:** complete
 
+### Phase 27: Vertex push-constant bootstrap runtime support
+- [x] 先写失败测试，锁住 strict GPU path 下 vertex push-constant offset 不能再静默丢失
+- [x] 让 pipeline layout 的 vertex push-constant range 进入 bootstrap gate，并把前两个 float 注入 `GraphicsBootstrapRuntimeConfig`
+- [x] 跑 focused draw / real app smoke，确认 strict GPU path 下 vertex runtime offset 生效且未回归 `vkcube`
+- **Status:** complete
+
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
@@ -212,6 +218,7 @@ Phase 26: Vkcube-like derivative texture fragment support (complete)
 | Direction 1 的第二刀选择 command-buffer image barrier state tracking | `ExecutionState.resourceStateTracker` 已存在，但 `CmdPipelineBarrier` 之前只是全管线同步，不携带/消费 barrier 数据；先把 image layout transition 纳入 tracker，比继续堆 metadata 更接近真正的 backend-owned execution state |
 | Direction 1 的第三刀选择 shared device resource-state store | 仅有 barrier tracking 和 swapchain tracking 还不够；如果 tracker 仍按对象各自复制存储，状态不会跨 submit/present 连续。先把 tracker 做成共享底层 state，再把 device/swapchain/execution path 接到同一份 store，才有资格继续扩 queue/present/resource lifecycle |
 | 当前为真实 Vulkan app bring-up，允许做“服务于 framework 的窄 shader 语义支持” | `vkcube` 当前 blocker 已从纯框架层转到一类真实 fragment 模式；对这类 `vkcube`-like shader 做窄支持，仍属于方向 1 的主线推进，而不是转去做泛化 compiler 扩张 |
+| Vertex push-constant runtime support 优先通过 pipeline layout runtime gate 接入，而不是继续扩大 fragile shader pattern matching | push constants 本质上是 runtime pipeline-layout contract，不该完全绑死在 SPIR-V pattern matcher 上；先靠 layout + runtime injection 打通最小路径，再慢慢把识别收紧 |
 
 ## Key Questions
 1. `GraphicsExecutable` 下一步要承载哪些真正执行期信息，而不是只停留在 metadata？
@@ -245,4 +252,5 @@ Phase 26: Vkcube-like derivative texture fragment support (complete)
 - 2026-03-14 Direction 1 第二刀已收口：`CmdPipelineBarrier` 现已持有 `vk::DependencyInfo` 并把 image barrier layout transition 写入 `ExecutionState.resourceStateTracker`；后续更大的框架切口可继续扩到 wait-events / queue submit / present path 的统一 state model。
 - 2026-03-14 Direction 1 第三刀已收口：`ResourceStateTracker` 现已共享底层 state，`vk::Device`、`VkSwapchainKHR`、以及 submit-time `ExecutionState` 都开始接到同一个 tracker store；这样 acquire/present 与 command-buffer barrier 终于不会各记各的状态。
 - 2026-03-14 已开始面向真实 Vulkan app (`vkcube`) 反推最小缺口：在保持 framework 主线不偏航的前提下，补了一类 `vkcube`-like derivative-lit texture fragment 窄支持；这让 strict GPU render path 不再被该类 shader 直接 gate 死。
+- 2026-03-14 当前已把 vertex push-constant offset 这条最小 vertex runtime 参数路径接通：在 strict GPU draw 下，bootstrap VS 现在能通过 pipeline layout 的 vertex push-constant range 接收前两个 float offset；这为下一步接 `vkcube` 更真实的 vertex uniform/matrix 路径提供了直接参照。
 - 后续主线保留为：把 `GraphicsExecutable` 从 metadata scaffold 演进成正式 graphics execution 入口，以及 transfer/copy/blit/resolve/present 的 backend ownership 和更明确的 backend memory/resource model。

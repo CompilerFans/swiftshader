@@ -144,6 +144,19 @@ bool PipelineLayout::isDescriptorDynamic(uint32_t setNumber, uint32_t bindingNum
 	return DescriptorSetLayout::IsDescriptorDynamic(getDescriptorType(setNumber, bindingNumber));
 }
 
+bool PipelineLayout::hasPushConstantStage(VkShaderStageFlags stageFlags, uint32_t minimumSize) const
+{
+	for(uint32_t i = 0; i < pushConstantRangeCount; i++)
+	{
+		const auto &range = pushConstantRanges[i];
+		if((range.stageFlags & stageFlags) != 0 && range.size >= minimumSize)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
 uint32_t PipelineLayout::incRefCount()
 {
 	return ++refCount;

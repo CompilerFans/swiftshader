@@ -41,6 +41,7 @@ public:
 	VkDescriptorType getDescriptorType(uint32_t setNumber, uint32_t bindingNumber) const;
 	uint32_t getDescriptorSize(uint32_t setNumber, uint32_t bindingNumber) const;
 	bool isDescriptorDynamic(uint32_t setNumber, uint32_t bindingNumber) const;
+	bool hasPushConstantStage(VkShaderStageFlags stageFlags, uint32_t minimumSize = 0) const;
 
 	const uint32_t identifier;
 

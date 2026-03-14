@@ -694,6 +694,8 @@ VkResult GraphicsPipeline::compileShaders(const VkAllocationCallbacks *pAllocato
 		backendExecutableCreateInfo.fragmentModule = backendIRBuilder.build(*fragmentShader);
 		backendExecutableCreateInfo.fragmentShader = fragmentShader.get();
 	}
+	backendExecutableCreateInfo.vertexPushConstantOffsetRuntimeSupported =
+	    layout && layout->hasPushConstantStage(VK_SHADER_STAGE_VERTEX_BIT, sizeof(float) * 2u);
 	backendExecutableCreateInfo.queryDescriptorBindingInfo = queryGraphicsExecutableDescriptorBindingInfo;
 	backendExecutableCreateInfo.queryDescriptorBindingInfoUserdata = layout;
 	backendExecutableCreateInfo.descriptorSetCount = layout ? static_cast<uint32_t>(layout->getDescriptorSetCount()) : 0;

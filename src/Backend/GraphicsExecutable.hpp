@@ -118,6 +118,7 @@ struct GraphicsExecutableCreateInfo
 	std::shared_ptr<sw::SemanticIRModule> fragmentModule;
 	const sw::SpirvShader *vertexShader = nullptr;
 	const sw::SpirvShader *fragmentShader = nullptr;
+	bool vertexPushConstantOffsetRuntimeSupported = false;
 	GraphicsExecutableQueryDescriptorBindingInfo queryDescriptorBindingInfo = nullptr;
 	const void *queryDescriptorBindingInfoUserdata = nullptr;
 	uint32_t descriptorSetCount = 0;
@@ -137,6 +138,7 @@ public:
 	bool hasFragmentStage() const { return !fragmentStageEntryPoint.empty(); }
 	const std::string &fragmentEntryPoint() const { return fragmentStageEntryPoint; }
 	const sw::VertexLoweringInfo &vertexLowering() const { return vertexStageLowering; }
+	bool hasBootstrapVertexPushConstantOffset() const { return bootstrapVertexPushConstantOffsetValid; }
 	float bootstrapPointSize() const { return bootstrapPointSizeValue; }
 	bool hasBootstrapFragmentConfig() const { return bootstrapFragmentConfigValid; }
 	const FragmentBootstrapConfig &bootstrapFragmentConfig() const { return bootstrapFragmentConfigValue; }
@@ -154,6 +156,7 @@ public:
 private:
 	GraphicsExecutable(std::string vertexEntryPoint, std::string fragmentEntryPoint,
 	                   sw::VertexLoweringInfo vertexLowering,
+	                   bool bootstrapVertexPushConstantOffsetValid,
 	                   float bootstrapPointSize,
 	                   bool bootstrapFragmentConfigValid,
 	                   FragmentBootstrapConfig bootstrapFragmentConfig,
@@ -168,6 +171,7 @@ private:
 	    : vertexStageEntryPoint(std::move(vertexEntryPoint))
 	    , fragmentStageEntryPoint(std::move(fragmentEntryPoint))
 	    , vertexStageLowering(std::move(vertexLowering))
+	    , bootstrapVertexPushConstantOffsetValid(bootstrapVertexPushConstantOffsetValid)
 	    , bootstrapPointSizeValue(bootstrapPointSize)
 	    , bootstrapFragmentConfigValid(bootstrapFragmentConfigValid)
 	    , bootstrapFragmentConfigValue(std::move(bootstrapFragmentConfig))
@@ -184,6 +188,7 @@ private:
 	std::string vertexStageEntryPoint;
 	std::string fragmentStageEntryPoint;
 	sw::VertexLoweringInfo vertexStageLowering = {};
+	bool bootstrapVertexPushConstantOffsetValid = false;
 	float bootstrapPointSizeValue = 64.0f;
 	bool bootstrapFragmentConfigValid = false;
 	FragmentBootstrapConfig bootstrapFragmentConfigValue = {};

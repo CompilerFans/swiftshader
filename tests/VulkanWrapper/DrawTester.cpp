@@ -600,6 +600,15 @@ vk::Pipeline DrawTester::createGraphicsPipeline(vk::RenderPass renderPass, uint3
 	vk::PipelineLayoutCreateInfo pipelineLayoutCreateInfo;
 	pipelineLayoutCreateInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
 	pipelineLayoutCreateInfo.pSetLayouts = setLayouts.data();
+	vk::PushConstantRange pushConstantRange;
+	if(pushConstantEnabled)
+	{
+		pushConstantRange.stageFlags = pushConstantStages;
+		pushConstantRange.offset = 0;
+		pushConstantRange.size = pushConstantSize;
+		pipelineLayoutCreateInfo.pushConstantRangeCount = 1;
+		pipelineLayoutCreateInfo.pPushConstantRanges = &pushConstantRange;
+	}
 	pipelineLayout = device.createPipelineLayout(pipelineLayoutCreateInfo);
 
 	vk::GraphicsPipelineCreateInfo pipelineCreateInfo;

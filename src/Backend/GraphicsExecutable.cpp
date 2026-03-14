@@ -161,6 +161,11 @@ bool queryDescriptorBindingInfoForAnalysis(const void *userdata,
 	return true;
 }
 
+bool tryFindInstructionByResultId(const sw::SpirvShader &shader,
+                                  sw::Spirv::Object::ID resultId,
+                                  sw::SpirvShader::InsnIterator *instruction);
+uint32_t getNumInputComponentsAtLocation(const sw::SpirvShader &shader, int32_t location);
+
 bool tryGetBootstrapVertexPointSizeConstant(const sw::SpirvShader &shader, float *pointSize)
 {
 	if(pointSize == nullptr)
@@ -240,6 +245,250 @@ bool tryGetBootstrapVertexPointSizeConstant(const sw::SpirvShader &shader, float
 	}
 	*pointSize = constantPointSize;
 	return true;
+}
+
+bool tryGetLocationZeroInputId(const sw::SpirvShader &shader, uint32_t *locationZeroInputId)
+{
+	if(locationZeroInputId == nullptr)
+	{
+		return false;
+	}
+
+	uint32_t foundId = 0;
+	for(auto insn : shader)
+	{
+		if(insn.opcode() != spv::OpVariable ||
+		   static_cast<spv::StorageClass>(insn.word(3)) != spv::StorageClassInput)
+		{
+			continue;
+		}
+
+		auto objectId = sw::Spirv::Object::ID(insn.word(2));
+		auto decorationIt = shader.decorations.find(objectId);
+		if(decorationIt == shader.decorations.end() ||
+		   !decorationIt->second.HasLocation ||
+		   decorationIt->second.HasBuiltIn ||
+		   decorationIt->second.Location != 0)
+		{
+			continue;
+		}
+
+		if(foundId != 0)
+		{
+			return false;
+		}
+		foundId = objectId.value();
+	}
+
+	if(foundId == 0)
+	{
+		return false;
+	}
+
+	*locationZeroInputId = foundId;
+	return true;
+}
+
+bool tryGetPushConstantVariableId(const sw::SpirvShader &shader, uint32_t *pushConstantVariableId)
+{
+	if(pushConstantVariableId == nullptr)
+	{
+		return false;
+	}
+
+	uint32_t foundId = 0;
+	for(auto insn : shader)
+	{
+		if(insn.opcode() != spv::OpVariable ||
+		   static_cast<spv::StorageClass>(insn.word(3)) != spv::StorageClassPushConstant)
+		{
+			continue;
+		}
+
+		if(foundId != 0)
+		{
+			return false;
+		}
+		foundId = insn.word(2);
+	}
+
+	if(foundId == 0)
+	{
+		return false;
+	}
+
+	*pushConstantVariableId = foundId;
+	return true;
+}
+
+bool valueIsPositionLoad(const sw::SpirvShader &shader,
+                         uint32_t locationZeroInputId,
+                         sw::Spirv::Object::ID valueId,
+                         int recursionDepth = 0)
+{
+	if(recursionDepth > 8)
+	{
+		return false;
+	}
+
+	sw::SpirvShader::InsnIterator definingInstruction;
+	if(!tryFindInstructionByResultId(shader, valueId, &definingInstruction))
+	{
+		return false;
+	}
+
+	if(definingInstruction.opcode() == spv::OpLoad && definingInstruction.wordCount() >= 4)
+	{
+		return definingInstruction.word(3) == locationZeroInputId;
+	}
+
+	if((definingInstruction.opcode() == spv::OpCopyObject || definingInstruction.opcode() == spv::OpCopyLogical) &&
+	   definingInstruction.wordCount() >= 4)
+	{
+		return valueIsPositionLoad(shader, locationZeroInputId, sw::Spirv::Object::ID(definingInstruction.word(3)), recursionDepth + 1);
+	}
+
+	return false;
+}
+
+bool valueIsPushConstantVec2Load(const sw::SpirvShader &shader,
+                                 uint32_t pushConstantVariableId,
+                                 sw::Spirv::Object::ID valueId,
+                                 int recursionDepth = 0)
+{
+	if(recursionDepth > 8)
+	{
+		return false;
+	}
+
+	sw::SpirvShader::InsnIterator definingInstruction;
+	if(!tryFindInstructionByResultId(shader, valueId, &definingInstruction))
+	{
+		return false;
+	}
+
+	if(definingInstruction.opcode() == spv::OpLoad && definingInstruction.wordCount() >= 4)
+	{
+		const auto pointerId = sw::Spirv::Object::ID(definingInstruction.word(3));
+		sw::SpirvShader::InsnIterator pointerInstruction;
+		if(!tryFindInstructionByResultId(shader, pointerId, &pointerInstruction))
+		{
+			return false;
+		}
+
+		if((pointerInstruction.opcode() == spv::OpAccessChain || pointerInstruction.opcode() == spv::OpInBoundsAccessChain) &&
+		   pointerInstruction.wordCount() >= 5 &&
+		   pointerInstruction.word(3) == pushConstantVariableId)
+		{
+			return true;
+		}
+
+		return pointerInstruction.opcode() == spv::OpVariable &&
+		       static_cast<spv::StorageClass>(pointerInstruction.word(3)) == spv::StorageClassPushConstant &&
+		       pointerInstruction.word(2) == pushConstantVariableId;
+	}
+
+	if((definingInstruction.opcode() == spv::OpCopyObject || definingInstruction.opcode() == spv::OpCopyLogical) &&
+	   definingInstruction.wordCount() >= 4)
+	{
+		return valueIsPushConstantVec2Load(shader, pushConstantVariableId, sw::Spirv::Object::ID(definingInstruction.word(3)), recursionDepth + 1);
+	}
+
+	return false;
+}
+
+bool valueIsPositionXYPlusPushConstantOffset(const sw::SpirvShader &shader,
+                                             uint32_t locationZeroInputId,
+                                             uint32_t pushConstantVariableId,
+                                             sw::Spirv::Object::ID valueId)
+{
+	sw::SpirvShader::InsnIterator definingInstruction;
+	if(!tryFindInstructionByResultId(shader, valueId, &definingInstruction) ||
+	   definingInstruction.opcode() != spv::OpFAdd ||
+	   definingInstruction.wordCount() < 5)
+	{
+		return false;
+	}
+
+	const auto lhs = sw::Spirv::Object::ID(definingInstruction.word(3));
+	const auto rhs = sw::Spirv::Object::ID(definingInstruction.word(4));
+
+	return (valueIsPushConstantVec2Load(shader, pushConstantVariableId, lhs) &&
+	        valueIsPositionLoad(shader, locationZeroInputId, rhs)) ||
+	       (valueIsPushConstantVec2Load(shader, pushConstantVariableId, rhs) &&
+	        valueIsPositionLoad(shader, locationZeroInputId, lhs));
+}
+
+bool tryGetBootstrapVertexPushConstantOffsetSupport(const sw::SpirvShader &shader)
+{
+	uint32_t locationZeroInputId = 0;
+	uint32_t pushConstantVariableId = 0;
+	if(!tryGetLocationZeroInputId(shader, &locationZeroInputId) ||
+	   !tryGetPushConstantVariableId(shader, &pushConstantVariableId))
+	{
+		return false;
+	}
+
+	auto builtinIt = shader.outputBuiltins.find(spv::BuiltInPosition);
+	if(builtinIt == shader.outputBuiltins.end())
+	{
+		return false;
+	}
+
+	auto builtinId = builtinIt->second.Id;
+	std::unordered_set<uint32_t> candidatePointers = { builtinId.value() };
+	auto objectType = shader.getObjectType(builtinId);
+	if(objectType.isBuiltInBlock)
+	{
+		for(auto insn : shader)
+		{
+			if((insn.opcode() == spv::OpAccessChain || insn.opcode() == spv::OpInBoundsAccessChain) &&
+			   insn.wordCount() >= 5 &&
+			   insn.word(3) == builtinId.value())
+			{
+				candidatePointers.insert(insn.word(2));
+			}
+		}
+	}
+
+	for(auto insn : shader)
+	{
+		if(insn.opcode() != spv::OpStore || candidatePointers.count(insn.word(1)) == 0)
+		{
+			continue;
+		}
+
+		sw::SpirvShader::InsnIterator compositeInstruction;
+		if(!tryFindInstructionByResultId(shader, sw::Spirv::Object::ID(insn.word(2)), &compositeInstruction) ||
+		   compositeInstruction.opcode() != spv::OpCompositeConstruct)
+		{
+			continue;
+		}
+
+		if(compositeInstruction.wordCount() == 6)
+		{
+			const auto xyValueId = sw::Spirv::Object::ID(compositeInstruction.word(3));
+			const auto zValueId = sw::Spirv::Object::ID(compositeInstruction.word(4));
+			const auto wValueId = sw::Spirv::Object::ID(compositeInstruction.word(5));
+
+			if(!valueIsPositionXYPlusPushConstantOffset(shader, locationZeroInputId, pushConstantVariableId, xyValueId))
+			{
+				continue;
+			}
+
+			const auto &wObject = shader.getObject(wValueId);
+			if(wObject.kind != sw::Spirv::Object::Kind::Constant ||
+			   wObject.constantValue.empty() ||
+			   sw::bit_cast<float>(wObject.constantValue[0]) != 1.0f)
+			{
+				continue;
+			}
+
+			return valueIsPositionLoad(shader, locationZeroInputId, zValueId);
+		}
+	}
+
+	return getNumInputComponentsAtLocation(shader, 0) >= 2;
 }
 
 bool tryGetBootstrapFragmentConstantColor(const sw::SpirvShader &shader, backend::FragmentBootstrapConfig *config)
@@ -1406,6 +1655,12 @@ std::shared_ptr<GraphicsExecutable> GraphicsExecutable::create(const GraphicsExe
 	{
 		tryGetBootstrapVertexPointSizeConstant(*createInfo.vertexShader, &bootstrapPointSize);
 	}
+	const bool bootstrapVertexPushConstantOffsetValid =
+	    createInfo.vertexPushConstantOffsetRuntimeSupported &&
+	    createInfo.vertexShader &&
+	    createInfo.pushConstantSize >= sizeof(float) * 2u &&
+	    createInfo.vertexModule->vertexLowering().usesPositionAttribute &&
+	    tryGetBootstrapVertexPushConstantOffsetSupport(*createInfo.vertexShader);
 
 	FragmentBootstrapConfig bootstrapFragmentConfig = {};
 	const bool bootstrapFragmentConfigValid = createInfo.fragmentShader &&
@@ -1542,6 +1797,7 @@ std::shared_ptr<GraphicsExecutable> GraphicsExecutable::create(const GraphicsExe
 	return std::shared_ptr<GraphicsExecutable>(new GraphicsExecutable(createInfo.vertexModule->entryPoint(),
 	                                                                  createInfo.fragmentModule ? createInfo.fragmentModule->entryPoint() : std::string(),
 	                                                                  createInfo.vertexModule->vertexLowering(),
+	                                                                  bootstrapVertexPushConstantOffsetValid,
 	                                                                  bootstrapPointSize,
 	                                                                  bootstrapFragmentConfigValid,
 	                                                                  std::move(bootstrapFragmentConfig),

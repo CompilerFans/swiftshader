@@ -28,6 +28,7 @@ struct TrianglePipelineBootstrapConfig
 	uint32_t vertexCount = 0;
 	GraphicsBootstrapBindingConfig binding = {};
 	bool frontFaceCounterClockwise = true;
+	GraphicsBootstrapRuntimeConfig runtimeConfig = {};
 	std::array<GraphicsBootstrapVertexInput, 3> vertices = {{
 		{ -0.5f, -0.25f, 0.0f },
 		{ 0.0f, 0.75f, 0.0f },

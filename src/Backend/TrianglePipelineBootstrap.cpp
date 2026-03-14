@@ -309,7 +309,7 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	{
 		GraphicsBootstrapShaderConfig shaderConfig = {};
 		shaderConfig.pointSize = config.pointSize;
-		GraphicsBootstrapRuntimeConfig runtimeConfig = {};
+		GraphicsBootstrapRuntimeConfig runtimeConfig = config.runtimeConfig;
 
 		if(!config.rawVertexData.empty() && config.vertexCount != 0)
 		{
@@ -359,7 +359,17 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				texCoordU = texCoord[0];
 				texCoordV = config.binding.texCoordComponentCount > 1 ? texCoord[1] : 0.0f;
 			}
-			vsOutputs[i] = { position[0], position[1], z, 1.0f, config.pointSize, colorR, colorG, colorB, colorA, texCoordU, texCoordV };
+			vsOutputs[i] = { position[0] + config.runtimeConfig.offsetX,
+			                 position[1] + config.runtimeConfig.offsetY,
+			                 z + config.runtimeConfig.offsetZ,
+			                 1.0f,
+			                 config.pointSize,
+			                 colorR,
+			                 colorG,
+			                 colorB,
+			                 colorA,
+			                 texCoordU,
+			                 texCoordV };
 		}
 	}
 	else

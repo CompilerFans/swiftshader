@@ -99,6 +99,25 @@
 - 真实 app smoke：
   - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 20`
   - 结果：不再在 `TextureSamplingUnsupported, Derivatives` 上直接 abort，`/tmp/vkcube_cuda_stamps.txt` 计数为 `60`，对应 `20` 帧 * `3` stage launches
+- 面向真实 app 的下一刀：vertex push-constant bootstrap runtime support
+  - 新增 RED/GREEN：
+    - `DrawTest.VertexShaderUsesPushConstantOffsetStrictGpu`
+  - 同时确认原有 `DrawTest.VertexShaderUsesPushConstantOffset` 也必须继续为绿，避免只修 strict GPU 分支而让一般路径回归。
+  - 根因定位：
+    - `draw.pushConstants` 指针其实是非空的；
+    - 但 bootstrap path 里 `vertexPushConstantOffsetEnabled` 初始一直为 `0`；
+    - 真正缺口不是值传递，而是 `DrawTester` 原先创建 `PipelineLayout` 时根本没把 `pushConstantRanges` 填进去，导致 strict GPU 路径看不到 vertex-stage push constant range；
+    - 其次，bootstrap path 也不应再把这个能力完全绑死在 `GraphicsExecutable` 的脆弱 SPIR-V pattern matcher 上。
+  - 修正内容：
+    - `DrawTester::createGraphicsPipeline()` 现在会把启用的 `pushConstantRange` 真正放进 `pipelineLayoutCreateInfo`。
+    - `vk::PipelineLayout` 新增 `hasPushConstantStage(stageFlags, minimumSize)`。
+    - `TriangleBootstrapDraw` 现在直接根据 `preRasterizationState.getPipelineLayout()->hasPushConstantStage(VK_SHADER_STAGE_VERTEX_BIT, 8)` 决定是否启用 vertex runtime offset，并把前两个 float 注入 `GraphicsBootstrapRuntimeConfig.offsetX/Y`。
+  - 通过 trace 复核：
+    - `SWIFTSHADER_GPU_TRACE_TRIANGLE_BOOTSTRAP_RENDER=1 ./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.VertexShaderUsesPushConstantOffsetStrictGpu'`
+    - 输出已显示 `pushOffsetEnabled=1 vertexOffset=(0.550000,0.000000,0.000000)`
+  - 当前 focused 验证：
+    - `./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.VertexShaderUsesPushConstantOffset:DrawTest.VertexShaderUsesPushConstantOffsetStrictGpu'` passed (`2` tests)
+    - `rm -f /tmp/vkcube_cuda_stamps.txt && VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 5` completed, `/tmp/vkcube_cuda_stamps.txt` count = `15`
 - 会话恢复：
   - 读取并核对 `task_plan.md`、`progress.md`、`findings.md`，确认图形执行重构主线已经推进到 Phase 20 完成，但 `Current Phase` 仍停在旧的 Phase 19。
   - 结合 `git status --short` / `git diff --stat` 确认当前脏树正是前一轮 graphics execution refactor + module cache + pipeline introspection 的实现集合，不是新的未记录分叉。
