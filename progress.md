@@ -1,6 +1,18 @@
 # Progress Log
 
 ## 2026-03-14
+- 独立 `ShaderCompiler` vertex 路径补齐：
+  - 先新增并验证 RED test：`ShaderCompiler.CompilesVertexAssemblyToCudaLikeSource`，确认缺口是 `ShaderCompiler` 尚无 `compileGraphicsVertex(...)`。
+  - 新增 `ShaderCompiler::compileGraphicsVertex(...)`，路径为 `ShaderModuleInput -> SpirvBinary -> SemanticIRBuilder(VK_SHADER_STAGE_VERTEX_BIT) -> lowerToKernelIR(...) -> emitter`。
+  - standalone tool 新增并验证 RED/GREEN：`ShaderCompilerTool.CompilesVertexAssemblyToCudaLikeSource`，`runShaderCompilerTool(...)` 现已支持 `--stage vertex`。
+  - 当前离线最小能力边界：
+    - fragment: `spvasm/spvbin -> cuda/llvm`
+    - vertex: `spvasm -> cuda`
+- 当前 focused 验证：
+  - `cmake --build build-cuda-bootstrap --target backend-unittests vk-unittests shader-compiler --parallel 1` passed
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsExecutable.*:SpirvToCompilerAnalysis.*:KernelIR.*:CodegenEmitter.*:AbiParity.*:ShaderCompiler.*:ShaderCompilerTool.*'` passed (`64` tests)
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`23` tests)
+  - `git diff --check` passed
 - 会话恢复：
   - 读取并核对 `task_plan.md`、`progress.md`、`findings.md`，确认图形执行重构主线已经推进到 Phase 20 完成，但 `Current Phase` 仍停在旧的 Phase 19。
   - 结合 `git status --short` / `git diff --stat` 确认当前脏树正是前一轮 graphics execution refactor + module cache + pipeline introspection 的实现集合，不是新的未记录分叉。

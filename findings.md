@@ -491,3 +491,11 @@
 - New 2026-03-11 GPU-render bring-up finding:
   - Setting `SWIFTSHADER_CUSTOM_GPU_RENDER_TRIANGLE_BOOTSTRAP=1` makes `Renderer::draw()` run the CUDA triangle bootstrap per draw, write the resulting RGBA buffer back into the first color attachment (location 0), and skip the CPU `DrawCall::run()` when successful.
   - This provides an end-to-end proof that `vkcube` can produce presentable swapchain pixels from CUDA kernels (GPU compute), even though full Vulkan shader/pipeline semantics are still not implemented by the bootstrap path.
+
+- New 2026-03-14 standalone compiler finding:
+  - The independent `ShaderCompiler` module no longer needs the heavy `SpirvShader` object graph for the current vertex bring-up path. A minimal `ShaderModuleInput -> SpirvBinary -> SemanticIRBuilder(VK_SHADER_STAGE_VERTEX_BIT)` chain is enough to recover `VertexLoweringInfo` and feed existing `KernelIR` / CUDA-like emission.
+  - This keeps backend unit tests link-light while also aligning the standalone compiler module with the intended future `SPIR-V -> IR lowering -> target codegen` architecture.
+
+- New 2026-03-14 tooling finding:
+  - The standalone `shader-compiler` CLI can safely support `--stage vertex` as a thin dispatch layer over the extracted compiler module, without pulling any Vulkan pipeline/runtime dependencies into the offline path.
+  - The current honest offline support boundary is still narrow: fragment covers `spvasm/spvbin -> cuda/llvm`, while vertex is only verified for `spvasm -> cuda`. Vertex LLVM skeleton emission remains a later slice.

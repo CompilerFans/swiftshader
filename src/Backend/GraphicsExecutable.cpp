@@ -1,7 +1,7 @@
 #include "GraphicsExecutable.hpp"
 
 #include "Pipeline/SemanticIR.hpp"
-#include "Pipeline/ShaderCompilerAnalysis.hpp"
+#include "Pipeline/ShaderCompiler/ShaderCompilerAnalysis.hpp"
 #include "Pipeline/SpirvShader.hpp"
 #include "System/Memory.hpp"
 

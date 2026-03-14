@@ -206,4 +206,5 @@ Phase 21: Attachment lifecycle/state tracking (planning)
 - 当前第八个切片也已完成：texture bootstrap metadata 现在允许极小的 sample passthrough value chain；`vec4 sampledColor = texture(...); outColor = sampledColor;` 这类语义等价 shader 不再被误判为 unsupported。
 - 当前第九个切片也已完成：`GraphicsBackendPipeline` 现在显式覆盖 separate image/sampler negative case，锁住该 descriptor 形态继续留在当前 narrow texture-bootstrap path 之外。
 - 2026-03-14 会话恢复已确认：Phase 19/20 对应实现仍在当前工作区，且 focused `backend-unittests` / `vk-unittests` / `draw-unittests` 全绿；之前未同步的主要问题是 `Current Phase` 指针仍停在旧的 Phase 19。
+- 2026-03-14 compiler sidecar 新增收口：独立 `ShaderCompiler` 现已支持最小 vertex standalone compile 路径，`shader-compiler` tool 也已支持 `--stage vertex` 的 CUDA-like 输出；该离线能力仍是架构预留和 smoke 验证，不改变主线 `GraphicsExecutable` 当前 phase。
 - 后续主线保留为：把 `GraphicsExecutable` 从 metadata scaffold 演进成正式 graphics execution 入口，以及 transfer/copy/blit/resolve/present 的 backend ownership 和更明确的 backend memory/resource model。

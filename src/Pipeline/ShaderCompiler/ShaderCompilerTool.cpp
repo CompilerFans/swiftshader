@@ -160,12 +160,6 @@ int runShaderCompilerTool(const std::vector<std::string> &args, std::ostream &ou
 		return 1;
 	}
 
-	if(options.stage != "fragment")
-	{
-		err << "only fragment stage is supported by the standalone tool right now\n";
-		return 1;
-	}
-
 	CodegenTarget target = CodegenTarget::CudaLikeSource;
 	if(options.outputFormat == "cuda")
 	{
@@ -209,7 +203,21 @@ int runShaderCompilerTool(const std::vector<std::string> &args, std::ostream &ou
 	}
 
 	ShaderCompiler compiler;
-	const ShaderCompilerOutput result = compiler.compileGraphicsFragment(input, defaultToolContext(), target);
+	ShaderCompilerOutput result = {};
+	if(options.stage == "fragment")
+	{
+		result = compiler.compileGraphicsFragment(input, defaultToolContext(), target);
+	}
+	else if(options.stage == "vertex")
+	{
+		result = compiler.compileGraphicsVertex(input, target);
+	}
+	else
+	{
+		err << "unsupported stage: " << options.stage << "\n";
+		return 1;
+	}
+
 	out << result.text;
 	return 0;
 }

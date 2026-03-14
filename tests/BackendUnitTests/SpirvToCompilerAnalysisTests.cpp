@@ -1,6 +1,6 @@
 #include "Pipeline/SpirvBinary.hpp"
-#include "Pipeline/ShaderCompilerAnalysis.hpp"
-#include "Pipeline/ShaderModuleInput.hpp"
+#include "Pipeline/ShaderCompiler/ShaderCompilerAnalysis.hpp"
+#include "Pipeline/ShaderCompiler/ShaderModuleInput.hpp"
 
 #include <gtest/gtest.h>
 #include "spirv-tools/libspirv.hpp"

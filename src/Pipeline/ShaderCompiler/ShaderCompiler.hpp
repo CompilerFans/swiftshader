@@ -20,6 +20,8 @@ struct ShaderCompilerOutput
 class ShaderCompiler
 {
 public:
+	ShaderCompilerOutput compileGraphicsVertex(const ShaderModuleInput &input,
+	                                          CodegenTarget target) const;
 	ShaderCompilerOutput compileGraphicsFragment(const ShaderModuleInput &input,
 	                                            const ShaderCompilerAnalysisContext &context,
 	                                            CodegenTarget target) const;

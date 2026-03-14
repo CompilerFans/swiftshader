@@ -2,7 +2,7 @@
 #include "Pipeline/KernelIR.hpp"
 #include "Pipeline/KernelIRLowering.hpp"
 #include "Pipeline/SemanticIR.hpp"
-#include "Pipeline/ShaderCompilerAnalysis.hpp"
+#include "Pipeline/ShaderCompiler/ShaderCompilerAnalysis.hpp"
 
 #include <gtest/gtest.h>
 

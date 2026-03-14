@@ -1,4 +1,4 @@
-#include "Pipeline/ShaderCompiler.hpp"
+#include "Pipeline/ShaderCompiler/ShaderCompiler.hpp"
 
 #include <gtest/gtest.h>
 #include "spirv-tools/libspirv.hpp"
@@ -67,6 +67,57 @@ constexpr const char kCombinedImageSamplerAssembly[] =
     "%sampler = OpLoad %sampledImage %tex\n"
     "%color = OpImageSampleImplicitLod %v4float %sampler %coord\n"
     "OpStore %outColor %color\n"
+    "OpReturn\n"
+    "OpFunctionEnd\n";
+
+constexpr const char kVertexPositionAssembly[] =
+    "OpCapability Shader\n"
+    "OpMemoryModel Logical GLSL450\n"
+    "OpEntryPoint Vertex %main \"main\" %inPos %gl_VertexIndex %gl_InstanceIndex %gl_PerVertex\n"
+    "OpSource GLSL 450\n"
+    "OpName %main \"main\"\n"
+    "OpName %inPos \"inPos\"\n"
+    "OpName %gl_VertexIndex \"gl_VertexIndex\"\n"
+    "OpName %gl_InstanceIndex \"gl_InstanceIndex\"\n"
+    "OpName %gl_PerVertex \"gl_PerVertex\"\n"
+    "OpMemberName %gl_PerVertex_t 0 \"gl_Position\"\n"
+    "OpMemberName %gl_PerVertex_t 1 \"gl_PointSize\"\n"
+    "OpMemberName %gl_PerVertex_t 2 \"gl_ClipDistance\"\n"
+    "OpMemberName %gl_PerVertex_t 3 \"gl_CullDistance\"\n"
+    "OpDecorate %inPos Location 0\n"
+    "OpDecorate %gl_VertexIndex BuiltIn VertexIndex\n"
+    "OpDecorate %gl_InstanceIndex BuiltIn InstanceIndex\n"
+    "OpMemberDecorate %gl_PerVertex_t 0 BuiltIn Position\n"
+    "OpMemberDecorate %gl_PerVertex_t 1 BuiltIn PointSize\n"
+    "OpMemberDecorate %gl_PerVertex_t 2 BuiltIn ClipDistance\n"
+    "OpMemberDecorate %gl_PerVertex_t 3 BuiltIn CullDistance\n"
+    "OpDecorate %gl_PerVertex_t Block\n"
+    "%void = OpTypeVoid\n"
+    "%func = OpTypeFunction %void\n"
+    "%float = OpTypeFloat 32\n"
+    "%v3float = OpTypeVector %float 3\n"
+    "%v4float = OpTypeVector %float 4\n"
+    "%int = OpTypeInt 32 1\n"
+    "%uint = OpTypeInt 32 0\n"
+    "%uint_1 = OpConstant %uint 1\n"
+    "%int_0 = OpConstant %int 0\n"
+    "%float_0 = OpConstant %float 0\n"
+    "%float_1 = OpConstant %float 1\n"
+    "%_arr_float_uint_1 = OpTypeArray %float %uint_1\n"
+    "%gl_PerVertex_t = OpTypeStruct %v4float %float %_arr_float_uint_1 %_arr_float_uint_1\n"
+    "%_ptr_Input_v3float = OpTypePointer Input %v3float\n"
+    "%_ptr_Input_int = OpTypePointer Input %int\n"
+    "%_ptr_Output_gl_PerVertex_t = OpTypePointer Output %gl_PerVertex_t\n"
+    "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
+    "%inPos = OpVariable %_ptr_Input_v3float Input\n"
+    "%gl_VertexIndex = OpVariable %_ptr_Input_int Input\n"
+    "%gl_InstanceIndex = OpVariable %_ptr_Input_int Input\n"
+    "%gl_PerVertex = OpVariable %_ptr_Output_gl_PerVertex_t Output\n"
+    "%pos = OpConstantComposite %v4float %float_0 %float_0 %float_0 %float_1\n"
+    "%main = OpFunction %void None %func\n"
+    "%entry = OpLabel\n"
+    "%pos_ptr = OpAccessChain %_ptr_Output_v4float %gl_PerVertex %int_0\n"
+    "OpStore %pos_ptr %pos\n"
     "OpReturn\n"
     "OpFunctionEnd\n";
 
@@ -436,6 +487,17 @@ TEST(ShaderCompiler, CompilesFragmentAssemblyToCudaLikeSource)
 	EXPECT_NE(result.text.find("struct FsParams"), std::string::npos);
 	EXPECT_NE(result.text.find("swiftshader_fragment_feature_mask"), std::string::npos);
 	EXPECT_NE(result.text.find("swiftshader_has_texture_plan"), std::string::npos);
+}
+
+TEST(ShaderCompiler, CompilesVertexAssemblyToCudaLikeSource)
+{
+	sw::ShaderCompiler compiler;
+	auto result = compiler.compileGraphicsVertex(sw::ShaderModuleInput::fromAssembly("main", kVertexPositionAssembly),
+	                                             sw::CodegenTarget::CudaLikeSource);
+
+	EXPECT_TRUE(result.kernelIR.hasVertexLoweringInfo());
+	EXPECT_NE(result.text.find("extern \"C\" __global__ void vs_entry"), std::string::npos);
+	EXPECT_NE(result.text.find("params.vertexData + vertexIndex * params.vertexStride + params.positionOffset"), std::string::npos);
 }
 
 TEST(ShaderCompiler, EmitsTextureFragmentCudaKernelForSupportedCombinedSamplerPath)
