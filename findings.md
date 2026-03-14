@@ -511,3 +511,14 @@
 - New 2026-03-14 translator-infrastructure finding:
   - LLPC’s translator is most valuable to SwiftShader as a semantic reference, not as a library to embed directly. The useful parts are its stage-aware entry translation, decoration/resource metadata mapping, and image descriptor extraction flow; the costly part is its tight coupling to `lgc::Builder`, pipeline context, and AMD middle-end assumptions.
   - MLIR’s `SPIRVToLLVMDialectConversion` is the right downstream direction for a serious compiler pipeline, but its current documented gaps around image types, matrix types, and decoration/member-layout conversion mean SwiftShader still needs a richer normalized compiler IR before that lowering can carry real graphics shaders end-to-end.
+
+- New 2026-03-14 swapchain lifecycle finding:
+  - `PresentAdapter` and `ResourceStateTracker` were already wired into `VkSwapchainKHR`, but the semantics were effectively empty because both `acquire()` and `present()` always wrote `VK_IMAGE_LAYOUT_GENERAL`.
+  - Tightening that contract to `VK_IMAGE_LAYOUT_PRESENT_SRC_KHR` makes the swapchain-side lifecycle at least observable and meaningful for later framework work; it does not solve full image-barrier tracking yet, but it removes one obviously content-free state transition from the backend-owned path.
+
+- New 2026-03-14 command-buffer barrier finding:
+  - `ExecutionState.resourceStateTracker` already existed in `VkCommandBuffer`, but `CmdPipelineBarrier` did not carry any dependency payload and therefore could not contribute image-layout state. The missing piece was not tracker storage, but actually threading `VkDependencyInfo` through recorded commands.
+  - Because `vk-unittests` execute against `libvk_swiftshader.so` while also linking backend code into the test binary, global capture state is not a reliable integration probe across that boundary. For this slice, the robust verification mix is:
+    - pure backend unit tests for dependency-info -> tracker semantics
+    - compile/link of `vk-unittests`
+    - a focused draw regression (`DynamicRenderingSolidColorTriangle`) to ensure the now-stateful barrier path does not break existing rendering

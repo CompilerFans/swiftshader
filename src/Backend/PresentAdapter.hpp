@@ -14,6 +14,8 @@ struct PresentAdapterCapture
 	uint32_t presentCount = 0;
 	uint64_t lastAcquireImageId = 0;
 	uint64_t lastPresentImageId = 0;
+	VkImageLayout lastAcquireLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	VkImageLayout lastPresentLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 };
 
 class PresentAdapter

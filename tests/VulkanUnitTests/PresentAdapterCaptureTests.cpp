@@ -37,5 +37,7 @@ TEST_F(PresentAdapterCaptureTest, GpuPresentAdapterCaptureApiWorks)
 	EXPECT_EQ(capture.presentCount, 1u);
 	EXPECT_EQ(capture.lastAcquireImageId, 21u);
 	EXPECT_EQ(capture.lastPresentImageId, 21u);
+	EXPECT_EQ(capture.lastAcquireLayout, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	EXPECT_EQ(capture.lastPresentLayout, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }
 #endif

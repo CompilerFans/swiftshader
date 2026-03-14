@@ -7,6 +7,11 @@ namespace {
 
 PresentAdapterCapture gCapture = {};
 
+void markSwapchainImagePresented(ResourceStateTracker &tracker, uint64_t imageId)
+{
+	tracker.transitionImage(imageId, tracker.layoutForImage(imageId), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+}
+
 class FallbackPresentAdapter : public PresentAdapter
 {
 public:
@@ -17,12 +22,12 @@ public:
 
 	void acquire(ResourceStateTracker &tracker, uint64_t imageId) override
 	{
-		tracker.transitionImage(imageId, tracker.layoutForImage(imageId), VK_IMAGE_LAYOUT_GENERAL);
+		markSwapchainImagePresented(tracker, imageId);
 	}
 
 	void present(ResourceStateTracker &tracker, uint64_t imageId) override
 	{
-		tracker.transitionImage(imageId, tracker.layoutForImage(imageId), VK_IMAGE_LAYOUT_GENERAL);
+		markSwapchainImagePresented(tracker, imageId);
 	}
 };
 
@@ -36,16 +41,18 @@ public:
 
 	void acquire(ResourceStateTracker &tracker, uint64_t imageId) override
 	{
-		tracker.transitionImage(imageId, tracker.layoutForImage(imageId), VK_IMAGE_LAYOUT_GENERAL);
+		markSwapchainImagePresented(tracker, imageId);
 		gCapture.acquireCount++;
 		gCapture.lastAcquireImageId = imageId;
+		gCapture.lastAcquireLayout = tracker.layoutForImage(imageId);
 	}
 
 	void present(ResourceStateTracker &tracker, uint64_t imageId) override
 	{
-		tracker.transitionImage(imageId, tracker.layoutForImage(imageId), VK_IMAGE_LAYOUT_GENERAL);
+		markSwapchainImagePresented(tracker, imageId);
 		gCapture.presentCount++;
 		gCapture.lastPresentImageId = imageId;
+		gCapture.lastPresentLayout = tracker.layoutForImage(imageId);
 	}
 };
 

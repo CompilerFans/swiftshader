@@ -233,6 +233,42 @@ private:
 
 struct DependencyInfo : public VkDependencyInfo
 {
+	DependencyInfo(const VkDependencyInfo &dependencyInfo)
+	    : VkDependencyInfo{
+		    VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+		    dependencyInfo.pNext,
+		    dependencyInfo.dependencyFlags,
+		    dependencyInfo.memoryBarrierCount,
+		    nullptr,
+		    dependencyInfo.bufferMemoryBarrierCount,
+		    nullptr,
+		    dependencyInfo.imageMemoryBarrierCount,
+		    nullptr
+	    }
+	{
+		memoryBarriers.resize(dependencyInfo.memoryBarrierCount);
+		for(uint32_t i = 0; i < dependencyInfo.memoryBarrierCount; i++)
+		{
+			memoryBarriers[i] = dependencyInfo.pMemoryBarriers[i];
+		}
+
+		bufferMemoryBarriers.resize(dependencyInfo.bufferMemoryBarrierCount);
+		for(uint32_t i = 0; i < dependencyInfo.bufferMemoryBarrierCount; i++)
+		{
+			bufferMemoryBarriers[i] = dependencyInfo.pBufferMemoryBarriers[i];
+		}
+
+		imageMemoryBarriers.resize(dependencyInfo.imageMemoryBarrierCount);
+		for(uint32_t i = 0; i < dependencyInfo.imageMemoryBarrierCount; i++)
+		{
+			imageMemoryBarriers[i] = dependencyInfo.pImageMemoryBarriers[i];
+		}
+
+		this->pMemoryBarriers = memoryBarriers.empty() ? nullptr : &memoryBarriers.front();
+		this->pBufferMemoryBarriers = bufferMemoryBarriers.empty() ? nullptr : &bufferMemoryBarriers.front();
+		this->pImageMemoryBarriers = imageMemoryBarriers.empty() ? nullptr : &imageMemoryBarriers.front();
+	}
+
 	DependencyInfo(VkPipelineStageFlags srcStageMask, VkPipelineStageFlags dstStageMask,
 	               VkDependencyFlags dependencyFlags,
 	               uint32_t memoryBarrierCount, const VkMemoryBarrier *pMemoryBarriers,

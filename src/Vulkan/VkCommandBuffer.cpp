@@ -26,6 +26,7 @@
 #include "VkPipelineLayout.hpp"
 #include "VkQueryPool.hpp"
 #include "VkRenderPass.hpp"
+#include "VkStructConversion.hpp"
 #include "Backend/ExecutionBackend.hpp"
 #include "Device/Renderer.hpp"
 
@@ -1484,19 +1485,30 @@ private:
 class CmdPipelineBarrier : public vk::CommandBuffer::Command
 {
 public:
+	explicit CmdPipelineBarrier(const vk::DependencyInfo &dependencyInfo)
+	    : dependencyInfo(dependencyInfo)
+	{}
+
 	void execute(vk::CommandBuffer::ExecutionState &executionState) override
 	{
 		// This is a very simple implementation that simply calls sw::Renderer::synchronize(),
 		// since the driver is free to move the source stage towards the bottom of the pipe
 		// and the target stage towards the top, so a full pipeline sync is spec compliant.
-		executionState.renderer->synchronize();
+		if(executionState.renderer)
+		{
+			executionState.renderer->synchronize();
+		}
 
 		// Right now all buffers are read-only in drawcalls but a similar mechanism will be required once we support SSBOs.
 
 		// Also note that this would be a good moment to update cube map borders or decompress compressed textures, if necessary.
+		executionState.resourceStateTracker.trackDependencyInfo(dependencyInfo);
 	}
 
 	std::string description() override { return "vkCmdPipelineBarrier()"; }
+
+private:
+	const vk::DependencyInfo dependencyInfo;
 };
 
 class CmdSignalEvent : public vk::CommandBuffer::Command
@@ -1988,7 +2000,7 @@ void CommandBuffer::dispatchBase(uint32_t baseGroupX, uint32_t baseGroupY, uint3
 
 void CommandBuffer::pipelineBarrier(const VkDependencyInfo &pDependencyInfo)
 {
-	addCommand<::CmdPipelineBarrier>();
+	addCommand<::CmdPipelineBarrier>(vk::DependencyInfo(pDependencyInfo));
 }
 
 void CommandBuffer::bindPipeline(VkPipelineBindPoint pipelineBindPoint, Pipeline *pipeline)

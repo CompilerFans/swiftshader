@@ -41,6 +41,28 @@
     - image/sample lowering 的 descriptor-extraction 路径
     - MLIR SPIR-V -> LLVM 的能力边界与当前缺口
     - 对 SwiftShader 独立 `ShaderCompiler` 模块的推荐分层
+- Direction 1 启动切片：swapchain present lifecycle tracking
+  - 新增 RED tests，把 `PresentAdapter/ResourceStateTracker` 的 acquire/present 逻辑 layout 期望从模糊的 `GENERAL` 收紧为可解释的 `PRESENT_SRC_KHR`：
+    - `PresentAdapterFactory.UpdatesLayoutOnAcquireAndPresent`
+    - `PresentAdapterFactory.GpuAdapterCapturesAcquireAndPresent`
+    - `PresentAdapterCaptureTest.GpuPresentAdapterCaptureApiWorks`
+  - `PresentAdapterCapture` 现已记录 `lastAcquireLayout` / `lastPresentLayout`。
+  - `PresentAdapter` 的 fallback/GPU 实现现已统一通过 `markSwapchainImagePresented(...)` 把 swapchain-side logical layout 记录为 `VK_IMAGE_LAYOUT_PRESENT_SRC_KHR`。
+  - 当前 focused 验证：
+    - `./build-cuda-bootstrap/backend-unittests --gtest_filter='PresentAdapter*:*ResourceStateTracker*'` passed (`4` tests)
+    - `./build-cuda-bootstrap/vk-unittests --gtest_filter='PresentAdapterCaptureTest.*:PresentAdapter.*'` passed (`2` tests)
+- Direction 1 第二刀：command-buffer image barrier state tracking
+  - 新增 RED/GREEN：`ResourceStateTracker.TracksImageBarriersFromDependencyInfo`
+  - `ResourceStateTracker` 新增：
+    - `trackDependencyInfo(const VkDependencyInfo &)`
+    - transition capture (`lastResourceStateTrackerCapture`)
+    - 通用 Vulkan handle -> tracker id 映射 helper
+  - `vk::DependencyInfo` 新增从原生 `VkDependencyInfo` 的深拷贝构造，避免 command 记录时持有悬空 barrier 指针。
+  - `CmdPipelineBarrier` 现已保存 dependency info，并在 execute 时把 image barrier layout transition 写入 `ExecutionState.resourceStateTracker`。
+  - 当前 focused 验证：
+    - `./build-cuda-bootstrap/backend-unittests --gtest_filter='PresentAdapter*:*ResourceStateTracker*'` passed (`5` tests)
+    - `./build-cuda-bootstrap/vk-unittests --gtest_filter='PresentAdapterCaptureTest.*:PresentAdapter.*'` passed (`2` tests)
+    - `./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.DynamicRenderingSolidColorTriangle'` passed (`1` test)
 - 会话恢复：
   - 读取并核对 `task_plan.md`、`progress.md`、`findings.md`，确认图形执行重构主线已经推进到 Phase 20 完成，但 `Current Phase` 仍停在旧的 Phase 19。
   - 结合 `git status --short` / `git diff --stat` 确认当前脏树正是前一轮 graphics execution refactor + module cache + pipeline introspection 的实现集合，不是新的未记录分叉。

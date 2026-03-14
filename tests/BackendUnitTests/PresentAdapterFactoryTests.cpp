@@ -19,9 +19,9 @@ TEST(PresentAdapterFactory, UpdatesLayoutOnAcquireAndPresent)
     auto adapter = backend::createPresentAdapter();
     backend::ResourceStateTracker tracker;
     adapter->acquire(tracker, 7);
-    EXPECT_EQ(tracker.layoutForImage(7), VK_IMAGE_LAYOUT_GENERAL);
+    EXPECT_EQ(tracker.layoutForImage(7), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     adapter->present(tracker, 7);
-    EXPECT_EQ(tracker.layoutForImage(7), VK_IMAGE_LAYOUT_GENERAL);
+    EXPECT_EQ(tracker.layoutForImage(7), VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }
 
 #if SWIFTSHADER_ENABLE_GPU_BACKEND
@@ -37,5 +37,7 @@ TEST(PresentAdapterFactory, GpuAdapterCapturesAcquireAndPresent)
 	EXPECT_EQ(capture.presentCount, 1u);
 	EXPECT_EQ(capture.lastAcquireImageId, 11u);
 	EXPECT_EQ(capture.lastPresentImageId, 11u);
+	EXPECT_EQ(capture.lastAcquireLayout, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+	EXPECT_EQ(capture.lastPresentLayout, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
 }
 #endif
