@@ -46,6 +46,24 @@
   - `CombinedImageSampler + direct-sample/passthrough`
   - `SeparateImageSampler + direct-sample/passthrough`
   当前独立编译器已经能直接输出带 `FsParams` / `sampleTexture(...)` / `fs_entry` 的真实 fragment kernel skeleton。
+- 同样的方法也适用于非纹理模板路径：`ConstantColor` 这种不依赖 descriptor / varying 的静态片元模板，已经可以直接从 compiler-analysis 结果下沉到独立编译器的 fragment CUDA-like codegen，而不必再经由旧的 bootstrap helper 拼源码。
+- 这条路径对 `FragCoordQuadrants` 和 `FrontFacingBinaryColors` 也成立：只要模板语义足够窄、能够从 compiler-analysis 稳定识别，就可以直接在独立编译器里落成真实 fragment CUDA-like skeleton，而不用继续绑死在旧的 bootstrap source builder 中。
+- 同样的模式现在已经扩到更多模板：
+  - `FragCoordDiscardLeftConstantColor`
+  - `PointCoordGradient`
+  - `FlatInterpolatedColor`
+  - `InterpolatedColor`
+  - `InterpolatedColorBlueNearFragDepth`
+  这说明“先识别静态模板，再让独立编译器直接产出对应 fragment skeleton”是当前阶段最有效的推进方式。
+- LLVM IR 这一侧也不再只是 metadata 常量容器：虽然还没有走到真正的通用 LLVM lowering，但对 `ConstantColor` 和 `Combined/Separate sampled-image` 这两类路径，已经能输出 `fs_entry` 级 LLVM IR skeleton。这给后续接入真实 LLVM/MLIR lowering 提供了一个更接近目标的落脚点。
+- `FragCoordQuadrants` 和 `FrontFacingBinaryColors` 这两条非纹理模板也已经在 LLVM IR 侧打通，说明“先支持静态模板的 LLVM skeleton，再逐步替换成更结构化 lowering”这条路线是可行的。
+- 把独立编译器的“正式入口”收进 `src/Pipeline/ShaderCompiler/` 是合理的，但当前最稳的迁移方式不是一次性搬空旧路径，而是：
+  - 新目录下放新的正式入口与离线 tool
+  - 旧的顶层头文件先保留为兼容层
+  - 在线 API 继续复用现有测试，离线能力先用最基础 smoke 验证
+  这样不会在框架迁移阶段打断主线 codegen 扩展。
+- `ShaderCompilerTool` 当前保持极简是正确的：它的价值主要在于验证“独立编译器可以离线调用”，而不是现在就取代在线 API 或承载复杂 descriptor/layout 语义。
+- 将主入口正式收口到 `src/Pipeline/ShaderCompiler/`，同时把顶层 `src/Pipeline/*.hpp` 保留为兼容 wrapper，是当前最稳的目录迁移方式：它能建立清晰模块边界，又不会在演进中打断现有 include 面。
 - 这说明下一阶段最合理的推进方式不是一口气做“通用 fragment lowering”，而是沿现有分析已证明安全的窄路径逐条把 codegen 补实：先 combined/separate sampled-image，再考虑 constant-color/fragcoord/frontfacing 等非纹理模板。
 
 ### New Decisions

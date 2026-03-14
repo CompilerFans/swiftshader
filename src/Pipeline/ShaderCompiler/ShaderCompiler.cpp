@@ -1,8 +1,8 @@
 #include "ShaderCompiler.hpp"
 
-#include "CudaLikeSourceEmitter.hpp"
-#include "KernelIRLowering.hpp"
-#include "LlvmIREmitter.hpp"
+#include "../CudaLikeSourceEmitter.hpp"
+#include "../KernelIRLowering.hpp"
+#include "../LlvmIREmitter.hpp"
 
 namespace sw {
 

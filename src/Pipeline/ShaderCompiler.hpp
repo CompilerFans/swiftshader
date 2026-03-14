@@ -1,30 +1,6 @@
 #ifndef SWIFTSHADER_SHADER_COMPILER_HPP_
 #define SWIFTSHADER_SHADER_COMPILER_HPP_
 
-#include "CodegenTarget.hpp"
-#include "KernelIR.hpp"
-#include "ShaderCompilerAnalysis.hpp"
-#include "ShaderModuleInput.hpp"
-
-#include <string>
-
-namespace sw {
-
-struct ShaderCompilerOutput
-{
-	ShaderCompilerAnalysisResult analysis = {};
-	KernelIRModule kernelIR = {};
-	std::string text;
-};
-
-class ShaderCompiler
-{
-public:
-	ShaderCompilerOutput compileGraphicsFragment(const ShaderModuleInput &input,
-	                                            const ShaderCompilerAnalysisContext &context,
-	                                            CodegenTarget target) const;
-};
-
-}  // namespace sw
+#include "ShaderCompiler/ShaderCompiler.hpp"
 
 #endif  // SWIFTSHADER_SHADER_COMPILER_HPP_

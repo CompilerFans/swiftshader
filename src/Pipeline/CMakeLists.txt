@@ -39,9 +39,14 @@ set(PIPELINE_SRC_FILES
     SamplerCore.cpp
     SemanticIR.cpp
     SemanticIR.hpp
-    ShaderCompiler.cpp
+    ShaderCompiler/ShaderCompiler.cpp
     ShaderCompiler.hpp
-    ShaderCompilerAnalysis.cpp
+    ShaderCompiler/ShaderCompiler.hpp
+    ShaderCompiler/ShaderCompilerAnalysis.hpp
+    ShaderCompiler/ShaderModuleInput.hpp
+    ShaderCompiler/CodegenTarget.hpp
+    ShaderCompiler/ShaderCompilerTool.hpp
+    ShaderCompiler/ShaderCompilerAnalysis.cpp
     ShaderCompilerAnalysis.hpp
     ShaderModuleInput.hpp
     SemanticIRBuilder.cpp
@@ -126,4 +131,41 @@ target_link_libraries(vk_pipeline
         Reactor
         SPIRV-Tools
         $<$<NOT:$<BOOL:${SWIFTSHADER_SKIP_PIPELINE_SPIRV_OPT}>>:SPIRV-Tools-opt>
+)
+
+add_executable(shader-compiler
+    ShaderCompiler/ShaderCompilerMain.cpp
+    ShaderCompiler/ShaderCompilerTool.cpp
+)
+
+set_target_properties(shader-compiler PROPERTIES
+    FOLDER "SwiftShader VK"
+    RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}"
+)
+
+target_include_directories(shader-compiler
+    PRIVATE
+        ".."
+        "${SWIFTSHADER_DIR}/include"
+        "${SPIRV-Headers_SOURCE_DIR}/include"
+        "${SPIRV_TOOLS_EXT_INC_DIR}"
+)
+
+target_compile_options(shader-compiler
+    PRIVATE
+        ${ROOT_PROJECT_COMPILE_OPTIONS}
+        ${PIPELINE_COMPILE_OPTIONS}
+)
+
+target_link_options(shader-compiler
+    PUBLIC
+        ${SWIFTSHADER_LINK_FLAGS}
+)
+
+target_link_libraries(shader-compiler
+    PRIVATE
+        vk_pipeline
+        vk_system
+        ${OS_LIBS}
+        ${SWIFTSHADER_LIBS}
 )

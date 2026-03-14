@@ -37,6 +37,11 @@ inline void applyCompilerAnalysisToKernelIR(const ShaderCompilerAnalysisResult &
 	                       analysis.resourcePlan.dynamicOffsetCount != 0 ||
 	                       analysis.resourcePlan.pushConstantSize != 0 ||
 	                       !analysis.resourcePlan.descriptors.empty();
+	info.staticFragmentKind = analysis.staticFragmentKind;
+	info.colorR = analysis.colorR;
+	info.colorG = analysis.colorG;
+	info.colorB = analysis.colorB;
+	info.colorA = analysis.colorA;
 	kernel->setCompilerAnalysisInfo(info);
 }
 

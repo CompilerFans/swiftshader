@@ -25,6 +25,11 @@ struct CompilerAnalysisInfo
 	bool textureBootstrapSupported = false;
 	bool hasImageResourcePlan = false;
 	bool hasResourcePlan = false;
+	ShaderStaticFragmentKind staticFragmentKind = ShaderStaticFragmentKind::None;
+	float colorR = 0.0f;
+	float colorG = 0.0f;
+	float colorB = 0.0f;
+	float colorA = 0.0f;
 };
 
 class KernelIRModule

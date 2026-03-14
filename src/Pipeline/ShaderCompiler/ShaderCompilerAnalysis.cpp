@@ -3,6 +3,7 @@
 #include "spirv-tools/libspirv.hpp"
 #include <spirv/unified1/spirv.hpp>
 
+#include <cstring>
 #include <unordered_map>
 #include <vector>
 
@@ -15,6 +16,9 @@ struct DecorationInfo
 	int binding = -1;
 	bool hasLocation = false;
 	uint32_t location = 0;
+	bool hasBuiltin = false;
+	spv::BuiltIn builtin = static_cast<spv::BuiltIn>(-1);
+	bool flat = false;
 };
 
 struct InstructionInfo
@@ -57,6 +61,7 @@ bool instructionHasTrackedResult(spv::Op opcode, uint32_t wordCount)
 	switch(opcode)
 	{
 	case spv::OpConstant:
+	case spv::OpConstantComposite:
 	case spv::OpVariable:
 	case spv::OpLoad:
 	case spv::OpCopyObject:
@@ -106,6 +111,13 @@ void collectInstructions(const SpirvBinary &spirv,
 			case spv::DecorationLocation:
 				decoration.hasLocation = true;
 				decoration.location = (wordCount > 3) ? words[3] : 0;
+				break;
+			case spv::DecorationBuiltIn:
+				decoration.hasBuiltin = true;
+				decoration.builtin = static_cast<spv::BuiltIn>((wordCount > 3) ? words[3] : 0);
+				break;
+			case spv::DecorationFlat:
+				decoration.flat = true;
 				break;
 			case spv::DecorationDescriptorSet:
 				decoration.descriptorSet = (wordCount > 3) ? static_cast<int>(words[3]) : 0;
@@ -756,6 +768,170 @@ bool locationZeroOutputIsTextureSamplePassthrough(const SpirvBinary &spirv,
 	return valueResolvesToTextureSample(spirv, definitions, types, storedValueId);
 }
 
+bool tryBuildConstantColorFragmentInfo(const SpirvBinary &spirv,
+                                       const std::unordered_map<uint32_t, DecorationInfo> &decorations,
+                                       const std::unordered_map<uint32_t, InstructionInfo> &definitions,
+                                       const std::unordered_map<uint32_t, TypeInfo> &types,
+                                       ShaderCompilerAnalysisResult *result)
+{
+	if(result == nullptr)
+	{
+		return false;
+	}
+
+	uint32_t outputId = 0;
+	if(!tryGetLocationZeroOutputId(decorations, definitions, types, &outputId))
+	{
+		return false;
+	}
+
+	uint32_t storedValueId = 0;
+	bool sawStore = false;
+	for(size_t instruction = 5; instruction < spirv.size();)
+	{
+		uint32_t instructionWord = spirv[instruction];
+		uint32_t wordCount = instructionWord >> spv::WordCountShift;
+		spv::Op opcode = static_cast<spv::Op>(instructionWord & spv::OpCodeMask);
+		const uint32_t *words = &spirv[instruction];
+
+		if(wordCount == 0 || instruction + wordCount > spirv.size())
+		{
+			break;
+		}
+
+		if(opcode == spv::OpStore && wordCount >= 3 && words[1] == outputId)
+		{
+			if(sawStore && storedValueId != words[2])
+			{
+				return false;
+			}
+			storedValueId = words[2];
+			sawStore = true;
+		}
+
+		instruction += wordCount;
+	}
+
+	if(!sawStore)
+	{
+		return false;
+	}
+
+	const auto valueIt = definitions.find(storedValueId);
+	if(valueIt == definitions.end() || valueIt->second.opcode != spv::OpConstantComposite || valueIt->second.words.size() < 7)
+	{
+		return false;
+	}
+
+	const auto &composite = valueIt->second.words;
+	const auto component0 = definitions.find(composite[3]);
+	const auto component1 = definitions.find(composite[4]);
+	const auto component2 = definitions.find(composite[5]);
+	const auto component3 = definitions.find(composite[6]);
+	if(component0 == definitions.end() || component1 == definitions.end() ||
+	   component2 == definitions.end() || component3 == definitions.end())
+	{
+		return false;
+	}
+
+	const auto isFloatConstant = [](const InstructionInfo &info) {
+		return info.opcode == spv::OpConstant && info.words.size() >= 4;
+	};
+	if(!isFloatConstant(component0->second) || !isFloatConstant(component1->second) ||
+	   !isFloatConstant(component2->second) || !isFloatConstant(component3->second))
+	{
+		return false;
+	}
+
+	auto toFloat = [](uint32_t word) {
+		float value;
+		std::memcpy(&value, &word, sizeof(float));
+		return value;
+	};
+
+	result->staticFragmentKind = ShaderStaticFragmentKind::ConstantColor;
+	result->colorR = toFloat(component0->second.words[3]);
+	result->colorG = toFloat(component1->second.words[3]);
+	result->colorB = toFloat(component2->second.words[3]);
+	result->colorA = toFloat(component3->second.words[3]);
+	return true;
+}
+
+bool hasBuiltinInput(const std::unordered_map<uint32_t, DecorationInfo> &decorations,
+                     const std::unordered_map<uint32_t, InstructionInfo> &definitions,
+                     const std::unordered_map<uint32_t, TypeInfo> &types,
+                     spv::BuiltIn builtin)
+{
+	for(const auto &[objectId, decoration] : decorations)
+	{
+		if(!decoration.hasBuiltin || decoration.builtin != builtin)
+		{
+			continue;
+		}
+
+		const auto definitionIt = definitions.find(objectId);
+		if(definitionIt == definitions.end() || definitionIt->second.opcode != spv::OpVariable || definitionIt->second.words.size() < 4)
+		{
+			continue;
+		}
+
+		const auto pointerTypeIt = types.find(definitionIt->second.words[1]);
+		if(pointerTypeIt != types.end() && pointerTypeIt->second.storageClass == spv::StorageClassInput)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool hasBuiltinOutput(const std::unordered_map<uint32_t, DecorationInfo> &decorations,
+                      const std::unordered_map<uint32_t, InstructionInfo> &definitions,
+                      const std::unordered_map<uint32_t, TypeInfo> &types,
+                      spv::BuiltIn builtin)
+{
+	(void)definitions;
+	(void)types;
+	for(const auto &[objectId, decoration] : decorations)
+	{
+		(void)objectId;
+		if(!decoration.hasBuiltin || decoration.builtin != builtin)
+		{
+			continue;
+		}
+		return true;
+	}
+	return false;
+}
+
+bool isInputFlatAtLocation(const std::unordered_map<uint32_t, DecorationInfo> &decorations,
+                           const std::unordered_map<uint32_t, InstructionInfo> &definitions,
+                           const std::unordered_map<uint32_t, TypeInfo> &types,
+                           uint32_t location)
+{
+	for(const auto &[objectId, decoration] : decorations)
+	{
+		if(!decoration.hasLocation || decoration.location != location)
+		{
+			continue;
+		}
+
+		const auto definitionIt = definitions.find(objectId);
+		if(definitionIt == definitions.end() || definitionIt->second.opcode != spv::OpVariable || definitionIt->second.words.size() < 4)
+		{
+			continue;
+		}
+
+		const auto pointerTypeIt = types.find(definitionIt->second.words[1]);
+		if(pointerTypeIt == types.end() || pointerTypeIt->second.storageClass != spv::StorageClassInput)
+		{
+			continue;
+		}
+
+		return decoration.flat;
+	}
+	return false;
+}
+
 ShaderTexturePlan buildTexturePlan(const SpirvBinary &spirv,
                                    const std::unordered_map<uint32_t, DecorationInfo> &decorations,
                                    const std::unordered_map<uint32_t, InstructionInfo> &definitions,
@@ -935,6 +1111,42 @@ ShaderCompilerAnalysisResult analyzeGraphicsFragmentShader(const std::string &en
 	result.resourcePlan.descriptors = collectAllDescriptorRefs(decorations, context);
 
 	result.unsupportedReasonMask = buildUnsupportedReasonMask(result.fragmentFeatureMask, result.texturePlan);
+	if(result.texturePlan.resourceKind == ShaderTextureResourceKind::None)
+	{
+		if(hasBuiltinInput(decorations, definitions, types, spv::BuiltInFragCoord) &&
+		   (result.fragmentFeatureMask & static_cast<uint32_t>(ShaderFragmentFeature::Discard)) != 0)
+		{
+			result.staticFragmentKind = ShaderStaticFragmentKind::FragCoordDiscardLeftConstantColor;
+		}
+		else if(!tryBuildConstantColorFragmentInfo(spirv, decorations, definitions, types, &result))
+		{
+			if(hasBuiltinInput(decorations, definitions, types, spv::BuiltInFragCoord))
+			{
+				result.staticFragmentKind = ShaderStaticFragmentKind::FragCoordQuadrants;
+			}
+			else if(hasBuiltinInput(decorations, definitions, types, spv::BuiltInPointCoord))
+			{
+				result.staticFragmentKind = ShaderStaticFragmentKind::PointCoordGradient;
+			}
+			else if(getInputComponentCountAtLocation(decorations, definitions, types, 0) >= 3 &&
+			        isInputFlatAtLocation(decorations, definitions, types, 0))
+			{
+				result.staticFragmentKind = ShaderStaticFragmentKind::FlatInterpolatedColor;
+			}
+			else if(hasBuiltinOutput(decorations, definitions, types, spv::BuiltInFragDepth))
+			{
+				result.staticFragmentKind = ShaderStaticFragmentKind::InterpolatedColorBlueNearFragDepth;
+			}
+			else if(hasBuiltinInput(decorations, definitions, types, spv::BuiltInFrontFacing))
+			{
+				result.staticFragmentKind = ShaderStaticFragmentKind::FrontFacingBinaryColors;
+			}
+			else if(getInputComponentCountAtLocation(decorations, definitions, types, 0) >= 3)
+			{
+				result.staticFragmentKind = ShaderStaticFragmentKind::InterpolatedColor;
+			}
+		}
+	}
 	for(const auto &ref : result.resourcePlan.descriptors)
 	{
 		if(isBufferDescriptorType(ref.descriptorType))

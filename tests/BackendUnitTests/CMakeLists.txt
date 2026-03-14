@@ -24,9 +24,11 @@ set(BACKEND_UNIT_TESTS_SRC_FILES
     CodegenEmitterTests.cpp
     AbiParityTests.cpp
     ShaderCompilerTests.cpp
+    ShaderCompilerToolTests.cpp
     SpirvToCompilerAnalysisTests.cpp
     SpirvToSemanticIRTests.cpp
-    ${SWIFTSHADER_DIR}/src/Pipeline/ShaderCompiler.cpp
+    ${SWIFTSHADER_DIR}/src/Pipeline/ShaderCompiler/ShaderCompilerTool.cpp
+    ${SWIFTSHADER_DIR}/src/Pipeline/ShaderCompiler/ShaderCompiler.cpp
     ${SWIFTSHADER_DIR}/src/Pipeline/CudaLikeSourceEmitter.cpp
     ${SWIFTSHADER_DIR}/src/Pipeline/LlvmIREmitter.cpp
     ${SWIFTSHADER_DIR}/src/Backend/ComputeExecutable.cpp

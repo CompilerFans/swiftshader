@@ -965,6 +965,316 @@ TEST(SpirvToCompilerAnalysis, MarksDiscardAsUnsupportedFromAssemblyText)
 	          0u);
 }
 
+TEST(SpirvToCompilerAnalysis, RecognizesFragCoordDiscardLeftConstantColorStaticTemplate)
+{
+    static constexpr const char kAssembly[] =
+        "OpCapability Shader\n"
+        "%1 = OpExtInstImport \"GLSL.std.450\"\n"
+        "OpMemoryModel Logical GLSL450\n"
+        "OpEntryPoint Fragment %main \"main\" %gl_FragCoord %outColor\n"
+        "OpExecutionMode %main OriginUpperLeft\n"
+        "OpSource GLSL 450\n"
+        "OpName %main \"main\"\n"
+        "OpName %gl_FragCoord \"gl_FragCoord\"\n"
+        "OpName %outColor \"outColor\"\n"
+        "OpDecorate %gl_FragCoord BuiltIn FragCoord\n"
+        "OpDecorate %outColor Location 0\n"
+        "%void = OpTypeVoid\n"
+        "%3 = OpTypeFunction %void\n"
+        "%float = OpTypeFloat 32\n"
+        "%v4float = OpTypeVector %float 4\n"
+        "%_ptr_Input_v4float = OpTypePointer Input %v4float\n"
+        "%gl_FragCoord = OpVariable %_ptr_Input_v4float Input\n"
+        "%uint = OpTypeInt 32 0\n"
+        "%uint_0 = OpConstant %uint 0\n"
+        "%_ptr_Input_float = OpTypePointer Input %float\n"
+        "%float_640 = OpConstant %float 640\n"
+        "%bool = OpTypeBool\n"
+        "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
+        "%outColor = OpVariable %_ptr_Output_v4float Output\n"
+        "%float_1 = OpConstant %float 1\n"
+        "%float_0 = OpConstant %float 0\n"
+        "%25 = OpConstantComposite %v4float %float_1 %float_0 %float_0 %float_1\n"
+        "%main = OpFunction %void None %3\n"
+        "%5 = OpLabel\n"
+        "%13 = OpAccessChain %_ptr_Input_float %gl_FragCoord %uint_0\n"
+        "%14 = OpLoad %float %13\n"
+        "%17 = OpFOrdLessThan %bool %14 %float_640\n"
+        "OpSelectionMerge %19 None\n"
+        "OpBranchConditional %17 %18 %19\n"
+        "%18 = OpLabel\n"
+        "OpKill\n"
+        "%19 = OpLabel\n"
+        "OpStore %outColor %25\n"
+        "OpReturn\n"
+        "OpFunctionEnd\n";
+
+    sw::ShaderCompilerAnalysisResult result =
+        sw::analyzeGraphicsFragmentShaderAssembly("main", kAssembly, defaultContext());
+
+    EXPECT_EQ(result.staticFragmentKind, sw::ShaderStaticFragmentKind::FragCoordDiscardLeftConstantColor);
+}
+
+TEST(SpirvToCompilerAnalysis, RecognizesFragCoordQuadrantsStaticTemplate)
+{
+    static constexpr const char kAssembly[] =
+        "OpCapability Shader\n"
+        "%1 = OpExtInstImport \"GLSL.std.450\"\n"
+        "OpMemoryModel Logical GLSL450\n"
+        "OpEntryPoint Fragment %main \"main\" %fragCoord %outColor\n"
+        "OpExecutionMode %main OriginUpperLeft\n"
+        "OpSource GLSL 450\n"
+        "OpName %main \"main\"\n"
+        "OpName %fragCoord \"fragCoord\"\n"
+        "OpName %outColor \"outColor\"\n"
+        "OpDecorate %fragCoord BuiltIn FragCoord\n"
+        "OpDecorate %outColor Location 0\n"
+        "%void = OpTypeVoid\n"
+        "%3 = OpTypeFunction %void\n"
+        "%float = OpTypeFloat 32\n"
+        "%v4float = OpTypeVector %float 4\n"
+        "%_ptr_Input_v4float = OpTypePointer Input %v4float\n"
+        "%fragCoord = OpVariable %_ptr_Input_v4float Input\n"
+        "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
+        "%outColor = OpVariable %_ptr_Output_v4float Output\n"
+        "%main = OpFunction %void None %3\n"
+        "%5 = OpLabel\n"
+        "%coord = OpLoad %v4float %fragCoord\n"
+        "OpStore %outColor %coord\n"
+        "OpReturn\n"
+        "OpFunctionEnd\n";
+
+    sw::ShaderCompilerAnalysisResult result =
+        sw::analyzeGraphicsFragmentShaderAssembly("main", kAssembly, defaultContext());
+
+    EXPECT_EQ(result.staticFragmentKind, sw::ShaderStaticFragmentKind::FragCoordQuadrants);
+}
+
+TEST(SpirvToCompilerAnalysis, RecognizesFrontFacingStaticTemplate)
+{
+    static constexpr const char kAssembly[] =
+        "OpCapability Shader\n"
+        "%1 = OpExtInstImport \"GLSL.std.450\"\n"
+        "OpMemoryModel Logical GLSL450\n"
+        "OpEntryPoint Fragment %main \"main\" %frontFacing %outColor\n"
+        "OpExecutionMode %main OriginUpperLeft\n"
+        "OpSource GLSL 450\n"
+        "OpName %main \"main\"\n"
+        "OpName %frontFacing \"frontFacing\"\n"
+        "OpName %outColor \"outColor\"\n"
+        "OpDecorate %frontFacing BuiltIn FrontFacing\n"
+        "OpDecorate %outColor Location 0\n"
+        "%void = OpTypeVoid\n"
+        "%3 = OpTypeFunction %void\n"
+        "%bool = OpTypeBool\n"
+        "%float = OpTypeFloat 32\n"
+        "%v4float = OpTypeVector %float 4\n"
+        "%_ptr_Input_bool = OpTypePointer Input %bool\n"
+        "%frontFacing = OpVariable %_ptr_Input_bool Input\n"
+        "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
+        "%outColor = OpVariable %_ptr_Output_v4float Output\n"
+        "%float_1 = OpConstant %float 1\n"
+        "%float_0 = OpConstant %float 0\n"
+        "%main = OpFunction %void None %3\n"
+        "%5 = OpLabel\n"
+        "%ff = OpLoad %bool %frontFacing\n"
+        "%r = OpSelect %float %ff %float_1 %float_0\n"
+        "%b = OpSelect %float %ff %float_0 %float_1\n"
+        "%color = OpCompositeConstruct %v4float %r %float_0 %b %float_1\n"
+        "OpStore %outColor %color\n"
+        "OpReturn\n"
+        "OpFunctionEnd\n";
+
+    sw::ShaderCompilerAnalysisResult result =
+        sw::analyzeGraphicsFragmentShaderAssembly("main", kAssembly, defaultContext());
+
+	EXPECT_EQ(result.staticFragmentKind, sw::ShaderStaticFragmentKind::FrontFacingBinaryColors);
+}
+
+TEST(SpirvToCompilerAnalysis, RecognizesPointCoordGradientStaticTemplate)
+{
+    static constexpr const char kAssembly[] =
+        "OpCapability Shader\n"
+        "%1 = OpExtInstImport \"GLSL.std.450\"\n"
+        "OpMemoryModel Logical GLSL450\n"
+        "OpEntryPoint Fragment %main \"main\" %pointCoord %outColor\n"
+        "OpExecutionMode %main OriginUpperLeft\n"
+        "OpSource GLSL 450\n"
+        "OpName %main \"main\"\n"
+        "OpName %pointCoord \"pointCoord\"\n"
+        "OpName %outColor \"outColor\"\n"
+        "OpDecorate %pointCoord BuiltIn PointCoord\n"
+        "OpDecorate %outColor Location 0\n"
+        "%void = OpTypeVoid\n"
+        "%3 = OpTypeFunction %void\n"
+        "%float = OpTypeFloat 32\n"
+        "%v2float = OpTypeVector %float 2\n"
+        "%_ptr_Input_v2float = OpTypePointer Input %v2float\n"
+        "%pointCoord = OpVariable %_ptr_Input_v2float Input\n"
+        "%v4float = OpTypeVector %float 4\n"
+        "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
+        "%outColor = OpVariable %_ptr_Output_v4float Output\n"
+        "%float_0 = OpConstant %float 0\n"
+        "%float_1 = OpConstant %float 1\n"
+        "%main = OpFunction %void None %3\n"
+        "%5 = OpLabel\n"
+        "%pc = OpLoad %v2float %pointCoord\n"
+        "%x = OpCompositeExtract %float %pc 0\n"
+        "%y = OpCompositeExtract %float %pc 1\n"
+        "%color = OpCompositeConstruct %v4float %x %y %float_0 %float_1\n"
+        "OpStore %outColor %color\n"
+        "OpReturn\n"
+        "OpFunctionEnd\n";
+
+    sw::ShaderCompilerAnalysisResult result =
+        sw::analyzeGraphicsFragmentShaderAssembly("main", kAssembly, defaultContext());
+
+    EXPECT_EQ(result.staticFragmentKind, sw::ShaderStaticFragmentKind::PointCoordGradient);
+}
+
+TEST(SpirvToCompilerAnalysis, RecognizesFlatInterpolatedColorStaticTemplate)
+{
+    static constexpr const char kAssembly[] =
+        "OpCapability Shader\n"
+        "%1 = OpExtInstImport \"GLSL.std.450\"\n"
+        "OpMemoryModel Logical GLSL450\n"
+        "OpEntryPoint Fragment %main \"main\" %inColor %outColor\n"
+        "OpExecutionMode %main OriginUpperLeft\n"
+        "OpSource GLSL 450\n"
+        "OpName %main \"main\"\n"
+        "OpName %inColor \"inColor\"\n"
+        "OpName %outColor \"outColor\"\n"
+        "OpDecorate %inColor Location 0\n"
+        "OpDecorate %inColor Flat\n"
+        "OpDecorate %outColor Location 0\n"
+        "%void = OpTypeVoid\n"
+        "%3 = OpTypeFunction %void\n"
+        "%float = OpTypeFloat 32\n"
+        "%v4float = OpTypeVector %float 4\n"
+        "%v3float = OpTypeVector %float 3\n"
+        "%_ptr_Input_v3float = OpTypePointer Input %v3float\n"
+        "%inColor = OpVariable %_ptr_Input_v3float Input\n"
+        "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
+        "%outColor = OpVariable %_ptr_Output_v4float Output\n"
+        "%float_1 = OpConstant %float 1\n"
+        "%main = OpFunction %void None %3\n"
+        "%5 = OpLabel\n"
+        "%c = OpLoad %v3float %inColor\n"
+        "%r = OpCompositeExtract %float %c 0\n"
+        "%g = OpCompositeExtract %float %c 1\n"
+        "%b = OpCompositeExtract %float %c 2\n"
+        "%color = OpCompositeConstruct %v4float %r %g %b %float_1\n"
+        "OpStore %outColor %color\n"
+        "OpReturn\n"
+        "OpFunctionEnd\n";
+
+    sw::ShaderCompilerAnalysisResult result =
+        sw::analyzeGraphicsFragmentShaderAssembly("main", kAssembly, defaultContext());
+
+    EXPECT_EQ(result.staticFragmentKind, sw::ShaderStaticFragmentKind::FlatInterpolatedColor);
+}
+
+TEST(SpirvToCompilerAnalysis, RecognizesInterpolatedColorStaticTemplate)
+{
+    static constexpr const char kAssembly[] =
+        "OpCapability Shader\n"
+        "%1 = OpExtInstImport \"GLSL.std.450\"\n"
+        "OpMemoryModel Logical GLSL450\n"
+        "OpEntryPoint Fragment %main \"main\" %inColor %outColor\n"
+        "OpExecutionMode %main OriginUpperLeft\n"
+        "OpSource GLSL 450\n"
+        "OpName %main \"main\"\n"
+        "OpName %inColor \"inColor\"\n"
+        "OpName %outColor \"outColor\"\n"
+        "OpDecorate %inColor Location 0\n"
+        "OpDecorate %outColor Location 0\n"
+        "%void = OpTypeVoid\n"
+        "%3 = OpTypeFunction %void\n"
+        "%float = OpTypeFloat 32\n"
+        "%v4float = OpTypeVector %float 4\n"
+        "%v3float = OpTypeVector %float 3\n"
+        "%_ptr_Input_v3float = OpTypePointer Input %v3float\n"
+        "%inColor = OpVariable %_ptr_Input_v3float Input\n"
+        "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
+        "%outColor = OpVariable %_ptr_Output_v4float Output\n"
+        "%float_1 = OpConstant %float 1\n"
+        "%main = OpFunction %void None %3\n"
+        "%5 = OpLabel\n"
+        "%c = OpLoad %v3float %inColor\n"
+        "%r = OpCompositeExtract %float %c 0\n"
+        "%g = OpCompositeExtract %float %c 1\n"
+        "%b = OpCompositeExtract %float %c 2\n"
+        "%color = OpCompositeConstruct %v4float %r %g %b %float_1\n"
+        "OpStore %outColor %color\n"
+        "OpReturn\n"
+        "OpFunctionEnd\n";
+
+    sw::ShaderCompilerAnalysisResult result =
+        sw::analyzeGraphicsFragmentShaderAssembly("main", kAssembly, defaultContext());
+
+    EXPECT_EQ(result.staticFragmentKind, sw::ShaderStaticFragmentKind::InterpolatedColor);
+}
+
+TEST(SpirvToCompilerAnalysis, RecognizesInterpolatedColorFragDepthStaticTemplate)
+{
+    static constexpr const char kAssembly[] =
+        "OpCapability Shader\n"
+        "%1 = OpExtInstImport \"GLSL.std.450\"\n"
+        "OpMemoryModel Logical GLSL450\n"
+        "OpEntryPoint Fragment %main \"main\" %outColor %vColor %gl_FragDepth\n"
+        "OpExecutionMode %main OriginUpperLeft\n"
+        "OpExecutionMode %main DepthReplacing\n"
+        "OpSource GLSL 450\n"
+        "OpName %main \"main\"\n"
+        "OpName %outColor \"outColor\"\n"
+        "OpName %vColor \"vColor\"\n"
+        "OpName %gl_FragDepth \"gl_FragDepth\"\n"
+        "OpDecorate %outColor Location 0\n"
+        "OpDecorate %vColor Location 0\n"
+        "OpDecorate %gl_FragDepth BuiltIn FragDepth\n"
+        "%void = OpTypeVoid\n"
+        "%3 = OpTypeFunction %void\n"
+        "%float = OpTypeFloat 32\n"
+        "%v4float = OpTypeVector %float 4\n"
+        "%v3float = OpTypeVector %float 3\n"
+        "%_ptr_Input_v3float = OpTypePointer Input %v3float\n"
+        "%vColor = OpVariable %_ptr_Input_v3float Input\n"
+        "%_ptr_Output_v4float = OpTypePointer Output %v4float\n"
+        "%outColor = OpVariable %_ptr_Output_v4float Output\n"
+        "%_ptr_Output_float = OpTypePointer Output %float\n"
+        "%gl_FragDepth = OpVariable %_ptr_Output_float Output\n"
+        "%float_1 = OpConstant %float 1\n"
+        "%uint = OpTypeInt 32 0\n"
+        "%uint_2 = OpConstant %uint 2\n"
+        "%_ptr_Input_float = OpTypePointer Input %float\n"
+        "%uint_0 = OpConstant %uint 0\n"
+        "%bool = OpTypeBool\n"
+        "%float_0_200000003 = OpConstant %float 0.200000003\n"
+        "%float_0_800000012 = OpConstant %float 0.800000012\n"
+        "%main = OpFunction %void None %3\n"
+        "%5 = OpLabel\n"
+        "%13 = OpLoad %v3float %vColor\n"
+        "%15 = OpCompositeExtract %float %13 0\n"
+        "%16 = OpCompositeExtract %float %13 1\n"
+        "%17 = OpCompositeExtract %float %13 2\n"
+        "%18 = OpCompositeConstruct %v4float %15 %16 %17 %float_1\n"
+        "OpStore %outColor %18\n"
+        "%24 = OpAccessChain %_ptr_Input_float %vColor %uint_2\n"
+        "%25 = OpLoad %float %24\n"
+        "%27 = OpAccessChain %_ptr_Input_float %vColor %uint_0\n"
+        "%28 = OpLoad %float %27\n"
+        "%30 = OpFOrdGreaterThan %bool %25 %28\n"
+        "%33 = OpSelect %float %30 %float_0_200000003 %float_0_800000012\n"
+        "OpStore %gl_FragDepth %33\n"
+        "OpReturn\n"
+        "OpFunctionEnd\n";
+
+    sw::ShaderCompilerAnalysisResult result =
+        sw::analyzeGraphicsFragmentShaderAssembly("main", kAssembly, defaultContext());
+
+    EXPECT_EQ(result.staticFragmentKind, sw::ShaderStaticFragmentKind::InterpolatedColorBlueNearFragDepth);
+}
+
 TEST(SpirvToCompilerAnalysis, MarksDerivativesAsUnsupported)
 {
 	sw::SpirvBinary spirv = derivativeFragmentBinary();

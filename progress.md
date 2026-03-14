@@ -140,6 +140,120 @@
     - `CombinedImageSampler + direct-sample/passthrough`
     - `SeparateImageSampler + direct-sample/passthrough`
     - 其余路径仍然回落到 metadata/skeleton 文本，不宣称已支持完整 fragment lowering
+  - 继续把非纹理 fragment 模板接进独立编译器：
+    - `ShaderCompilerAnalysis` 现已能识别最小 `ConstantColor` 静态片元路径
+    - `CudaLikeSourceEmitter` 现已能为 `ConstantColor` 直接输出带 `FsParams` / `fs_entry` 的 fragment CUDA-like kernel
+    - 新增并通过：
+      - `ShaderCompiler.EmitsConstantColorFragmentCudaKernel`
+  - 当前独立编译器可直接输出真实 fragment CUDA-like skeleton 的支持面更新为：
+    - `CombinedImageSampler + direct-sample/passthrough`
+    - `SeparateImageSampler + direct-sample/passthrough`
+    - `ConstantColor`
+  - 继续把已有 bootstrap 模板里的两条非纹理 builtin 路径接进独立编译器：
+    - `ShaderCompilerAnalysis` 现已识别：
+      - `FragCoordQuadrants`
+      - `FrontFacingBinaryColors`
+    - `CudaLikeSourceEmitter` 现已能分别为这两条路径输出带 `fs_entry` 的 fragment CUDA-like kernel
+    - 新增并通过：
+      - `SpirvToCompilerAnalysis.RecognizesFragCoordQuadrantsStaticTemplate`
+      - `SpirvToCompilerAnalysis.RecognizesFrontFacingStaticTemplate`
+      - `ShaderCompiler.EmitsFragCoordQuadrantsFragmentCudaKernel`
+      - `ShaderCompiler.EmitsFrontFacingFragmentCudaKernel`
+    - 当前独立编译器可直接输出真实 fragment CUDA-like skeleton 的支持面更新为：
+      - `CombinedImageSampler + direct-sample/passthrough`
+      - `SeparateImageSampler + direct-sample/passthrough`
+      - `ConstantColor`
+      - `FragCoordQuadrants`
+      - `FrontFacingBinaryColors`
+  - 继续扩到 point / color / fragdepth 模板：
+    - `ShaderCompilerAnalysis` 现已识别：
+      - `PointCoordGradient`
+      - `FlatInterpolatedColor`
+      - `InterpolatedColor`
+      - `InterpolatedColorBlueNearFragDepth`
+      - `FragCoordDiscardLeftConstantColor`
+    - `CudaLikeSourceEmitter` 现已能为这些模板分别输出 fragment CUDA-like kernel skeleton
+    - 新增并通过：
+      - `ShaderCompiler.EmitsPointCoordGradientFragmentCudaKernel`
+      - `ShaderCompiler.EmitsFlatInterpolatedColorFragmentCudaKernel`
+      - `ShaderCompiler.EmitsInterpolatedColorFragmentCudaKernel`
+      - `ShaderCompiler.EmitsInterpolatedColorFragDepthFragmentCudaKernel`
+      - `ShaderCompiler.EmitsFragCoordDiscardLeftConstantColorFragmentCudaKernel`
+      - 对应 `SpirvToCompilerAnalysis` 识别用例共 `5` 条也已通过
+    - 当前独立编译器可直接输出真实 fragment CUDA-like skeleton 的支持面更新为：
+      - `CombinedImageSampler + direct-sample/passthrough`
+      - `SeparateImageSampler + direct-sample/passthrough`
+      - `ConstantColor`
+      - `FragCoordQuadrants`
+      - `FrontFacingBinaryColors`
+      - `FragCoordDiscardLeftConstantColor`
+      - `PointCoordGradient`
+      - `FlatInterpolatedColor`
+      - `InterpolatedColor`
+      - `InterpolatedColorBlueNearFragDepth`
+  - LLVM IR 这一侧也开始脱离“纯 metadata 常量”：
+    - `LlvmIREmitter` 现在已能为
+      - `ConstantColor`
+      - `CombinedImageSampler/SeparateImageSampler`
+      生成最小 `fs_entry` 级 LLVM IR skeleton，而不再只输出 `kernel_main` 占位
+    - 新增并通过：
+      - `ShaderCompiler.EmitsConstantColorFragmentLlvmIRKernel`
+      - `ShaderCompiler.EmitsCombinedTextureFragmentLlvmIRKernel`
+  - 继续扩 LLVM / CUDA 模板支持面：
+    - `LlvmIREmitter` 现已能为
+      - `FragCoordQuadrants`
+      - `FrontFacingBinaryColors`
+      生成最小 `fs_entry` 级 LLVM IR skeleton
+    - `CudaLikeSourceEmitter` 现已能为
+      - `FragCoordDiscardLeftConstantColor`
+      - `PointCoordGradient`
+      - `FlatInterpolatedColor`
+      - `InterpolatedColor`
+      - `InterpolatedColorBlueNearFragDepth`
+      生成对应的 fragment CUDA-like kernel skeleton
+    - 新增并通过：
+      - `ShaderCompiler.EmitsFragCoordQuadrantsFragmentLlvmIRKernel`
+      - `ShaderCompiler.EmitsFrontFacingFragmentLlvmIRKernel`
+      - `ShaderCompiler.EmitsFragCoordDiscardLeftConstantColorFragmentCudaKernel`
+      - `ShaderCompiler.EmitsPointCoordGradientFragmentCudaKernel`
+      - `ShaderCompiler.EmitsFlatInterpolatedColorFragmentCudaKernel`
+      - `ShaderCompiler.EmitsInterpolatedColorFragmentCudaKernel`
+      - `ShaderCompiler.EmitsInterpolatedColorFragDepthFragmentCudaKernel`
+      - 对应 `SpirvToCompilerAnalysis` 静态模板识别用例也已通过
+  - 进一步推进 `ShaderCompiler/` 目录化与离线框架：
+    - 新增目录与兼容入口：
+      - `src/Pipeline/ShaderCompiler/ShaderCompiler.hpp`
+      - `src/Pipeline/ShaderCompiler/ShaderCompilerAnalysis.hpp`
+      - `src/Pipeline/ShaderCompiler/ShaderModuleInput.hpp`
+      - `src/Pipeline/ShaderCompiler/CodegenTarget.hpp`
+    - 新增离线工具框架：
+      - `src/Pipeline/ShaderCompiler/ShaderCompilerTool.hpp`
+      - `src/Pipeline/ShaderCompiler/ShaderCompilerTool.cpp`
+      - `src/Pipeline/ShaderCompiler/ShaderCompilerMain.cpp`
+    - 新增 `shader-compiler` 构建目标与 `ShaderCompilerTool.*` smoke tests
+    - 当前离线工具定位保持极简：
+      - 支持 `--stage fragment`
+      - 支持 `--input-format spvasm|spvbin`
+      - 支持 `--output-format cuda|llvm`
+      - 主验证仍以在线 API 和现有测试为主
+  - LLVM IR 继续扩到更多模板 skeleton：
+    - `FragCoordQuadrants`
+    - `FrontFacingBinaryColors`
+    - `FragCoordDiscardLeftConstantColor`
+    - `PointCoordGradient`
+    - `FlatInterpolatedColor`
+    - `InterpolatedColor`
+    - `InterpolatedColorBlueNearFragDepth`
+    都已能输出最小 `fs_entry` 级 LLVM IR skeleton
+  - `ShaderCompiler/` 目录已完成主入口收口的第一步：
+    - 顶层 `src/Pipeline/{ShaderCompiler,ShaderCompilerAnalysis,ShaderModuleInput,CodegenTarget}.hpp` 现作为兼容 wrapper
+    - 正式入口位于 `src/Pipeline/ShaderCompiler/`
+    - 构建系统已改为优先编译 `src/Pipeline/ShaderCompiler/ShaderCompiler.cpp` 与 `src/Pipeline/ShaderCompiler/ShaderCompilerAnalysis.cpp`
+  - 最新 focused 验证：
+    - `cmake --build build-cuda-bootstrap --target backend-unittests shader-compiler --parallel 1` passed
+    - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsExecutable.*:SpirvToCompilerAnalysis.*:KernelIR.*:CodegenEmitter.*:AbiParity.*:ShaderCompiler.*:ShaderCompilerTool.*'` passed (`60` tests)
+    - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`23` tests)
+    - `git diff --check` passed
   - 这意味着当前独立编译器已经能对一条真实的 fragment shader 窄路径直接输出可编译的 CUDA-like source，而不再只是 metadata 文本占位。
 
 ## 2026-03-12
