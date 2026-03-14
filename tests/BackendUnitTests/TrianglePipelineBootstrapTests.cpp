@@ -263,6 +263,68 @@ TEST(TrianglePipelineBootstrap, BuildsConfigFromPositionAndColorStreams)
 	EXPECT_EQ(config.binding.colorComponentCount, 3u);
 }
 
+TEST(TrianglePipelineBootstrap, BuildsConfigFromSeparatePositionAndColorBindings)
+{
+	struct PositionVertex
+	{
+		float position[3];
+	};
+
+	struct ColorVertex
+	{
+		float color[3];
+	};
+
+	const std::array<PositionVertex, 3> positions = {{
+		{ { -0.5f, -0.25f, 0.0f } },
+		{ { 0.0f, 0.75f, 0.0f } },
+		{ { 0.5f, -0.25f, 0.0f } },
+	}};
+
+	const std::array<ColorVertex, 3> colors = {{
+		{ { 1.0f, 0.0f, 0.0f } },
+		{ { 0.0f, 1.0f, 0.0f } },
+		{ { 0.0f, 0.0f, 1.0f } },
+	}};
+
+	sw::Stream positionStream = {};
+	positionStream.buffer = positions.data();
+	positionStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	positionStream.vertexStride = sizeof(PositionVertex);
+	positionStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+	positionStream.binding = 0;
+
+	sw::Stream colorStream = {};
+	colorStream.buffer = colors.data();
+	colorStream.inputRate = VK_VERTEX_INPUT_RATE_VERTEX;
+	colorStream.vertexStride = sizeof(ColorVertex);
+	colorStream.format = VK_FORMAT_R32G32B32_SFLOAT;
+	colorStream.binding = 1;
+
+	backend::TrianglePipelineBootstrapConfig config = {};
+	ASSERT_TRUE(backend::buildTrianglePipelineBootstrapConfig(positionStream, &colorStream, VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, 1u,
+	                                                         { { 0, 0 }, { 64, 64 } }, &config));
+
+	EXPECT_EQ(config.vertexCount, 3u);
+	EXPECT_EQ(config.binding.positionComponentCount, 3u);
+	EXPECT_EQ(config.binding.colorComponentCount, 3u);
+	ASSERT_EQ(config.rawVertexData.size(), static_cast<size_t>(config.binding.vertexStride) * config.vertexCount);
+
+	for(uint32_t i = 0; i < config.vertexCount; i++)
+	{
+		const auto *vertexBase = config.rawVertexData.data() + static_cast<size_t>(i) * config.binding.vertexStride;
+		const auto *packedPosition = reinterpret_cast<const float *>(vertexBase + config.binding.positionOffset);
+		const auto *packedColor = reinterpret_cast<const float *>(vertexBase + config.binding.colorOffset);
+
+		EXPECT_FLOAT_EQ(packedPosition[0], positions[i].position[0]);
+		EXPECT_FLOAT_EQ(packedPosition[1], positions[i].position[1]);
+		EXPECT_FLOAT_EQ(packedPosition[2], positions[i].position[2]);
+		EXPECT_FLOAT_EQ(packedColor[0], colors[i].color[0]);
+		EXPECT_FLOAT_EQ(packedColor[1], colors[i].color[1]);
+		EXPECT_FLOAT_EQ(packedColor[2], colors[i].color[2]);
+	}
+}
+
 TEST(TrianglePipelineBootstrap, BuildsConfigFromIndexedPositionStream)
 {
 	struct Vertex

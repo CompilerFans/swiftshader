@@ -23,6 +23,21 @@ struct GraphicsExecutableTextureBinding
 	uint32_t binding = 0;
 };
 
+enum class GraphicsExecutableVertexBootstrapKind : uint32_t
+{
+	None = 0,
+	UniformTransformLighting = 1,
+};
+
+struct GraphicsExecutableVertexBootstrapPlan
+{
+	GraphicsExecutableVertexBootstrapKind kind = GraphicsExecutableVertexBootstrapKind::None;
+	uint32_t descriptorSet = 0;
+	uint32_t binding = 0;
+	bool isDynamic = false;
+	uint32_t dynamicOffsetIndex = 0;
+};
+
 enum class GraphicsExecutableTextureResourceKind : uint32_t
 {
 	None = 0,
@@ -139,6 +154,8 @@ public:
 	const std::string &fragmentEntryPoint() const { return fragmentStageEntryPoint; }
 	const sw::VertexLoweringInfo &vertexLowering() const { return vertexStageLowering; }
 	bool hasBootstrapVertexPushConstantOffset() const { return bootstrapVertexPushConstantOffsetValid; }
+	bool hasVertexBootstrapPlan() const { return vertexBootstrapPlanValue.kind != GraphicsExecutableVertexBootstrapKind::None; }
+	const GraphicsExecutableVertexBootstrapPlan &vertexBootstrapPlan() const { return vertexBootstrapPlanValue; }
 	float bootstrapPointSize() const { return bootstrapPointSizeValue; }
 	bool hasBootstrapFragmentConfig() const { return bootstrapFragmentConfigValid; }
 	const FragmentBootstrapConfig &bootstrapFragmentConfig() const { return bootstrapFragmentConfigValue; }
@@ -157,6 +174,7 @@ private:
 	GraphicsExecutable(std::string vertexEntryPoint, std::string fragmentEntryPoint,
 	                   sw::VertexLoweringInfo vertexLowering,
 	                   bool bootstrapVertexPushConstantOffsetValid,
+	                   GraphicsExecutableVertexBootstrapPlan vertexBootstrapPlan,
 	                   float bootstrapPointSize,
 	                   bool bootstrapFragmentConfigValid,
 	                   FragmentBootstrapConfig bootstrapFragmentConfig,
@@ -172,6 +190,7 @@ private:
 	    , fragmentStageEntryPoint(std::move(fragmentEntryPoint))
 	    , vertexStageLowering(std::move(vertexLowering))
 	    , bootstrapVertexPushConstantOffsetValid(bootstrapVertexPushConstantOffsetValid)
+	    , vertexBootstrapPlanValue(std::move(vertexBootstrapPlan))
 	    , bootstrapPointSizeValue(bootstrapPointSize)
 	    , bootstrapFragmentConfigValid(bootstrapFragmentConfigValid)
 	    , bootstrapFragmentConfigValue(std::move(bootstrapFragmentConfig))
@@ -189,6 +208,7 @@ private:
 	std::string fragmentStageEntryPoint;
 	sw::VertexLoweringInfo vertexStageLowering = {};
 	bool bootstrapVertexPushConstantOffsetValid = false;
+	GraphicsExecutableVertexBootstrapPlan vertexBootstrapPlanValue = {};
 	float bootstrapPointSizeValue = 64.0f;
 	bool bootstrapFragmentConfigValid = false;
 	FragmentBootstrapConfig bootstrapFragmentConfigValue = {};

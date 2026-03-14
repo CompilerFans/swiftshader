@@ -4158,6 +4158,187 @@ TEST_F(DrawTest, VertexShaderUsesPushConstantOffsetStrictGpu)
 #endif
 }
 
+TEST_F(DrawTest, VertexShaderUsesUniformTransformAndLightingStrictGpu)
+{
+	auto artifactPath = makeDrawArtifactPath("uniform-transform-lighting-strict-gpu.bmp");
+	std::filesystem::remove(artifactPath);
+#if SWIFTSHADER_GPU_USE_CUDA
+	auto stampPath = makeCudaLaunchStampPath("uniform-transform-lighting-strict-gpu");
+	std::filesystem::remove(stampPath);
+	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
+	::setenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP", "1", 1);
+	::setenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP", "1", 1);
+#endif
+
+	struct alignas(16) UniformBlock
+	{
+		float modelview[16];
+		float modelviewprojection[16];
+		float normal[12];
+	};
+
+	vk::Buffer uniformBuffer;
+	vk::DeviceMemory uniformMemory;
+
+	DrawTester tester;
+	tester.enableColorClear({ 0.0f, 0.0f, 0.0f, 1.0f });
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex
+		{
+			float position[3];
+			float color[3];
+			float normal[3];
+		};
+
+		Vertex vertexBufferData[] = {
+			{ { -0.95f, -0.85f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+			{ { -0.55f,  0.25f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+			{ { -0.15f, -0.85f, 0.0f }, { 1.0f, 0.0f, 0.0f }, { 0.0f, 1.0f, 0.0f } },
+		};
+
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, color)));
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(2, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, normal)));
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 420 core
+			layout(std140, set = 0, binding = 0) uniform block
+			{
+				mat4 modelviewMatrix;
+				mat4 modelviewprojectionMatrix;
+				mat3 normalMatrix;
+			};
+			layout(location = 0) in vec3 in_position;
+			layout(location = 1) in vec3 in_color;
+			layout(location = 2) in vec3 in_normal;
+			layout(location = 0) out vec4 vVaryingColor;
+			vec4 lightSource = vec4(2.0, 2.0, 20.0, 0.0);
+			void main()
+			{
+				vec4 position4 = vec4(in_position, 1.0);
+				gl_Position = modelviewprojectionMatrix * position4;
+				vec3 vEyeNormal = normalMatrix * in_normal;
+				vec4 vPosition4 = modelviewMatrix * position4;
+				vec3 vPosition3 = vPosition4.xyz / vPosition4.w;
+				vec3 vLightDir = normalize(lightSource.xyz - vPosition3);
+				float diff = max(0.0, dot(vEyeNormal, vLightDir));
+				vVaryingColor = vec4(diff * in_color.rgb, 1.0);
+			})";
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 420 core
+			layout(location = 0) in vec4 vVaryingColor;
+			layout(location = 0) out vec4 f_color;
+			void main()
+			{
+				f_color = vVaryingColor;
+			})";
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.onCreateDescriptorSetLayouts([](DrawTester &) -> std::vector<vk::DescriptorSetLayoutBinding> {
+		vk::DescriptorSetLayoutBinding uboBinding;
+		uboBinding.binding = 0;
+		uboBinding.descriptorCount = 1;
+		uboBinding.descriptorType = vk::DescriptorType::eUniformBuffer;
+		uboBinding.pImmutableSamplers = nullptr;
+		uboBinding.stageFlags = vk::ShaderStageFlagBits::eVertex;
+		return { uboBinding };
+	});
+
+	tester.onUpdateDescriptorSet([&](DrawTester &tester, vk::CommandPool &, vk::DescriptorSet &descriptorSet) {
+		auto writeIdentity = [](float *matrix) {
+			std::memset(matrix, 0, sizeof(float) * 16);
+			matrix[0] = 1.0f;
+			matrix[5] = 1.0f;
+			matrix[10] = 1.0f;
+			matrix[15] = 1.0f;
+		};
+
+		UniformBlock block = {};
+		writeIdentity(block.modelview);
+		writeIdentity(block.modelviewprojection);
+		block.modelviewprojection[12] = 0.55f;
+		block.normal[0] = 1.0f;
+		block.normal[5] = 1.0f;
+		block.normal[10] = 1.0f;
+
+		auto &device = tester.getDevice();
+		auto &physicalDevice = tester.getPhysicalDevice();
+
+		vk::BufferCreateInfo bufferCreateInfo;
+		bufferCreateInfo.size = sizeof(UniformBlock);
+		bufferCreateInfo.usage = vk::BufferUsageFlagBits::eUniformBuffer;
+		bufferCreateInfo.sharingMode = vk::SharingMode::eExclusive;
+		uniformBuffer = device.createBuffer(bufferCreateInfo);
+
+		const auto requirements = device.getBufferMemoryRequirements(uniformBuffer);
+		vk::MemoryAllocateInfo allocateInfo;
+		allocateInfo.allocationSize = requirements.size;
+		allocateInfo.memoryTypeIndex = Util::getMemoryTypeIndex(physicalDevice, requirements.memoryTypeBits,
+		                                                       vk::MemoryPropertyFlagBits::eHostVisible | vk::MemoryPropertyFlagBits::eHostCoherent);
+		uniformMemory = device.allocateMemory(allocateInfo);
+		device.bindBufferMemory(uniformBuffer, uniformMemory, 0);
+
+		auto *mapped = static_cast<uint8_t *>(device.mapMemory(uniformMemory, 0, sizeof(UniformBlock)));
+		std::memcpy(mapped, &block, sizeof(block));
+		device.unmapMemory(uniformMemory);
+
+		vk::DescriptorBufferInfo bufferInfo;
+		bufferInfo.buffer = uniformBuffer;
+		bufferInfo.offset = 0;
+		bufferInfo.range = sizeof(UniformBlock);
+
+		vk::WriteDescriptorSet descriptorWrite;
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = 0;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = vk::DescriptorType::eUniformBuffer;
+		descriptorWrite.descriptorCount = 1;
+		descriptorWrite.pBufferInfo = &bufferInfo;
+		device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+	});
+
+	tester.initialize();
+	tester.renderFrame();
+	tester.saveFrame(artifactPath);
+
+	auto litPixel = tester.readbackPixel(640, 360);
+	auto background = tester.readbackPixel(220, 360);
+	EXPECT_GT(litPixel[0], 10);
+	EXPECT_LT(litPixel[0], 80);
+	EXPECT_LT(litPixel[1], 20);
+	EXPECT_LT(litPixel[2], 20);
+	EXPECT_LT(background[0], 8);
+	EXPECT_LT(background[1], 8);
+	EXPECT_LT(background[2], 8);
+	EXPECT_TRUE(std::filesystem::exists(artifactPath));
+
+#if SWIFTSHADER_GPU_USE_CUDA
+	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
+	::unsetenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP");
+	::unsetenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP");
+#endif
+
+	auto &device = tester.getDevice();
+	if(uniformBuffer)
+	{
+		device.destroyBuffer(uniformBuffer);
+	}
+	if(uniformMemory)
+	{
+		device.freeMemory(uniformMemory);
+	}
+}
+
 TEST_F(DrawTest, FragmentShaderUsesPushConstantTint)
 {
 	auto artifactPath = makeDrawArtifactPath("push-constant-fragment-tint.bmp");

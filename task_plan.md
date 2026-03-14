@@ -4,7 +4,7 @@
 沿着“backend-owned graphics execution”主线持续收口：前几刀已经把 draw 路由收进 `ExecutionBackend`、让 `Renderer::draw()` 变成 CPU-only，并把 triangle bootstrap 的 shader-only 与 texture metadata 逐步迁进 `GraphicsExecutable`；当前重心继续沿 sampled-image resource plan 推进，一方面用真实 sample-use provenance 收口 plan 输入，另一方面开始让 separate image/sampler 真正驱动 strict GPU draw。
 
 ## Current Phase
-Phase 27: Vertex push-constant bootstrap runtime support (complete)
+Phase 28: Vkcube-like vertex uniform bootstrap support (complete)
 
 ## Phases
 ### Phase 1: Discovery
@@ -193,6 +193,13 @@ Phase 27: Vertex push-constant bootstrap runtime support (complete)
 - [x] 跑 focused draw / real app smoke，确认 strict GPU path 下 vertex runtime offset 生效且未回归 `vkcube`
 - **Status:** complete
 
+### Phase 28: Vkcube-like vertex uniform bootstrap support
+- [x] 先写失败测试，锁住 separate-binding vertex stream 收口以及 strict GPU 下的 vkcube-like vertex UBO transform/lighting 结果
+- [x] 让 triangle bootstrap 支持 separate-binding vertex attribute packing，并把 normal stream 纳入 bootstrap VS 输入
+- [x] 让 `GraphicsExecutable` 识别窄的 vertex uniform transform/lighting contract，并在 `TriangleBootstrapDraw` 中物化 UBO runtime config
+- [x] 跑 focused backend / draw / Vulkan 验证，并用仓库版 headless `vkcube` 做 strict GPU smoke
+- **Status:** complete
+
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
@@ -219,6 +226,7 @@ Phase 27: Vertex push-constant bootstrap runtime support (complete)
 | Direction 1 的第三刀选择 shared device resource-state store | 仅有 barrier tracking 和 swapchain tracking 还不够；如果 tracker 仍按对象各自复制存储，状态不会跨 submit/present 连续。先把 tracker 做成共享底层 state，再把 device/swapchain/execution path 接到同一份 store，才有资格继续扩 queue/present/resource lifecycle |
 | 当前为真实 Vulkan app bring-up，允许做“服务于 framework 的窄 shader 语义支持” | `vkcube` 当前 blocker 已从纯框架层转到一类真实 fragment 模式；对这类 `vkcube`-like shader 做窄支持，仍属于方向 1 的主线推进，而不是转去做泛化 compiler 扩张 |
 | Vertex push-constant runtime support 优先通过 pipeline layout runtime gate 接入，而不是继续扩大 fragile shader pattern matching | push constants 本质上是 runtime pipeline-layout contract，不该完全绑死在 SPIR-V pattern matcher 上；先靠 layout + runtime injection 打通最小路径，再慢慢把识别收紧 |
+| Vkcube-like vertex uniform support 先走“窄 contract + runtime materialization”，而不是假装通用 vertex compiler | 当前目标是尽快让真实 Vulkan app 在 strict GPU 路径下画对；先锁定 `position/color/normal + vertex UBO + interpolated-color fragment` 这条最小闭环，比提前泛化到任意 vertex shader 更稳妥 |
 
 ## Key Questions
 1. `GraphicsExecutable` 下一步要承载哪些真正执行期信息，而不是只停留在 metadata？
@@ -253,4 +261,7 @@ Phase 27: Vertex push-constant bootstrap runtime support (complete)
 - 2026-03-14 Direction 1 第三刀已收口：`ResourceStateTracker` 现已共享底层 state，`vk::Device`、`VkSwapchainKHR`、以及 submit-time `ExecutionState` 都开始接到同一个 tracker store；这样 acquire/present 与 command-buffer barrier 终于不会各记各的状态。
 - 2026-03-14 已开始面向真实 Vulkan app (`vkcube`) 反推最小缺口：在保持 framework 主线不偏航的前提下，补了一类 `vkcube`-like derivative-lit texture fragment 窄支持；这让 strict GPU render path 不再被该类 shader 直接 gate 死。
 - 2026-03-14 当前已把 vertex push-constant offset 这条最小 vertex runtime 参数路径接通：在 strict GPU draw 下，bootstrap VS 现在能通过 pipeline layout 的 vertex push-constant range 接收前两个 float offset；这为下一步接 `vkcube` 更真实的 vertex uniform/matrix 路径提供了直接参照。
+- 2026-03-14 当前已把 `vkcube`-like vertex UBO 路径接通：`GraphicsExecutable` 现可识别窄的 `position/color/normal + uniform buffer` vertex contract，`TriangleBootstrapDraw` 会从 descriptor set 物化 `modelView/modelViewProjection/normalMatrix`，bootstrap VS 也已支持 transform + lighting。
+- 2026-03-14 triangle bootstrap 的 vertex 输入不再要求所有 attribute 都和 position 共用同一 binding；当 auxiliary stream 位于不同 binding 时，会先打包成 bootstrap 专用顶点流，再交给 GPU VS。
+- 2026-03-14 仓库版 `third_party/vkcube/build/vkcube -n -o ...` 已能在 strict GPU 路径下产出 headless PNG，这说明当前路线已经不只是“能跑 system vkcube smoke”，而是本地仓库里的真实 UBO cube 路径也能走通。
 - 后续主线保留为：把 `GraphicsExecutable` 从 metadata scaffold 演进成正式 graphics execution 入口，以及 transfer/copy/blit/resolve/present 的 backend ownership 和更明确的 backend memory/resource model。

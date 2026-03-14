@@ -491,6 +491,80 @@ bool tryGetBootstrapVertexPushConstantOffsetSupport(const sw::SpirvShader &shade
 	return getNumInputComponentsAtLocation(shader, 0) >= 2;
 }
 
+bool tryBuildUniformTransformLightingVertexBootstrapPlan(const sw::SpirvShader &shader,
+                                                         const backend::GraphicsExecutableCreateInfo &createInfo,
+                                                         backend::GraphicsExecutableVertexBootstrapPlan *plan)
+{
+	if(plan == nullptr || createInfo.queryDescriptorBindingInfo == nullptr)
+	{
+		return false;
+	}
+	if(getNumInputComponentsAtLocation(shader, 0) < 3 ||
+	   getNumInputComponentsAtLocation(shader, 1) < 3 ||
+	   getNumInputComponentsAtLocation(shader, 2) < 3)
+	{
+		return false;
+	}
+
+	bool foundDescriptor = false;
+	uint32_t foundSet = 0;
+	uint32_t foundBinding = 0;
+	backend::GraphicsExecutableDescriptorBindingInfo foundInfo = {};
+	std::unordered_set<uint64_t> seenBindings;
+
+	for(const auto &entry : shader.descriptorDecorations)
+	{
+		const auto &decoration = entry.second;
+		if(decoration.DescriptorSet < 0 || decoration.Binding < 0)
+		{
+			continue;
+		}
+
+		const uint32_t descriptorSet = static_cast<uint32_t>(decoration.DescriptorSet);
+		const uint32_t descriptorBinding = static_cast<uint32_t>(decoration.Binding);
+		const uint64_t key = (static_cast<uint64_t>(descriptorSet) << 32) | descriptorBinding;
+		if(!seenBindings.insert(key).second)
+		{
+			continue;
+		}
+
+		backend::GraphicsExecutableDescriptorBindingInfo bindingInfo = {};
+		if(!createInfo.queryDescriptorBindingInfo(createInfo.queryDescriptorBindingInfoUserdata, descriptorSet, descriptorBinding, &bindingInfo))
+		{
+			return false;
+		}
+
+		if(bindingInfo.descriptorCount != 1u ||
+		   (bindingInfo.descriptorType != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER &&
+		    bindingInfo.descriptorType != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC))
+		{
+			return false;
+		}
+
+		if(foundDescriptor)
+		{
+			return false;
+		}
+
+		foundDescriptor = true;
+		foundSet = descriptorSet;
+		foundBinding = descriptorBinding;
+		foundInfo = bindingInfo;
+	}
+
+	if(!foundDescriptor)
+	{
+		return false;
+	}
+
+	plan->kind = backend::GraphicsExecutableVertexBootstrapKind::UniformTransformLighting;
+	plan->descriptorSet = foundSet;
+	plan->binding = foundBinding;
+	plan->isDynamic = foundInfo.isDynamic;
+	plan->dynamicOffsetIndex = foundInfo.dynamicOffsetIndex;
+	return true;
+}
+
 bool tryGetBootstrapFragmentConstantColor(const sw::SpirvShader &shader, backend::FragmentBootstrapConfig *config)
 {
 	uint32_t locationZeroOutputId = 0;
@@ -1661,10 +1735,25 @@ std::shared_ptr<GraphicsExecutable> GraphicsExecutable::create(const GraphicsExe
 	    createInfo.pushConstantSize >= sizeof(float) * 2u &&
 	    createInfo.vertexModule->vertexLowering().usesPositionAttribute &&
 	    tryGetBootstrapVertexPushConstantOffsetSupport(*createInfo.vertexShader);
+	GraphicsExecutableVertexBootstrapPlan vertexBootstrapPlan = {};
+	if(createInfo.vertexShader &&
+	   tryBuildUniformTransformLightingVertexBootstrapPlan(*createInfo.vertexShader, createInfo, &vertexBootstrapPlan))
+	{
+		// This narrow bootstrap VS path only preserves fragment semantics when the fragment stage
+		// is a simple interpolated-color consumer.
+	}
 
 	FragmentBootstrapConfig bootstrapFragmentConfig = {};
 	const bool bootstrapFragmentConfigValid = createInfo.fragmentShader &&
 	                                          tryBuildStaticBootstrapFragmentConfig(*createInfo.fragmentShader, &bootstrapFragmentConfig);
+	if(vertexBootstrapPlan.kind != GraphicsExecutableVertexBootstrapKind::None &&
+	   (!bootstrapFragmentConfigValid ||
+	    (bootstrapFragmentConfig.shaderKind != FragmentBootstrapShaderKind::InterpolatedColor &&
+	     bootstrapFragmentConfig.shaderKind != FragmentBootstrapShaderKind::FlatInterpolatedColor &&
+	     bootstrapFragmentConfig.shaderKind != FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth)))
+	{
+		vertexBootstrapPlan = {};
+	}
 	GraphicsExecutableTexturePlan texturePlan = {};
 	GraphicsExecutableImageResourcePlan imageResourcePlan = {};
 	uint32_t fragmentFeatureMask = 0;
@@ -1798,6 +1887,7 @@ std::shared_ptr<GraphicsExecutable> GraphicsExecutable::create(const GraphicsExe
 	                                                                  createInfo.fragmentModule ? createInfo.fragmentModule->entryPoint() : std::string(),
 	                                                                  createInfo.vertexModule->vertexLowering(),
 	                                                                  bootstrapVertexPushConstantOffsetValid,
+	                                                                  std::move(vertexBootstrapPlan),
 	                                                                  bootstrapPointSize,
 	                                                                  bootstrapFragmentConfigValid,
 	                                                                  std::move(bootstrapFragmentConfig),

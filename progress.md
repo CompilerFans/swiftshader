@@ -1685,3 +1685,23 @@
 - Verification:
   - `(cd build-cuda-bootstrap && ./backend-unittests)` passed.
   - `(cd build-cuda-bootstrap && ./vk-unittests --gtest_filter=ComputeBackendPipelineTest.DispatchUsesFakeRuntimeWhenCustomBackendEnabled)` passed.
+
+## 2026-03-14: Vkcube-like vertex uniform bootstrap support
+- 按 TDD 新增并转绿两条核心 RED：
+  - `TrianglePipelineBootstrap.BuildsConfigFromSeparatePositionAndColorBindings`
+  - `DrawTest.VertexShaderUsesUniformTransformAndLightingStrictGpu`
+- 实现收口：
+  - `GraphicsExecutable` 新增窄的 vertex bootstrap plan，识别 `position/color/normal + single vertex UBO + interpolated-color fragment` 这一类 contract。
+  - `TriangleBootstrapDraw` 现可从 bound descriptor set 中读取 uniform buffer（含 dynamic offset 语义），把 `modelView/modelViewProjection/normalMatrix` 注入 `GraphicsBootstrapRuntimeConfig`。
+  - `GraphicsBootstrap` VS 新增 runtime `vertexMode`，支持基于 UBO 的 matrix transform + normal lighting。
+  - `TrianglePipelineBootstrap` 现支持 auxiliary vertex attributes 位于不同 binding：必要时会先把 position/color/texcoord/normal 打包成 bootstrap 专用顶点流。
+- Focused 验证：
+  - `cmake --build build-cuda-bootstrap --target backend-unittests draw-unittests vk-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter='TrianglePipelineBootstrap.BuildsConfigFromSeparatePositionAndColorBindings'` passed
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsBootstrap.*:TrianglePipelineBootstrap.*'` passed (`44` tests)
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`24` tests)
+  - `./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.VertexShaderUsesPushConstantOffsetStrictGpu:DrawTest.VertexShaderUsesUniformTransformAndLightingStrictGpu:DrawTest.DerivativeLitTexturedTriangleStrictGpu'` passed (`3` tests)
+  - `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 env -u SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP -u SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP ./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.TexturedTriangleNearest'` passed
+  - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP=1 SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/local_vkcube_cuda_stamps.txt ./third_party/vkcube/build/vkcube -n -o /tmp/local_cube.png` passed, produced `/tmp/local_cube.png` and `STAMP_LINES=30`
+  - `file /tmp/local_cube.png` -> `PNG image data, 1024 x 768, 8-bit/color RGBA, non-interlaced`
+  - `git diff --check` passed

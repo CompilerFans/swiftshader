@@ -5,6 +5,7 @@
 #include "Backend/TrianglePipelineBootstrap.hpp"
 #include "System/Debug.hpp"
 #include "Vulkan/VkDescriptorSet.hpp"
+#include "Vulkan/VkDescriptorSetLayout.hpp"
 #include "Vulkan/VkDevice.hpp"
 #include "Vulkan/VkPipeline.hpp"
 #include "Vulkan/VkPipelineLayout.hpp"
@@ -192,6 +193,95 @@ bool tryGetSampledImageDescriptor(uint32_t descriptorSetIndex,
 	return true;
 }
 
+bool tryGetBufferDescriptor(const GraphicsExecutableVertexBootstrapPlan &vertexPlan,
+                            const vk::PipelineLayout *pipelineLayout,
+                            const vk::DescriptorSet::Bindings &descriptorSets,
+                            const vk::DescriptorSet::DynamicOffsets &dynamicOffsets,
+                            const vk::BufferDescriptor **descriptor,
+                            uint32_t *dynamicOffset)
+{
+	if(descriptor == nullptr || pipelineLayout == nullptr)
+	{
+		return false;
+	}
+
+	if(vertexPlan.descriptorSet >= pipelineLayout->getDescriptorSetCount())
+	{
+		return false;
+	}
+	if(vertexPlan.binding >= pipelineLayout->getBindingCount(vertexPlan.descriptorSet))
+	{
+		return false;
+	}
+
+	const VkDescriptorType descriptorType = pipelineLayout->getDescriptorType(vertexPlan.descriptorSet, vertexPlan.binding);
+	if(descriptorType != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER &&
+	   descriptorType != VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)
+	{
+		return false;
+	}
+
+	auto descriptorSet = descriptorSets[vertexPlan.descriptorSet];
+	if(descriptorSet == nullptr)
+	{
+		return false;
+	}
+
+	const auto bindingOffset = pipelineLayout->getBindingOffset(vertexPlan.descriptorSet, vertexPlan.binding);
+	auto *bufferDescriptor = reinterpret_cast<const vk::BufferDescriptor *>(descriptorSet + bindingOffset);
+	if(bufferDescriptor == nullptr)
+	{
+		return false;
+	}
+
+	*descriptor = bufferDescriptor;
+	if(dynamicOffset)
+	{
+		*dynamicOffset = vertexPlan.isDynamic ? dynamicOffsets[vertexPlan.dynamicOffsetIndex] : 0u;
+	}
+	return true;
+}
+
+bool tryBuildVertexUniformTransformRuntimeConfig(const GraphicsExecutableVertexBootstrapPlan &vertexPlan,
+                                                const vk::PipelineLayout *pipelineLayout,
+                                                const vk::DescriptorSet::Bindings &descriptorSets,
+                                                const vk::DescriptorSet::DynamicOffsets &dynamicOffsets,
+                                                GraphicsBootstrapRuntimeConfig *runtimeConfig)
+{
+	if(runtimeConfig == nullptr || vertexPlan.kind != GraphicsExecutableVertexBootstrapKind::UniformTransformLighting)
+	{
+		return false;
+	}
+
+	const vk::BufferDescriptor *descriptor = nullptr;
+	uint32_t dynamicOffset = 0;
+	if(!tryGetBufferDescriptor(vertexPlan, pipelineLayout, descriptorSets, dynamicOffsets, &descriptor, &dynamicOffset) ||
+	   descriptor == nullptr || descriptor->ptr == nullptr)
+	{
+		return false;
+	}
+
+	const size_t requiredBytes = sizeof(float) * (16u + 16u + 12u);
+	if(descriptor->sizeInBytes < 0 || static_cast<size_t>(descriptor->sizeInBytes) < requiredBytes)
+	{
+		return false;
+	}
+	if(descriptor->robustnessSize > 0 &&
+	   static_cast<size_t>(descriptor->robustnessSize) < requiredBytes + dynamicOffset)
+	{
+		return false;
+	}
+
+	const auto *bytes = static_cast<const uint8_t *>(descriptor->ptr) + dynamicOffset;
+	runtimeConfig->vertexMode = GraphicsBootstrapRuntimeConfig::VertexMode::UniformTransformLighting;
+	std::memcpy(runtimeConfig->modelView, bytes, sizeof(runtimeConfig->modelView));
+	bytes += sizeof(runtimeConfig->modelView);
+	std::memcpy(runtimeConfig->modelViewProjection, bytes, sizeof(runtimeConfig->modelViewProjection));
+	bytes += sizeof(runtimeConfig->modelViewProjection);
+	std::memcpy(runtimeConfig->normalMatrix, bytes, sizeof(runtimeConfig->normalMatrix));
+	return true;
+}
+
 bool tryBuildBootstrapTextureConfig(const GraphicsExecutableTexturePlan &texturePlan,
                                    const vk::PipelineLayout *pipelineLayout,
                                    const vk::DescriptorSet::Bindings &descriptorSets,
@@ -295,7 +385,9 @@ struct TriangleBootstrapInvocationConfig
 	const FragmentBootstrapConfig *fragmentConfigPtr = nullptr;
 	const sw::Stream *colorStream = nullptr;
 	const sw::Stream *texCoordStream = nullptr;
+	const sw::Stream *normalStream = nullptr;
 	bool vertexPushConstantOffsetEnabled = false;
+	bool vertexUniformTransformLightingEnabled = false;
 	GraphicsBootstrapRuntimeConfig vertexRuntimeConfig = {};
 	float pointSize = 64.0f;
 };
@@ -332,12 +424,34 @@ TriangleBootstrapInvocationConfig buildTriangleBootstrapInvocationConfig(const v
 				config.fragmentConfigPtr = &config.fragmentConfig;
 			}
 		}
+
+		if(preRasterizationState.getPipelineLayout() &&
+		   executable->hasVertexBootstrapPlan() &&
+		   tryBuildVertexUniformTransformRuntimeConfig(executable->vertexBootstrapPlan(),
+		                                             preRasterizationState.getPipelineLayout(),
+		                                             inputs.getDescriptorSets(),
+		                                             inputs.getDescriptorDynamicOffsets(),
+		                                             &config.vertexRuntimeConfig))
+		{
+			config.vertexUniformTransformLightingEnabled = true;
+		}
 	}
 	config.vertexPushConstantOffsetEnabled =
 	    preRasterizationState.getPipelineLayout() &&
 	    preRasterizationState.getPipelineLayout()->hasPushConstantStage(VK_SHADER_STAGE_VERTEX_BIT, sizeof(float) * 2u);
 
-	if(config.fragmentConfigPtr && config.fragmentConfig.shaderKind == FragmentBootstrapShaderKind::Texture2DColor)
+	if(config.vertexUniformTransformLightingEnabled)
+	{
+		if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
+		{
+			config.colorStream = &inputs.getStream(1);
+		}
+		if(inputs.getStream(2).format != VK_FORMAT_UNDEFINED)
+		{
+			config.normalStream = &inputs.getStream(2);
+		}
+	}
+	else if(config.fragmentConfigPtr && config.fragmentConfig.shaderKind == FragmentBootstrapShaderKind::Texture2DColor)
 	{
 		if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
 		{
@@ -488,6 +602,25 @@ bool tryTriangleBootstrapDraw(vk::Device *device,
 			}
 			return false;
 		}
+		if(draw.pipeline->getBackendExecutable() &&
+		   draw.pipeline->getBackendExecutable()->hasVertexBootstrapPlan() &&
+		   !config.vertexUniformTransformLightingEnabled)
+		{
+			if(plan.requireSuccessfulWriteback)
+			{
+				sw::abort("triangle bootstrap unsupported: could not materialize vertex uniform transform config\n");
+			}
+			return false;
+		}
+		if(config.vertexUniformTransformLightingEnabled &&
+		   (config.colorStream == nullptr || config.normalStream == nullptr))
+		{
+			if(plan.requireSuccessfulWriteback)
+			{
+				sw::abort("triangle bootstrap unsupported: missing color/normal streams for vertex uniform transform config\n");
+			}
+			return false;
+		}
 		if(requiresTextureFragmentConfig &&
 		   config.fragmentConfigPtr->shaderKind != FragmentBootstrapShaderKind::Texture2DColor &&
 		   config.fragmentConfigPtr->shaderKind != FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
@@ -518,7 +651,7 @@ bool tryTriangleBootstrapDraw(vk::Device *device,
 		if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
 		{
 			TrianglePipelineBootstrapConfig bootstrapConfig = {};
-			if(!buildTrianglePipelineBootstrapConfig(positionStream, config.colorStream, topology, draw.count, draw.renderArea, &bootstrapConfig, config.fragmentConfigPtr, draw.indexBuffer, indexType, draw.baseVertex, frontFaceCounterClockwise, config.pointSize, config.texCoordStream))
+			if(!buildTrianglePipelineBootstrapConfig(positionStream, config.colorStream, topology, draw.count, draw.renderArea, &bootstrapConfig, config.fragmentConfigPtr, draw.indexBuffer, indexType, draw.baseVertex, frontFaceCounterClockwise, config.pointSize, config.texCoordStream, config.normalStream))
 			{
 				bootstrapSucceeded = false;
 			}
@@ -545,7 +678,7 @@ bool tryTriangleBootstrapDraw(vk::Device *device,
 	if(positionStream.buffer && positionStream.format != VK_FORMAT_UNDEFINED)
 	{
 		TrianglePipelineBootstrapConfig bootstrapConfig = {};
-		if(!buildTrianglePipelineBootstrapConfig(positionStream, config.colorStream, topology, draw.count, draw.renderArea, &bootstrapConfig, config.fragmentConfigPtr, draw.indexBuffer, indexType, draw.baseVertex, frontFaceCounterClockwise, config.pointSize, config.texCoordStream))
+		if(!buildTrianglePipelineBootstrapConfig(positionStream, config.colorStream, topology, draw.count, draw.renderArea, &bootstrapConfig, config.fragmentConfigPtr, draw.indexBuffer, indexType, draw.baseVertex, frontFaceCounterClockwise, config.pointSize, config.texCoordStream, config.normalStream))
 		{
 			rendered = false;
 		}

@@ -534,3 +534,11 @@
 - New 2026-03-14 vertex-push-constant finding:
   - The next real blocker after the `vkcube`-like fragment fix was not missing data plumbing from `CmdSetPushConstants`; `draw.pushConstants` was already non-null. The actual problem was that the bootstrap path had no trustworthy runtime signal saying “this pipeline really declares a vertex-stage push constant range”.
   - Using `PipelineLayout` as that signal is substantially more robust than overfitting another SPIR-V matcher. Once `DrawTester` stopped silently dropping push constant ranges from the test pipeline layout, the strict GPU path could gate on `layout->hasPushConstantStage(VK_SHADER_STAGE_VERTEX_BIT, 8)` and successfully inject the first two floats into `GraphicsBootstrapRuntimeConfig.offsetX/Y`.
+
+- New 2026-03-14 vkcube-like vertex-uniform finding:
+  - 真实的下一步 blocker 不在 fragment，而在 vertex side：当前 strict GPU gate 只约束 fragment unsupported reasons，但本地 `third_party/vkcube` 依赖 `vertex UBO + mat4/mat3 transform + color/normal inputs`。如果不显式建模这一 contract，strict GPU 路径会“继续执行但结果错误”。
+  - 对这类 shader，最小可靠闭环不是直接做通用 vertex compiler，而是三件事一起到位：
+    - pipeline-time 识别窄的 `position/color/normal + single vertex UBO + interpolated-color fragment` contract；
+    - draw-time 从 bound descriptor set 物化 `modelView/modelViewProjection/normalMatrix` runtime payload；
+    - bootstrap VS runtime 支持该 payload，并在必要时把 separate-binding vertex streams 先打包成统一输入。
+  - 一旦这样收口，仓库版 `third_party/vkcube/build/vkcube -n -o ...` 就能在 strict GPU 路径下产出 headless PNG；这比只跑 system `vkcube` smoke 更有说服力，因为它验证的是本仓库里明确使用 vertex UBO 的 cube 路线。

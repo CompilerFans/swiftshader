@@ -21,6 +21,9 @@ struct GraphicsBootstrapVertexInput
 	float colorA = 1.0f;
 	float u = 0.0f;
 	float v = 0.0f;
+	float normalX = 0.0f;
+	float normalY = 0.0f;
+	float normalZ = 1.0f;
 };
 
 struct GraphicsBootstrapVertexOutput
@@ -50,10 +53,20 @@ struct GraphicsBootstrapShaderConfig
 
 struct GraphicsBootstrapRuntimeConfig
 {
+	enum class VertexMode : uint32_t
+	{
+		Passthrough = 0,
+		UniformTransformLighting = 1,
+	};
+
 	float offsetX = 0.0f;
 	float offsetY = 0.0f;
 	float offsetZ = 0.0f;
 	uint32_t instanceIndex = 0;
+	VertexMode vertexMode = VertexMode::Passthrough;
+	float modelView[16] = {};
+	float modelViewProjection[16] = {};
+	float normalMatrix[12] = {};
 };
 
 struct GraphicsBootstrapBindingConfig
@@ -65,6 +78,8 @@ struct GraphicsBootstrapBindingConfig
 	uint32_t colorComponentCount = 4;
 	uint32_t texCoordOffset = offsetof(GraphicsBootstrapVertexInput, u);
 	uint32_t texCoordComponentCount = 2;
+	uint32_t normalOffset = offsetof(GraphicsBootstrapVertexInput, normalX);
+	uint32_t normalComponentCount = 3;
 };
 
 std::string graphicsBootstrapCudaSource(const GraphicsBootstrapShaderConfig &config = {});

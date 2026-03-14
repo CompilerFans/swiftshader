@@ -54,7 +54,7 @@ ScreenVertex projectVertex(const GraphicsBootstrapVertexOutput &output, uint32_t
 	         (1.0f - (ndcY * 0.5f + 0.5f)) * static_cast<float>(height) };
 }
 
-uint32_t positionComponentCount(VkFormat format)
+uint32_t floatFormatComponentCount(VkFormat format)
 {
 	switch(format)
 	{
@@ -67,6 +67,80 @@ uint32_t positionComponentCount(VkFormat format)
 	default:
 		return 0;
 	}
+}
+
+struct PackedBootstrapVertex
+{
+	float position[3] = {};
+	float color[4] = { 1.0f, 1.0f, 1.0f, 1.0f };
+	float texCoord[2] = {};
+	float normal[3] = { 0.0f, 0.0f, 1.0f };
+};
+
+bool streamAliasesPositionBinding(const sw::Stream *stream, const sw::Stream &positionStream)
+{
+	return stream != nullptr &&
+	       stream->buffer != nullptr &&
+	       stream->binding == positionStream.binding &&
+	       stream->inputRate == positionStream.inputRate &&
+	       stream->vertexStride == positionStream.vertexStride;
+}
+
+bool resolveSourceIndex(uint32_t vertexIndex, const void *indexData, VkIndexType indexType, int32_t baseVertex, uint32_t *sourceIndex)
+{
+	if(sourceIndex == nullptr)
+	{
+		return false;
+	}
+
+	int64_t resolvedIndex = vertexIndex;
+	if(indexData != nullptr)
+	{
+		switch(indexType)
+		{
+		case VK_INDEX_TYPE_UINT16:
+			resolvedIndex = static_cast<int64_t>(static_cast<const uint16_t *>(indexData)[vertexIndex]) + baseVertex;
+			break;
+		case VK_INDEX_TYPE_UINT32:
+			resolvedIndex = static_cast<int64_t>(static_cast<const uint32_t *>(indexData)[vertexIndex]) + baseVertex;
+			break;
+		case VK_INDEX_TYPE_UINT8_EXT:
+			resolvedIndex = static_cast<int64_t>(static_cast<const uint8_t *>(indexData)[vertexIndex]) + baseVertex;
+			break;
+		default:
+			return false;
+		}
+	}
+
+	if(resolvedIndex < 0)
+	{
+		return false;
+	}
+
+	*sourceIndex = static_cast<uint32_t>(resolvedIndex);
+	return true;
+}
+
+bool readStreamFloatComponents(const sw::Stream &stream, uint32_t sourceIndex, uint32_t maxComponents, float *components)
+{
+	if(stream.buffer == nullptr || components == nullptr || maxComponents == 0)
+	{
+		return false;
+	}
+
+	const uint32_t componentCount = floatFormatComponentCount(stream.format);
+	if(componentCount == 0 || componentCount > maxComponents)
+	{
+		return false;
+	}
+
+	const auto *source = reinterpret_cast<const float *>(static_cast<const uint8_t *>(stream.buffer) +
+	                                                     static_cast<size_t>(sourceIndex) * stream.vertexStride);
+	for(uint32_t i = 0; i < componentCount; i++)
+	{
+		components[i] = source[i];
+	}
+	return true;
 }
 
 std::array<RasterBootstrapVertex, 3> toRasterVertices(const std::vector<GraphicsBootstrapVertexOutput> &outputs, uint32_t width, uint32_t height)
@@ -183,7 +257,7 @@ void traceBootstrapFailure(const char *reason, const sw::Stream &positionStream,
 
 }  // namespace
 
-bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize, const sw::Stream *texCoordStream)
+bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, TrianglePipelineBootstrapConfig *config, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize, const sw::Stream *texCoordStream, const sw::Stream *normalStream)
 {
 	if(config == nullptr || positionStream.buffer == nullptr)
 	{
@@ -202,7 +276,7 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 		return false;
 	}
 
-	const uint32_t componentCount = positionComponentCount(positionStream.format);
+	const uint32_t componentCount = floatFormatComponentCount(positionStream.format);
 	if(componentCount == 0)
 	{
 		traceBootstrapFailure("unsupported position format", positionStream, topology, primitiveCount, indexType, indexData);
@@ -214,75 +288,144 @@ bool buildTrianglePipelineBootstrapConfig(const sw::Stream &positionStream, cons
 	config->topology = topology;
 	config->pointSize = pointSize;
 	config->vertexCount = topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST ? primitiveCount : ((topology == VK_PRIMITIVE_TOPOLOGY_LINE_LIST) ? primitiveCount * 2u : ((topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP || topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) ? primitiveCount + (topology == VK_PRIMITIVE_TOPOLOGY_LINE_STRIP ? 1u : 2u) : primitiveCount * 3u));
-	if(indexData != nullptr)
+	config->frontFaceCounterClockwise = frontFaceCounterClockwise;
+
+	const bool needsPackedAuxiliaryVertexData =
+	    (colorStream && colorStream->buffer != nullptr && !streamAliasesPositionBinding(colorStream, positionStream)) ||
+	    (texCoordStream && texCoordStream->buffer != nullptr && !streamAliasesPositionBinding(texCoordStream, positionStream)) ||
+	    (normalStream && normalStream->buffer != nullptr && !streamAliasesPositionBinding(normalStream, positionStream));
+
+	if(needsPackedAuxiliaryVertexData || (normalStream && normalStream->buffer != nullptr))
 	{
-		switch(indexType)
+		config->binding.vertexStride = sizeof(PackedBootstrapVertex);
+		config->binding.positionOffset = offsetof(PackedBootstrapVertex, position);
+		config->binding.positionComponentCount = std::min(componentCount, 3u);
+		config->binding.colorOffset = offsetof(PackedBootstrapVertex, color);
+		config->binding.colorComponentCount = (colorStream && colorStream->buffer != nullptr) ? std::min(floatFormatComponentCount(colorStream->format), 4u) : 0u;
+		config->binding.texCoordOffset = offsetof(PackedBootstrapVertex, texCoord);
+		config->binding.texCoordComponentCount = (texCoordStream && texCoordStream->buffer != nullptr) ? std::min(floatFormatComponentCount(texCoordStream->format), 2u) : 0u;
+		config->binding.normalOffset = offsetof(PackedBootstrapVertex, normal);
+		config->binding.normalComponentCount = (normalStream && normalStream->buffer != nullptr) ? std::min(floatFormatComponentCount(normalStream->format), 3u) : 0u;
+
+		config->rawVertexData.resize(static_cast<size_t>(config->binding.vertexStride) * config->vertexCount);
+		for(uint32_t vertexIndex = 0; vertexIndex < config->vertexCount; vertexIndex++)
 		{
-		case VK_INDEX_TYPE_UINT16:
-			if(!expandIndexedVertices(positionStream, config->vertexCount, static_cast<const uint16_t *>(indexData), baseVertex, &config->rawVertexData))
+			uint32_t sourceIndex = 0;
+			if(!resolveSourceIndex(vertexIndex, indexData, indexType, baseVertex, &sourceIndex))
 			{
 				return false;
 			}
-			break;
-		case VK_INDEX_TYPE_UINT32:
-			if(!expandIndexedVertices(positionStream, config->vertexCount, static_cast<const uint32_t *>(indexData), baseVertex, &config->rawVertexData))
+
+			PackedBootstrapVertex packedVertex = {};
+			if(!readStreamFloatComponents(positionStream, sourceIndex, 3u, packedVertex.position))
 			{
 				return false;
 			}
-			break;
-		case VK_INDEX_TYPE_UINT8_EXT:
-			if(!expandIndexedVertices(positionStream, config->vertexCount, static_cast<const uint8_t *>(indexData), baseVertex, &config->rawVertexData))
+			if(colorStream && colorStream->buffer != nullptr)
 			{
-				return false;
+				if(!readStreamFloatComponents(*colorStream, sourceIndex, 4u, packedVertex.color))
+				{
+					return false;
+				}
 			}
-			break;
-		default:
-			return false;
+			if(texCoordStream && texCoordStream->buffer != nullptr)
+			{
+				if(!readStreamFloatComponents(*texCoordStream, sourceIndex, 2u, packedVertex.texCoord))
+				{
+					return false;
+				}
+			}
+			if(normalStream && normalStream->buffer != nullptr)
+			{
+				if(!readStreamFloatComponents(*normalStream, sourceIndex, 3u, packedVertex.normal))
+				{
+					return false;
+				}
+			}
+
+			std::memcpy(config->rawVertexData.data() + static_cast<size_t>(vertexIndex) * config->binding.vertexStride,
+			            &packedVertex,
+			            sizeof(packedVertex));
 		}
 	}
 	else
 	{
-		config->rawVertexData.resize(positionStream.vertexStride * config->vertexCount);
-		std::memcpy(config->rawVertexData.data(), positionStream.buffer, config->rawVertexData.size());
-	}
-	config->frontFaceCounterClockwise = frontFaceCounterClockwise;
-	config->binding.vertexStride = positionStream.vertexStride;
-	config->binding.positionOffset = 0;
-	config->binding.positionComponentCount = componentCount;
-	config->binding.colorOffset = 0;
-	config->binding.colorComponentCount = 0;
-	if(colorStream &&
-	   colorStream->buffer != nullptr &&
-	   colorStream->binding == positionStream.binding &&
-	   colorStream->inputRate == positionStream.inputRate &&
-	   colorStream->vertexStride == positionStream.vertexStride)
-	{
-		const uint32_t colorComponentCount = positionComponentCount(colorStream->format);
-		auto positionBase = static_cast<const uint8_t *>(positionStream.buffer);
-		auto colorBase = static_cast<const uint8_t *>(colorStream->buffer);
-		if(colorComponentCount >= 3 && colorBase >= positionBase)
+		if(indexData != nullptr)
 		{
-			config->binding.colorOffset = static_cast<uint32_t>(colorBase - positionBase);
-			config->binding.colorComponentCount = colorComponentCount;
+			switch(indexType)
+			{
+			case VK_INDEX_TYPE_UINT16:
+				if(!expandIndexedVertices(positionStream, config->vertexCount, static_cast<const uint16_t *>(indexData), baseVertex, &config->rawVertexData))
+				{
+					return false;
+				}
+				break;
+			case VK_INDEX_TYPE_UINT32:
+				if(!expandIndexedVertices(positionStream, config->vertexCount, static_cast<const uint32_t *>(indexData), baseVertex, &config->rawVertexData))
+				{
+					return false;
+				}
+				break;
+			case VK_INDEX_TYPE_UINT8_EXT:
+				if(!expandIndexedVertices(positionStream, config->vertexCount, static_cast<const uint8_t *>(indexData), baseVertex, &config->rawVertexData))
+				{
+					return false;
+				}
+				break;
+			default:
+				return false;
+			}
+		}
+		else
+		{
+			config->rawVertexData.resize(positionStream.vertexStride * config->vertexCount);
+			std::memcpy(config->rawVertexData.data(), positionStream.buffer, config->rawVertexData.size());
+		}
+
+		config->binding.vertexStride = positionStream.vertexStride;
+		config->binding.positionOffset = 0;
+		config->binding.positionComponentCount = componentCount;
+		config->binding.colorOffset = 0;
+		config->binding.colorComponentCount = 0;
+		if(streamAliasesPositionBinding(colorStream, positionStream))
+		{
+			const uint32_t colorComponentCount = floatFormatComponentCount(colorStream->format);
+			auto positionBase = static_cast<const uint8_t *>(positionStream.buffer);
+			auto colorBase = static_cast<const uint8_t *>(colorStream->buffer);
+			if(colorComponentCount >= 3 && colorBase >= positionBase)
+			{
+				config->binding.colorOffset = static_cast<uint32_t>(colorBase - positionBase);
+				config->binding.colorComponentCount = colorComponentCount;
+			}
+		}
+		config->binding.texCoordOffset = 0;
+		config->binding.texCoordComponentCount = 0;
+		if(streamAliasesPositionBinding(texCoordStream, positionStream))
+		{
+			const uint32_t texCoordComponentCount = floatFormatComponentCount(texCoordStream->format);
+			auto positionBase = static_cast<const uint8_t *>(positionStream.buffer);
+			auto texCoordBase = static_cast<const uint8_t *>(texCoordStream->buffer);
+			if(texCoordComponentCount >= 2 && texCoordBase >= positionBase)
+			{
+				config->binding.texCoordOffset = static_cast<uint32_t>(texCoordBase - positionBase);
+				config->binding.texCoordComponentCount = texCoordComponentCount;
+			}
+		}
+		config->binding.normalOffset = 0;
+		config->binding.normalComponentCount = 0;
+		if(streamAliasesPositionBinding(normalStream, positionStream))
+		{
+			const uint32_t normalComponentCount = floatFormatComponentCount(normalStream->format);
+			auto positionBase = static_cast<const uint8_t *>(positionStream.buffer);
+			auto normalBase = static_cast<const uint8_t *>(normalStream->buffer);
+			if(normalComponentCount >= 3 && normalBase >= positionBase)
+			{
+				config->binding.normalOffset = static_cast<uint32_t>(normalBase - positionBase);
+				config->binding.normalComponentCount = normalComponentCount;
+			}
 		}
 	}
-	config->binding.texCoordOffset = 0;
-	config->binding.texCoordComponentCount = 0;
-	if(texCoordStream &&
-	   texCoordStream->buffer != nullptr &&
-	   texCoordStream->binding == positionStream.binding &&
-	   texCoordStream->inputRate == positionStream.inputRate &&
-	   texCoordStream->vertexStride == positionStream.vertexStride)
-	{
-		const uint32_t texCoordComponentCount = positionComponentCount(texCoordStream->format);
-		auto positionBase = static_cast<const uint8_t *>(positionStream.buffer);
-		auto texCoordBase = static_cast<const uint8_t *>(texCoordStream->buffer);
-		if(texCoordComponentCount >= 2 && texCoordBase >= positionBase)
-		{
-			config->binding.texCoordOffset = static_cast<uint32_t>(texCoordBase - positionBase);
-			config->binding.texCoordComponentCount = texCoordComponentCount;
-		}
-	}
+
 	if(fragmentConfig)
 	{
 		config->fragmentConfig = *fragmentConfig;
@@ -359,6 +502,70 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				texCoordU = texCoord[0];
 				texCoordV = config.binding.texCoordComponentCount > 1 ? texCoord[1] : 0.0f;
 			}
+			if(config.runtimeConfig.vertexMode == GraphicsBootstrapRuntimeConfig::VertexMode::UniformTransformLighting)
+			{
+				float normalX = 0.0f;
+				float normalY = 0.0f;
+				float normalZ = 1.0f;
+				if(config.binding.normalComponentCount != 0)
+				{
+					const float *normal = reinterpret_cast<const float *>(config.rawVertexData.data() + i * config.binding.vertexStride + config.binding.normalOffset);
+					normalX = normal[0];
+					normalY = config.binding.normalComponentCount > 1 ? normal[1] : 0.0f;
+					normalZ = config.binding.normalComponentCount > 2 ? normal[2] : 1.0f;
+				}
+
+				auto mulMat4Vec4 = [](const float *matrix, float x, float y, float zValue, float wValue, float &outX, float &outY, float &outZ, float &outW) {
+					outX = matrix[0] * x + matrix[4] * y + matrix[8] * zValue + matrix[12] * wValue;
+					outY = matrix[1] * x + matrix[5] * y + matrix[9] * zValue + matrix[13] * wValue;
+					outZ = matrix[2] * x + matrix[6] * y + matrix[10] * zValue + matrix[14] * wValue;
+					outW = matrix[3] * x + matrix[7] * y + matrix[11] * zValue + matrix[15] * wValue;
+				};
+				auto mulMat3Vec3 = [](const float *matrix, float x, float y, float zValue, float &outX, float &outY, float &outZ) {
+					outX = matrix[0] * x + matrix[4] * y + matrix[8] * zValue;
+					outY = matrix[1] * x + matrix[5] * y + matrix[9] * zValue;
+					outZ = matrix[2] * x + matrix[6] * y + matrix[10] * zValue;
+				};
+
+				float clipX = 0.0f;
+				float clipY = 0.0f;
+				float clipZ = 0.0f;
+				float clipW = 1.0f;
+				mulMat4Vec4(config.runtimeConfig.modelViewProjection, position[0], position[1], z, 1.0f, clipX, clipY, clipZ, clipW);
+
+				float viewX = 0.0f;
+				float viewY = 0.0f;
+				float viewZ = 0.0f;
+				float viewW = 1.0f;
+				mulMat4Vec4(config.runtimeConfig.modelView, position[0], position[1], z, 1.0f, viewX, viewY, viewZ, viewW);
+				mulMat3Vec3(config.runtimeConfig.normalMatrix, normalX, normalY, normalZ, normalX, normalY, normalZ);
+
+				const float reciprocalW = std::fabs(viewW) > 1.0e-20f ? 1.0f / viewW : 1.0f;
+				float lightDirX = 2.0f - viewX * reciprocalW;
+				float lightDirY = 2.0f - viewY * reciprocalW;
+				float lightDirZ = 20.0f - viewZ * reciprocalW;
+				const float lightLength = std::sqrt(lightDirX * lightDirX + lightDirY * lightDirY + lightDirZ * lightDirZ);
+				if(lightLength > 1.0e-20f)
+				{
+					lightDirX /= lightLength;
+					lightDirY /= lightLength;
+					lightDirZ /= lightLength;
+				}
+				const float diffuse = std::max(normalX * lightDirX + normalY * lightDirY + normalZ * lightDirZ, 0.0f);
+				vsOutputs[i] = { clipX,
+				                 clipY,
+				                 clipZ,
+				                 clipW,
+				                 config.pointSize,
+				                 colorR * diffuse,
+				                 colorG * diffuse,
+				                 colorB * diffuse,
+				                 1.0f,
+				                 texCoordU,
+				                 texCoordV };
+				continue;
+			}
+
 			vsOutputs[i] = { position[0] + config.runtimeConfig.offsetX,
 			                 position[1] + config.runtimeConfig.offsetY,
 			                 z + config.runtimeConfig.offsetZ,
@@ -664,10 +871,10 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	return true;
 }
 
-bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize, const sw::Stream *texCoordStream)
+bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const sw::Stream &positionStream, const sw::Stream *colorStream, VkPrimitiveTopology topology, uint32_t primitiveCount, const VkRect2D &renderArea, std::vector<uint8_t> *colorBuffer, const FragmentBootstrapConfig *fragmentConfig, const void *indexData, VkIndexType indexType, int32_t baseVertex, bool frontFaceCounterClockwise, float pointSize, const sw::Stream *texCoordStream, const sw::Stream *normalStream)
 {
 	TrianglePipelineBootstrapConfig config = {};
-	if(!buildTrianglePipelineBootstrapConfig(positionStream, colorStream, topology, primitiveCount, renderArea, &config, fragmentConfig, indexData, indexType, baseVertex, frontFaceCounterClockwise, pointSize, texCoordStream))
+	if(!buildTrianglePipelineBootstrapConfig(positionStream, colorStream, topology, primitiveCount, renderArea, &config, fragmentConfig, indexData, indexType, baseVertex, frontFaceCounterClockwise, pointSize, texCoordStream, normalStream))
 	{
 		return false;
 	}
