@@ -102,21 +102,145 @@ std::string emitVertexCudaLikeSource(const VertexLoweringInfo &vertex)
 	return source.str();
 }
 
+void emitCompilerAnalysisPreamble(std::ostringstream &source, const CompilerAnalysisInfo &analysis)
+{
+	source << "static __device__ constexpr unsigned int swiftshader_fragment_feature_mask = "
+	       << analysis.fragmentFeatureMask << "u;\n";
+	source << "static __device__ constexpr unsigned int swiftshader_unsupported_reason_mask = "
+	       << analysis.unsupportedReasonMask << "u;\n";
+	source << "static __device__ constexpr bool swiftshader_has_texture_plan = "
+	       << (analysis.hasTexturePlan ? "true" : "false") << ";\n";
+	source << "static __device__ constexpr bool swiftshader_has_image_resource_plan = "
+	       << (analysis.hasImageResourcePlan ? "true" : "false") << ";\n";
+	source << "static __device__ constexpr bool swiftshader_has_resource_plan = "
+	       << (analysis.hasResourcePlan ? "true" : "false") << ";\n\n";
+}
+
+std::string emitCombinedTextureFragmentCudaLikeSource(const CompilerAnalysisInfo &analysis)
+{
+	std::ostringstream source;
+	emitCompilerAnalysisPreamble(source, analysis);
+	source << "struct FragmentInvocation\n";
+	source << "{\n";
+	source << "\tunsigned int x;\n";
+	source << "\tunsigned int y;\n";
+	source << "};\n\n";
+	source << "struct FsParams\n";
+	source << "{\n";
+	source << "\tconst FragmentInvocation *invocations;\n";
+	source << "\tunsigned char *colorBuffer;\n";
+	source << "\tunsigned int invocationCount;\n";
+	source << "\tunsigned int width;\n";
+	source << "\tunsigned int height;\n";
+	source << "\tconst unsigned char *textureData;\n";
+	source << "\tunsigned int textureWidth;\n";
+	source << "\tunsigned int textureHeight;\n";
+	source << "\tunsigned int textureRowPitchTexels;\n";
+	source << "\tunsigned int textureFilterLinear;\n";
+	source << "\tunsigned int textureAddressModeU;\n";
+	source << "\tunsigned int textureAddressModeV;\n";
+	source << "};\n\n";
+	source << "static __device__ unsigned char packColor(float value)\n";
+	source << "{\n";
+	source << "\tvalue = value < 0.0f ? 0.0f : value;\n";
+	source << "\tvalue = value > 1.0f ? 1.0f : value;\n";
+	source << "\treturn static_cast<unsigned char>(value * 255.0f + 0.5f);\n";
+	source << "}\n\n";
+	source << "static __device__ float applyAddressMode(float coord, unsigned int addressMode)\n";
+	source << "{\n";
+	source << "\tif(addressMode != 0u)\n";
+	source << "\t{\n";
+	source << "\t\tcoord = coord - floorf(coord);\n";
+	source << "\t\tif(coord < 0.0f) coord += 1.0f;\n";
+	source << "\t\treturn coord;\n";
+	source << "\t}\n";
+	source << "\tcoord = coord < 0.0f ? 0.0f : coord;\n";
+	source << "\tcoord = coord > 1.0f ? 1.0f : coord;\n";
+	source << "\treturn coord;\n";
+	source << "}\n\n";
+	source << "static __device__ void fetchTexel(const FsParams &params, int x, int y, float &r, float &g, float &b, float &a)\n";
+	source << "{\n";
+	source << "\tunsigned int offset = (static_cast<unsigned int>(y) * params.textureRowPitchTexels + static_cast<unsigned int>(x)) * 4u;\n";
+	source << "\tr = params.textureData[offset + 0] / 255.0f;\n";
+	source << "\tg = params.textureData[offset + 1] / 255.0f;\n";
+	source << "\tb = params.textureData[offset + 2] / 255.0f;\n";
+	source << "\ta = params.textureData[offset + 3] / 255.0f;\n";
+	source << "}\n\n";
+	source << "static __device__ void sampleTexture(const FsParams &params, float u, float v, float &r, float &g, float &b, float &a)\n";
+	source << "{\n";
+	source << "\tu = applyAddressMode(u, params.textureAddressModeU);\n";
+	source << "\tv = applyAddressMode(v, params.textureAddressModeV);\n";
+	source << "\tfloat fx = u * static_cast<float>(params.textureWidth - 1u);\n";
+	source << "\tfloat fy = v * static_cast<float>(params.textureHeight - 1u);\n";
+	source << "\tint x = static_cast<int>(fx + 0.5f);\n";
+	source << "\tint y = static_cast<int>(fy + 0.5f);\n";
+	source << "\tfetchTexel(params, x, y, r, g, b, a);\n";
+	source << "}\n\n";
+	source << "static __device__ void fs_main(const FsParams &params, const FragmentInvocation &invocation, unsigned char &outR, unsigned char &outG, unsigned char &outB, unsigned char &outA)\n";
+	source << "{\n";
+	source << "\t(void)invocation;\n";
+	source << "\tfloat colorR;\n";
+	source << "\tfloat colorG;\n";
+	source << "\tfloat colorB;\n";
+	source << "\tfloat colorA;\n";
+	source << "\tfloat u = 0.0f;\n";
+	source << "\tfloat v = 0.0f;\n";
+	source << "\tsampleTexture(params, u, v, colorR, colorG, colorB, colorA);\n";
+	source << "\toutR = packColor(colorR);\n";
+	source << "\toutG = packColor(colorG);\n";
+	source << "\toutB = packColor(colorB);\n";
+	source << "\toutA = packColor(colorA);\n";
+	source << "}\n\n";
+	source << "extern \"C\" __global__ void fs_entry(FsParams params)\n";
+	source << "{\n";
+	source << "\tunsigned int invocationIndex = blockIdx.x * blockDim.x + threadIdx.x;\n";
+	source << "\tif(invocationIndex >= params.invocationCount)\n";
+	source << "\t{\n";
+	source << "\t\treturn;\n";
+	source << "\t}\n";
+	source << "\tFragmentInvocation invocation = params.invocations[invocationIndex];\n";
+	source << "\tunsigned char outR = 0;\n";
+	source << "\tunsigned char outG = 0;\n";
+	source << "\tunsigned char outB = 0;\n";
+	source << "\tunsigned char outA = 0;\n";
+	source << "\tfs_main(params, invocation, outR, outG, outB, outA);\n";
+	source << "\tunsigned int offset = (invocation.y * params.width + invocation.x) * 4u;\n";
+	source << "\tparams.colorBuffer[offset + 0] = outR;\n";
+	source << "\tparams.colorBuffer[offset + 1] = outG;\n";
+	source << "\tparams.colorBuffer[offset + 2] = outB;\n";
+	source << "\tparams.colorBuffer[offset + 3] = outA;\n";
+	source << "}\n";
+	return source.str();
+}
+
 }  // namespace
 
 std::string emitCudaLikeSource(const KernelIRModule &module)
 {
+	if(module.compilerAnalysisInfo().hasTexturePlan &&
+	   module.compilerAnalysisInfo().textureBootstrapSupported &&
+	   (module.compilerAnalysisInfo().textureResourceKind == ShaderTextureResourceKind::CombinedImageSampler ||
+	    module.compilerAnalysisInfo().textureResourceKind == ShaderTextureResourceKind::SeparateImageSampler))
+	{
+		return emitCombinedTextureFragmentCudaLikeSource(module.compilerAnalysisInfo());
+	}
+
+	std::ostringstream source;
+	emitCompilerAnalysisPreamble(source, module.compilerAnalysisInfo());
 	if(module.hasVertexLoweringInfo())
 	{
-		return emitVertexCudaLikeSource(module.vertexLoweringInfo());
+		source << emitVertexCudaLikeSource(module.vertexLoweringInfo());
+		return source.str();
 	}
-	return "extern \"C\" __global__ void kernel_main() {}\n";
+	source << "extern \"C\" __global__ void kernel_main() {}\n";
+	return source.str();
 }
 
 NormalizedAbiDescription describeCudaLikeAbi(const KernelIRModule &module)
 {
 	NormalizedAbiDescription abi = {};
 	abi.fragment = module.fragmentExecutionInfo();
+	abi.compilerAnalysis = module.compilerAnalysisInfo();
 	return abi;
 }
 

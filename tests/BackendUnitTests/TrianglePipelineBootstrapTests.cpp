@@ -532,6 +532,23 @@ TEST(TrianglePipelineBootstrap, CudaRuntimeProducesGreenTriangleColorBuffer)
 	EXPECT_EQ(colorBuffer[outside + 3], 0u);
 }
 
+TEST(TrianglePipelineBootstrap, CudaRuntimeReusesCompiledModulesWithModuleCache)
+{
+	backend::CudaRuntimeAPI runtime;
+	ASSERT_TRUE(runtime.isAvailable()) << runtime.initializationError();
+
+	backend::CudaRuntimeAPI::resetGlobalCapture();
+
+	std::vector<uint8_t> firstColorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, 64u, 64u, &firstColorBuffer));
+	EXPECT_EQ(backend::CudaRuntimeAPI::globalModuleCompilationCount(), 3u);
+
+	std::vector<uint8_t> secondColorBuffer;
+	ASSERT_TRUE(backend::runTrianglePipelineBootstrap(runtime, 64u, 64u, &secondColorBuffer));
+	EXPECT_EQ(backend::CudaRuntimeAPI::globalModuleCompilationCount(), 3u);
+	EXPECT_GT(backend::CudaRuntimeAPI::globalModuleCacheHitCount(), 0u);
+}
+
 TEST(TrianglePipelineBootstrap, CudaRuntimeAppliesRequestedFragmentColor)
 {
 	backend::CudaRuntimeAPI runtime;

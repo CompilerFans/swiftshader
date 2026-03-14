@@ -34,7 +34,7 @@ This document describes the current bootstrap flow for the GPU backend scaffoldi
 - Draw smoke:
   - `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle`
 - Focused draw coverage:
-  - `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
+  - `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleDescriptorArrayIndexOneBootstrapNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.TexturedTriangleSeparateImageSamplerDescriptorArrayIndexOneBootstrapNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
 - Vulkan app smoke (`vkcube`):
   - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 60`
   - Expect `/tmp/vkcube_cuda_stamps.txt` to be non-empty.
@@ -49,7 +49,7 @@ This document describes the current bootstrap flow for the GPU backend scaffoldi
 - 绘制烟测：
   - `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle`
 - 聚焦绘制覆盖：
-  - `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
+  - `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleDescriptorArrayIndexOneBootstrapNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.TexturedTriangleSeparateImageSamplerDescriptorArrayIndexOneBootstrapNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle`
 - Vulkan 应用烟测（`vkcube`）：
   - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 60`
   - 期望 `/tmp/vkcube_cuda_stamps.txt` 非空。
@@ -80,6 +80,8 @@ This document describes the current bootstrap flow for the GPU backend scaffoldi
   - Disable the startup warmup launch done by the CUDA runtime bootstrap.
 - `SWIFTSHADER_CUDA_TRACE_CALLS`
   - When set, print CUDA runtime bring-up and key CUDA driver calls to `stderr` (for example: `cuInit`, context creation, `cuModuleLoad`, `cuLaunchKernel`, memory copies).
+- `SWIFTSHADER_CUDA_DISABLE_MODULE_CACHE`
+  - Disable the in-process module cache and force `nvcc` compilation for every `createModule(...)` request. Useful for debugging toolchain issues, but extremely slow.
 
 - `SWIFTSHADER_CUDA_DUMP_SOURCE`
   - 为空或未设置时，会把生成的 CUDA 源码打印到 `stderr`。
@@ -92,15 +94,18 @@ This document describes the current bootstrap flow for the GPU backend scaffoldi
   - 关闭 CUDA runtime bootstrap 默认的启动预热 launch。
 - `SWIFTSHADER_CUDA_TRACE_CALLS`
   - 设置后会把 CUDA runtime bring-up 和关键 CUDA driver 调用打印到 `stderr`（例如：`cuInit`、context 创建、`cuModuleLoad`、`cuLaunchKernel`、内存拷贝）。
+- `SWIFTSHADER_CUDA_DISABLE_MODULE_CACHE`
+  - 关闭进程内 module cache，使每次 `createModule(...)` 都强制触发 `nvcc` 编译。用于排查 toolchain 问题，但会极度变慢。
 
 ## GPU Bring-up Environment Variables / 自研 GPU Bring-up 环境变量
 - `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK`
   - Allow CPU fallback paths even when running a CUDA-backed build (disables the default CUDA-mode aborts).
   - Useful for debugging or running CPU-based tests with a CUDA-enabled build.
+  - When fallback is allowed and `SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP` is unset, the GPU backend still keeps a one-time warmup-only triangle bootstrap attempt before falling back to the CPU renderer.
 - `SWIFTSHADER_GPU_TRACE_CPU_COMPUTE`
   - Print when a compute dispatch falls back to the CPU `ComputeProgram::run()` path: `[gpu] cpu ComputeProgram::run`.
 - `SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP`
-  - Attempt a minimal CUDA triangle-pipeline bootstrap per draw and write the RGBA output back into the first color attachment (location 0), skipping the CPU `DrawCall::run()` path when successful.
+  - Let the GPU execution backend attempt the triangle bootstrap in render-to-attachment mode per draw and write the RGBA output back into the first color attachment (location 0), skipping the CPU `DrawCall::run()` path when successful.
   - Intended for bring-up only; it does **not** implement full Vulkan shader/pipeline semantics yet.
 - `SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP`
   - Abort if `SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP` cannot render and write back successfully.
@@ -118,10 +123,11 @@ This document describes the current bootstrap flow for the GPU backend scaffoldi
 - `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK`
   - 即使在 CUDA build 下也允许走 CPU 回退路径（关闭 CUDA 模式下默认的 abort）。
   - 适用于调试或在 CUDA build 下跑 CPU 相关测试。
+  - 当允许 fallback 且未设置 `SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP` 时，GPU backend 仍会先保留一次 warmup-only 的 triangle bootstrap 尝试，然后才回退到 CPU renderer。
 - `SWIFTSHADER_GPU_TRACE_CPU_COMPUTE`
   - 当 compute dispatch 回退到 CPU `ComputeProgram::run()` 路径时打印：`[gpu] cpu ComputeProgram::run`。
 - `SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP`
-  - 每次 draw 尝试执行最小的 CUDA triangle-pipeline bootstrap，并把 RGBA 输出写回到第一个 color attachment（location 0）；成功时跳过 CPU 的 `DrawCall::run()`。
+  - 让 GPU 执行后端在每次 draw 上尝试 render-to-attachment 形态的最小 CUDA triangle-pipeline bootstrap，并把 RGBA 输出写回到第一个 color attachment（location 0）；成功时跳过 CPU 的 `DrawCall::run()`。
   - 仅用于 bring-up；目前**不**具备完整 Vulkan shader/pipeline 语义。
 - `SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP`
   - 当 `SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP` 无法成功渲染并写回时直接 abort。
@@ -165,8 +171,54 @@ This document describes the current bootstrap flow for the GPU backend scaffoldi
 
 ## Current Behavior / 当前行为
 - The GPU backend flag enables backend scaffolding code paths and compile definitions.
+- Graphics draw now enters the backend through `ExecutionBackend::draw(...)`; `CmdDrawBase` no longer calls `Renderer::draw()` directly.
+- `GpuExecutionBackend` now owns triangle-bootstrap routing:
+  - strict GPU mode renders/write-backs in the backend helper and aborts on failure
+  - fallback-enabled mode can still perform a one-time warmup-only bootstrap before falling back to the CPU renderer
+  - explicit `SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP=1` keeps the backend on the render-to-attachment path
+- `Renderer::draw()` is now CPU-only; it no longer reads GPU runtime state or GPU bring-up environment variables.
+- The current triangle-bootstrap render path forwards the same fragment/bootstrap parameters used during dry-run probing, so strict GPU draw no longer silently falls back to the bootstrap default fragment color.
 - In CUDA-backed builds, CPU fallback for queue submit, graphics draw, and compute dispatch is disabled by default (CPU submit/draw/compute aborts). Set `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1` to re-enable CPU fallback.
 - Compute backend bootstrap produces backend executables and stub-runtime dispatch validation, but does not yet replace the full CPU compute execution path.
+- `GraphicsPipeline` now also builds a metadata-only `backend::GraphicsExecutable` when a vertex stage is present.
+  - It stores stage metadata plus shader-only triangle-bootstrap metadata such as constant `gl_PointSize` and non-texture fragment bootstrap templates.
+  - It now stores a sampled-image texture plan, separating resource shape from current bootstrap support:
+    - `CombinedImageSampler`: one sampled-image resource expressed as a single `COMBINED_IMAGE_SAMPLER` binding
+    - `SeparateImageSampler`: one sampled image plus one sampler binding
+    - `Other`: more complex sampled-image layouts such as multiple combined image samplers
+  - The plan is built from the descriptors that actually feed texture sample instructions, not from every fragment-shader descriptor decoration; unrelated UBOs or other non-sampled descriptors do not change sampled-image classification.
+  - It also stores an image resource plan that lists the fragment shader's sampled-image-related descriptors and storage image descriptors (including descriptor-array element when constant), so future backend resource modeling can consume stable metadata without re-scanning SPIR-V.
+  - The legacy bootstrap-compatible binding metadata is still derived only from the `CombinedImageSampler` plan when the fragment shader also fits the narrow bootstrap path: `location 0` is exactly `vec2`, the shader samples a texture, the final `location 0` value resolves to that sample through only trivial pass-through instructions, and the layout binding is a `COMBINED_IMAGE_SAMPLER` descriptor with a constant descriptor-array element (default `0`) that is in-bounds for `descriptorCount`.
+  - Bootstrap-compatible texture bindings are rejected when the fragment shader contains storage-image read/write operations (`OpImageRead`/`OpImageWrite`), because triangle bootstrap cannot emulate those side effects.
+  - Texture bootstrap materialization still happens at draw time in `TriangleBootstrapDraw`, because it depends on bound descriptor/image/sampler state; that draw-time path now consumes the richer texture plan and can materialize both `CombinedImageSampler` and narrow `SeparateImageSampler` shapes.
+  - Draw execution still goes through the existing backend helper / CPU renderer path.
+- Remaining CPU-owned areas after this slice: the CPU renderer implementation itself plus broader transfer/copy/blit/resolve/present ownership and the future full graphics executable execution/resource model.
+
+- GPU backend 开关会启用 backend scaffolding 代码路径和相关编译定义。
+- 图形 draw 现在先经由 `ExecutionBackend::draw(...)` 进入 backend；`CmdDrawBase` 不再直接调用 `Renderer::draw()`。
+- `GpuExecutionBackend` 现在直接持有 triangle-bootstrap 路由：
+  - strict GPU 模式在 backend helper 中执行 render/write-back，失败即 abort
+  - 允许 fallback 时，仍可先执行一次 warmup-only bootstrap，再落回 CPU renderer
+  - 显式设置 `SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP=1` 时，会保持在 render-to-attachment 路径
+- `Renderer::draw()` 已收敛为 CPU-only，不再读取 GPU runtime 状态或 GPU bring-up 环境变量。
+- 当前 triangle-bootstrap 的实际 render 分支已经会携带与 dry-run probe 相同的 fragment/bootstrap 参数，因此 strict GPU draw 不再静默掉回 bootstrap 默认片元颜色。
+- 在 CUDA build 下，queue submit / graphics draw / compute dispatch 默认关闭 CPU fallback（命中 CPU submit/draw/compute 会 abort）。设置 `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1` 可重新允许 CPU fallback。
+- 当前 compute backend bootstrap 已经具备 backend executable 与 stub-runtime dispatch 验证，但还没有完全替代 CPU compute 执行路径。
+- `GraphicsPipeline` 现在也会在存在 vertex stage 时构建 metadata-only `backend::GraphicsExecutable`。
+  - 它除了 stage metadata 之外，还会持有 shader-only 的 triangle-bootstrap metadata，例如 constant `gl_PointSize` 和非 texture 的 fragment bootstrap 模板。
+  - 它现在还会持有 sampled-image texture plan，把资源形态和当前 bootstrap 支持显式拆开：
+    - `CombinedImageSampler`：单个 `COMBINED_IMAGE_SAMPLER` binding 表达的一路 sampled-image 资源
+    - `SeparateImageSampler`：单个 sampled image binding 加单个 sampler binding
+    - `Other`：更复杂的 sampled-image 资源布局，例如多个 combined image samplers
+  - 这个 plan 现在只根据真实喂给 texture sample 指令的 descriptor 来构建，而不是简单枚举 fragment shader 的全部 descriptor decoration；因此 unrelated UBO / 其他 non-sampled descriptor 不会再把 sampled-image classification 污染成 `Other`。
+  - 它现在还会持有 image resource plan：显式列出 fragment shader 的 sampled-image 相关 descriptors 与 storage image descriptors（含常量 descriptor-array element），为后续更一般的 backend 资源建模提供稳定元数据入口。
+  - 它现在还会持有更通用的 resource plan：包含 layout 轮廓（descriptor set 数、dynamic offset 数、push constant size 占位）与 descriptor refs（含 descriptor type/count、常量 array element、以及 dynamic offset index），供后续统一的资源物化/ABI 与 capability gate 使用。
+  - 它现在还会持有 fragment feature mask（discard/storage-image/image-query/derivatives/atomics/subgroup），作为 correctness-first capability/side-effect gate 的输入。
+  - 兼容旧调用方的 bootstrap binding metadata 仍然只会从 `CombinedImageSampler` plan 中派生，而且 fragment shader 还必须落在当前 narrow bootstrap 路径上：`location 0` 必须恰好是 `vec2`、shader 需要执行 texture sample、最终写入 `location 0` 的值只允许通过极小的 trivial passthrough 链解析到该 sample 结果，且 layout 上该 binding 必须是 `COMBINED_IMAGE_SAMPLER` descriptor；若该 binding 是 descriptor array，则 array element 必须是常量（默认 `0`）并落在 `descriptorCount` 范围内。
+  - 一旦检测到 fragment shader 含 storage image read/write（`OpImageRead`/`OpImageWrite`），必须拒绝 bootstrap-compatible texture binding，因为 triangle bootstrap 无法模拟 storage image side-effect。
+  - texture bootstrap 的 descriptor/image/sampler 物化仍留在 `TriangleBootstrapDraw` 的 draw-time 路径，因为那部分依赖绑定态；但这条路径现在已经能直接消费 richer texture plan，并支持 narrow `SeparateImageSampler` 的 strict GPU draw 物化。
+  - draw 执行本身仍沿用现有 backend helper / CPU renderer 路径。
+- 本切片之后仍然保留 CPU ownership 的范围：CPU renderer 本体，以及更大范围内尚未 backend-owned 的 transfer/copy/blit/resolve/present 与未来完整 graphics executable execution/resource model。
 
 - 自研后端开关会启用后端骨架相关代码路径和编译定义。
 - CUDA build 下默认切断 queue submit、图形 draw、compute dispatch 的 CPU fallback（CPU submit/draw/compute 会 abort）；可通过 `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1` 重新允许 CPU fallback。
@@ -178,6 +230,8 @@ This document describes the current bootstrap flow for the GPU backend scaffoldi
 - Focused filters:
   - `./build/backend-unittests --gtest_filter=SemanticIR.*:KernelABI.*:CodegenEmitter.*:AbiParity.*`
   - `./build/backend-unittests --gtest_filter=RuntimeAPI.*:ComputeDispatchValidation.*:ResourceStateTracker.*`
+  - `./build/backend-unittests --gtest_filter=GraphicsExecutable.*`
+  - `./build/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*:GraphicsBackendSelection.*'`
 
 ## CPU Fallback / CPU 回退
 - Without `SWIFTSHADER_ENABLE_GPU_BACKEND`, backend selection defaults to CPU.
@@ -187,11 +241,17 @@ This document describes the current bootstrap flow for the GPU backend scaffoldi
 - 开启 `SWIFTSHADER_ENABLE_GPU_BACKEND=ON` 后，会启用自研后端路径；CUDA build 下默认不允许 submit/draw/compute 回退到 CPU，可通过 `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1` 覆盖该行为。
 
 ## Codegen Dumps / 代码生成导出
-- At this stage, generated CUDA-like source and LLVM IR are produced in memory by the emitters.
-- There is currently no automatic on-disk dump path. When dumps are added later, they should be documented here before being exposed in broader project documentation.
+- CUDA-like source can be dumped via `SWIFTSHADER_CUDA_DUMP_SOURCE` (stderr) and `SWIFTSHADER_CUDA_SOURCE_DUMP_PATH` (append to file).
+- The current CUDA bring-up path still relies on generating CUDA-like source and compiling it into a loadable module; see the IR migration notes for timing and feasibility.
+- LLVM IR dumps are not yet a stable, supported surface.
 
-- 当前阶段，生成的 CUDA 风格源码和 LLVM IR 仍主要以内存字符串形式存在。
-- 目前还没有自动写盘的 dump 路径；后续若增加导出能力，应先在本文档记录，再考虑扩展到更公开的项目文档。
+- CUDA 风格源码可通过 `SWIFTSHADER_CUDA_DUMP_SOURCE`（stderr）与 `SWIFTSHADER_CUDA_SOURCE_DUMP_PATH`（追加写文件）导出。
+- 当前 CUDA bring-up 路径仍依赖“生成 CUDA 风格源码并编译成可加载 module”的链路；其 IR 迁移时机与可行性见下方链接。
+- LLVM IR 的 dump 目前尚未形成稳定的对外能力面。
+
+## Design Notes / 设计笔记
+- GPU 框架迁移的总体结论（面向更大支持面的迁移点）：`docs/plans/2026-03-12-gpu-migration-framework-adjustments.md`
+- 从 “nvcc 文本源码路径” 迁到 “IR-based codegen” 的时机与可行性：`docs/plans/2026-03-12-ir-codegen-migration-timing.md`
 
 ## Bring-up Checklist / Bring-up 清单
 - Configure with the backend flag: `cmake -S . -B build-gpu -DSWIFTSHADER_ENABLE_GPU_BACKEND=ON`

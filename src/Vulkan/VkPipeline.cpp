@@ -18,6 +18,7 @@
 #include "VkDevice.hpp"
 #include "VkPipelineCache.hpp"
 #include "Backend/ComputeExecutable.hpp"
+#include "Backend/GraphicsExecutable.hpp"
 #include "VkPipelineLayout.hpp"
 #include "VkRenderPass.hpp"
 #include "VkShaderModule.hpp"
@@ -68,6 +69,33 @@ const char *computeExecutableKindName(backend::ComputeExecutable::Kind kind)
 	default:
 		return "unknown";
 	}
+}
+
+bool queryGraphicsExecutableDescriptorBindingInfo(const void *userdata,
+                                                  uint32_t descriptorSet,
+                                                  uint32_t binding,
+                                                  backend::GraphicsExecutableDescriptorBindingInfo *bindingInfo)
+{
+	if(userdata == nullptr || bindingInfo == nullptr)
+	{
+		return false;
+	}
+
+	const auto *layout = reinterpret_cast<const vk::PipelineLayout *>(userdata);
+	if(descriptorSet >= layout->getDescriptorSetCount())
+	{
+		return false;
+	}
+	if(binding >= layout->getBindingCount(descriptorSet))
+	{
+		return false;
+	}
+
+	bindingInfo->descriptorType = layout->getDescriptorType(descriptorSet, binding);
+	bindingInfo->descriptorCount = layout->getDescriptorCount(descriptorSet, binding);
+	bindingInfo->isDynamic = layout->isDescriptorDynamic(descriptorSet, binding);
+	bindingInfo->dynamicOffsetIndex = bindingInfo->isDynamic ? layout->getDynamicOffsetIndex(descriptorSet, binding) : 0;
+	return true;
 }
 
 // optimizeSpirv() applies and freezes specializations into constants, and runs spirv-opt.
@@ -459,6 +487,7 @@ void GraphicsPipeline::destroyPipeline(const VkAllocationCallbacks *pAllocator)
 {
 	vertexShader.reset();
 	fragmentShader.reset();
+	backendExecutable.reset();
 }
 
 size_t GraphicsPipeline::ComputeRequiredAllocationSize(const VkGraphicsPipelineCreateInfo *pCreateInfo)
@@ -651,6 +680,26 @@ VkResult GraphicsPipeline::compileShaders(const VkAllocationCallbacks *pAllocato
 			vk::destroy(tempModule, nullptr);
 		}
 	}
+
+	backendExecutable.reset();
+	sw::SemanticIRBuilder backendIRBuilder;
+	backend::GraphicsExecutableCreateInfo backendExecutableCreateInfo = {};
+	if(vertexShader)
+	{
+		backendExecutableCreateInfo.vertexModule = backendIRBuilder.build(*vertexShader);
+		backendExecutableCreateInfo.vertexShader = vertexShader.get();
+	}
+	if(fragmentShader)
+	{
+		backendExecutableCreateInfo.fragmentModule = backendIRBuilder.build(*fragmentShader);
+		backendExecutableCreateInfo.fragmentShader = fragmentShader.get();
+	}
+	backendExecutableCreateInfo.queryDescriptorBindingInfo = queryGraphicsExecutableDescriptorBindingInfo;
+	backendExecutableCreateInfo.queryDescriptorBindingInfoUserdata = layout;
+	backendExecutableCreateInfo.descriptorSetCount = layout ? static_cast<uint32_t>(layout->getDescriptorSetCount()) : 0;
+	backendExecutableCreateInfo.dynamicOffsetCount = layout ? layout->getDynamicOffsetCount() : 0;
+	backendExecutableCreateInfo.pushConstantSize = vk::MAX_PUSH_CONSTANT_SIZE;
+	backendExecutable = backend::GraphicsExecutable::create(backendExecutableCreateInfo);
 
 	return VK_SUCCESS;
 }

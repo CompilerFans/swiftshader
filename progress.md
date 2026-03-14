@@ -1,5 +1,420 @@
 # Progress Log
 
+## 2026-03-14
+- 会话恢复：
+  - 读取并核对 `task_plan.md`、`progress.md`、`findings.md`，确认图形执行重构主线已经推进到 Phase 20 完成，但 `Current Phase` 仍停在旧的 Phase 19。
+  - 结合 `git status --short` / `git diff --stat` 确认当前脏树正是前一轮 graphics execution refactor + module cache + pipeline introspection 的实现集合，不是新的未记录分叉。
+- 恢复后的 focused 验证：
+  - `cmake --build build-cuda-bootstrap --target vk-unittests backend-unittests draw-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter='TrianglePipelineBootstrap.CudaRuntimeReusesCompiledModulesWithModuleCache:GraphicsExecutable.*:GraphicsDrawRouting.*:TriangleBootstrapDraw.*'` passed (`9` tests)
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`23` tests)
+  - `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1 SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.TexturedTriangleNearest:DrawTest.TexturedTriangleDescriptorArrayIndexOneBootstrapNearest:DrawTest.TexturedTriangleSeparateImageSamplerNearest:DrawTest.TexturedTriangleSeparateImageSamplerDescriptorArrayIndexOneBootstrapNearest:DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor:DrawTest.DynamicRenderingSolidColorTriangle'` passed (`6` tests)
+- 恢复结论：
+  - Phase 19 的 general resource plan + capability gate 脚手架仍然成立，相关 pipeline introspection / unsupported reason coverage 仍为绿。
+  - Phase 20 的 CUDA module cache 也已在 runtime unit test 中验证：同一份 triangle bootstrap 模块第二次运行没有增加编译计数，并出现 cache hit。
+  - 当前下一步应当进入 `docs/plans/2026-03-12-gpu-migration-framework-adjustments.md` 中尚未落地的 attachment lifecycle/state tracking 最小闭环，而不是继续回头修当前 Phase 19/20。
+- Phase 21 设计收口补充：
+  - 读取 `VkCommandBuffer.cpp` 后确认，color attachment 的 `loadOp == CLEAR` 已经在 render pass / dynamic rendering begin 阶段执行；因此这一步不需要重做 clear 语义。
+  - 当前真正 ad-hoc 的部分是 `TriangleBootstrapDraw.cpp` 里的 `writeTriangleBootstrapColorToAttachment(...)`：它直接从 helper 侧抓 `vk::ImageView *` 和 `renderArea/layer` 做内存写回，还没有独立的 attachment target / lifecycle contract。
+  - `CmdDrawBase::draw()` 目前也尚未把 active color attachment 0 的状态显式传给 backend，这会是 Phase 21 推荐的最小切口。
+  - 已新增 design / implementation docs：
+    - `docs/plans/2026-03-14-graphics-attachment-lifecycle-design.md`
+    - `docs/plans/2026-03-14-graphics-attachment-lifecycle-implementation.md`
+  - 当前选定方案是：在 `GraphicsDrawCall` 中增加显式 color attachment target contract，由 `CmdDrawBase::draw()` 从 render pass / dynamic rendering 提取 `imageView + layout + storeOp`，再让 `TriangleBootstrapDraw` 统一消费并 gate write-back。
+- 新需求探索（compiler IR 单测）：
+  - 已确认当前仓库里与 compiler IR 最相关的单测入口是 `SpirvToSemanticIRTests.cpp`、`KernelIRTests.cpp`、`CodegenEmitterTests.cpp` 和 `AbiParityTests.cpp`。
+  - 当前缺口不是“没有 IR tests”，而是这些 tests 还没有围绕现有 graphics 路线上真实使用的 shader 特性做成分层覆盖矩阵。
+  - 设计已收口为“先独立通用 compiler analysis，再分层测试”，而不是先重写 `SemanticIR`。
+  - 已新增设计 / 实现文档：
+    - `docs/plans/2026-03-14-compiler-analysis-module-design.md`
+    - `docs/plans/2026-03-14-compiler-analysis-module-implementation.md`
+  - 当前建议边界是：
+    - 新增 `src/Pipeline/ShaderCompilerAnalysis.*`
+    - 抽出 feature mask / texture-plan / image-resource-plan / resource-plan / unsupported-reason-mask
+    - 继续把 point-size 与 static bootstrap fragment template 保留在 backend 侧
+    - 测试按 `SpirvToCompilerAnalysis -> KernelIR -> emitter/ABI parity` 三层推进
+  - 实施中途收口出一个新的工程约束：
+    - backend unit tests 若直接依赖 `SpirvShader`，会再次撞上重型 Vulkan 链接边界
+    - 因此 `ShaderCompilerAnalysis` 的首个稳定 API 已改成 `entryPoint + SpirvBinary + context`
+  - 当前已新增并跑通第一层 compiler-analysis tests：
+    - `ClassifiesCombinedImageSamplerFragment`
+    - `MarksStorageImageWriteAsUnsupported`
+    - `TracksCombinedImageSamplerDescriptorArrayIndexOne`
+    - `MarksUniformBufferAsUnsupportedBufferDescriptor`
+  - 当前验证：
+    - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel 1` passed
+    - `./build-cuda-bootstrap/backend-unittests --gtest_filter='SpirvToCompilerAnalysis.*'` passed (`4` tests)
+  - 继续扩完了第一层 compiler-analysis matrix，当前新增并通过：
+    - `ClassifiesSeparateImageSamplerFragment`
+    - `MarksDiscardAsUnsupported`
+    - `MarksDerivativesAsUnsupported`
+    - `MarksImageQueryAsUnsupported`
+    - `MarksImageFetchAsUnsupported`
+    - `MarksAtomicsAsUnsupported`
+    - `MarksSubgroupAsUnsupported`
+  - 当前 `SpirvToCompilerAnalysis.*` 已通过 `11` tests。
+  - 已开始 `GraphicsExecutable` 集成，但采取了低风险路径：
+    - `GraphicsExecutable` 现已消费 `ShaderCompilerAnalysis` 的 `fragmentFeatureMask`、`imageResourcePlan`、`resourcePlan`
+    - texture bootstrap narrow-path 与 static bootstrap fragment config 仍暂留旧实现
+  - 第二层也已打通：
+    - `KernelIR` 新增 `CompilerAnalysisInfo`
+    - `applyCompilerAnalysisToKernelIR(...)` 已能保留 feature mask / unsupported reason / plan presence bits
+    - `KernelIR.PreservesCompilerAnalysisMetadata` passed
+  - 第三层也已打通最小 ABI parity：
+    - `NormalizedAbiDescription` 新增 `compilerAnalysis`
+    - CUDA-like / LLVM IR 两条 ABI 描述都透传该元数据
+    - `AbiParity.PreservesCompilerAnalysisMetadataAcrossCodegenPaths` passed
+  - 本轮 focused 验证：
+    - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsExecutable.*:SpirvToCompilerAnalysis.*:KernelIR.*:CodegenEmitter.*:AbiParity.*'` passed (`23` tests)
+    - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`23` tests)
+    - `git diff --check` passed
+  - 继续沿“标准 SPIR-V bc/txt 输入”推进：
+    - 新增 `src/Pipeline/ShaderModuleInput.hpp`
+    - `ShaderCompilerAnalysis` 现已支持：
+      - `analyzeGraphicsFragmentShader(entryPoint, SpirvBinary, context)`
+      - `analyzeGraphicsFragmentShaderAssembly(entryPoint, spv-txt, context)`
+      - `analyzeGraphicsFragmentShader(ShaderModuleInput, context)`
+    - 新增并通过的 text/unified-input tests：
+      - `ClassifiesCombinedImageSamplerFromAssemblyText`
+      - `MarksDiscardAsUnsupportedFromAssemblyText`
+      - `UnifiedInputAcceptsBinaryAndAssembly`
+    - 最新 focused 验证：
+      - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsExecutable.*:SpirvToCompilerAnalysis.*:KernelIR.*:CodegenEmitter.*:AbiParity.*'` passed (`26` tests)
+      - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`23` tests)
+      - `git diff --check` passed
+  - 继续把 texture bootstrap narrow-path 分析往独立模块迁移：
+    - `ShaderCompilerAnalysis` 现在已经能判断：
+      - `location 0 == vec2` 才能走当前 combined texture bootstrap 窄路径
+      - sample passthrough 仍然支持
+      - sample 后做真实片元运算会把 `bootstrapSupported` 降为 `false`
+    - 新增并通过的 direct compiler-analysis tests：
+      - `SupportsCombinedImageSamplerBootstrapForSamplePassthrough`
+      - `RejectsCombinedImageSamplerBootstrapForPostProcessedSample`
+      - `RejectsCombinedImageSamplerBootstrapWhenLocationZeroIsNotVec2`
+    - `GraphicsExecutable` 现已改为消费来自 `ShaderCompilerAnalysis` 的 `texturePlan`
+    - 现有 `GraphicsBackendPipeline.*` 全绿，说明 texture-plan 迁移未破坏现有 graphics-route 行为
+  - 继续往“真正的 LLVM IR 载体”推进：
+    - `LlvmIREmitter` 不再只是返回空壳 `define void @kernel_main()`
+    - 它现在会把 compiler-analysis 摘要写成标准 LLVM IR 文本中的 internal constants：
+      - `@swiftshader.fragment_feature_mask`
+      - `@swiftshader.unsupported_reason_mask`
+      - `@swiftshader.has_texture_plan`
+      - `@swiftshader.has_image_resource_plan`
+      - `@swiftshader.has_resource_plan`
+    - 新增并通过：
+      - `CodegenEmitter.EmitsCompilerAnalysisMetadataInLlvmIR`
+    - 最新 focused 验证：
+      - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsExecutable.*:SpirvToCompilerAnalysis.*:KernelIR.*:CodegenEmitter.*:AbiParity.*'` passed (`30` tests)
+      - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`23` tests)
+      - `git diff --check` passed
+  - 独立编译器协调模块已补上：
+    - 新增 `src/Pipeline/ShaderCompiler.hpp`
+    - 新增 `src/Pipeline/ShaderCompiler.cpp`
+    - `ShaderCompiler::compileGraphicsFragment(...)` 现在会串起：
+      - `ShaderModuleInput`
+      - `ShaderCompilerAnalysis`
+      - `KernelIR` metadata lowering
+      - `CodegenTarget::{CudaLikeSource, LlvmIR}` 输出
+    - 新增并通过：
+      - `ShaderCompiler.CompilesFragmentAssemblyToCudaLikeSource`
+      - `ShaderCompiler.CompilesFragmentBinaryToLlvmIR`
+  - CUDA / LLVM 输出现状更新：
+    - `CudaLikeSourceEmitter` 现在会把 compiler-analysis 摘要写进 CUDA-like source 常量
+    - `LlvmIREmitter` 现在会把同一批摘要写进标准 LLVM IR 文本 constant definitions
+    - 这意味着当前独立模块已经能从标准 SPIR-V bc/txt 直接产出可继续处理的 CUDA/LLVM 文本，但 fragment shader 语义仍主要停留在 metadata 层，还不是完整 fragment codegen
+  - 最新 focused 验证：
+    - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsExecutable.*:SpirvToCompilerAnalysis.*:KernelIR.*:CodegenEmitter.*:AbiParity.*:ShaderCompiler.*'` passed (`32` tests)
+    - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`23` tests)
+    - `git diff --check` passed
+  - CUDA-like 输出已从“metadata skeleton”推进到第一个真实 fragment codegen 窄路径：
+    - 当 `ShaderCompilerAnalysis` 识别出 `combined image sampler + bootstrapSupported` 时，`CudaLikeSourceEmitter` 不再只吐 `kernel_main` 空壳
+    - 现在会生成带 `FragmentInvocation` / `FsParams` / `sampleTexture(...)` / `fs_entry` 的 texture fragment kernel skeleton
+    - 新增并通过：
+      - `ShaderCompiler.EmitsTextureFragmentCudaKernelForSupportedCombinedSamplerPath`
+    - 对应的旧测试也已更新到更强预期：`CompilesFragmentAssemblyToCudaLikeSource` 现在要求 `fs_entry` + `FsParams`
+  - 继续把 fragment CUDA codegen 窄路径从 combined 扩到 separate image/sampler：
+    - `CudaLikeSourceEmitter` 现在对 `SeparateImageSampler + bootstrapSupported` 也会输出同一套 texture fragment kernel skeleton，而不再回落到 `kernel_main`
+    - 新增并通过：
+      - `ShaderCompiler.EmitsTextureFragmentCudaKernelForSupportedSeparateSamplerPath`
+  - 当前独立编译器可直接输出真实 fragment CUDA-like skeleton 的支持面：
+    - `CombinedImageSampler + direct-sample/passthrough`
+    - `SeparateImageSampler + direct-sample/passthrough`
+    - 其余路径仍然回落到 metadata/skeleton 文本，不宣称已支持完整 fragment lowering
+  - 这意味着当前独立编译器已经能对一条真实的 fragment shader 窄路径直接输出可编译的 CUDA-like source，而不再只是 metadata 文本占位。
+
+## 2026-03-12
+- 继续沿 sampled-image resource plan 推进了两刀，而不是只补单点 boundary：
+  - `docs/plans/2026-03-12-graphics-executable-sampled-image-provenance-design.md`
+  - `docs/plans/2026-03-12-graphics-executable-sampled-image-provenance-implementation.md`
+  - `docs/plans/2026-03-12-triangle-bootstrap-separate-image-sampler-materialization-design.md`
+  - `docs/plans/2026-03-12-triangle-bootstrap-separate-image-sampler-materialization-implementation.md`
+- TDD RED/GREEN（sampled-image provenance）：
+  - 先在 `tests/VulkanUnitTests/GraphicsBackendPipelineTests.cpp` 增加两个 RED：
+    - `CombinedImageSampler + unrelated UBO`
+    - `SeparateImageSampler + unrelated UBO`
+  - RED 已确认：现状会把这两类 shader 都错误降成 `Other`，因为 `GraphicsExecutable` 还在全量收集 fragment shader 的 descriptor decorations。
+  - GREEN 把 `GraphicsExecutable.cpp` 的 texture plan 构建改成真实 sample-use provenance：
+    - 只从 texture sample 指令的 sampled-image operand 向后追踪
+    - 支持 `OpSampledImage`
+    - 支持 `OpImage`
+    - 支持 trivial forwarding：`OpCopyObject` / `OpCopyLogical` / function-local `OpLoad`
+    - 最后只按真正喂给 sample 的 descriptor 做 plan 分类
+  - 结果：non-sampled UBO 不再污染 sampled-image plan；combined / separate classification 都能保持稳定。
+- TDD RED/GREEN（separate image/sampler draw-time materialization）：
+  - 直接用现有 strict GPU draw regression `DrawTest.TexturedTriangleSeparateImageSamplerNearest` 做 RED。
+  - RED 已确认：当前 strict GPU 路径下读回像素是默认绿色，说明 separate image/sampler plan 虽然已能分类，但 `TriangleBootstrapDraw` 还没有消费它。
+  - Root cause tracing：
+    - pipeline-time：`GraphicsExecutable` 已经能产出 `SeparateImageSampler` plan
+    - draw-time：`TriangleBootstrapDraw` 仍只看 `hasBootstrapTextureBinding()`，这条 compatibility accessor 只覆盖 combined image sampler
+  - GREEN：
+    - `GraphicsExecutable.cpp` 现在会把 narrow direct-sample `SeparateImageSampler` plan 标成 `bootstrapSupported`
+    - `TriangleBootstrapDraw.cpp` 新增基于 `GraphicsExecutableTexturePlan` 的 texture config 物化：
+      - `CombinedImageSampler`：沿用单 binding image+sampler
+      - `SeparateImageSampler`：从 sampled-image binding 取 texture，从 sampler binding 取 sampler state
+      - `Other`：继续拒绝
+    - `buildTriangleBootstrapInvocationConfig(...)` 现在基于 `hasTexturePlan()` + `texturePlan().bootstrapSupported` 决定是否尝试 texture bootstrap materialization，而不再只看 combined-binding compatibility accessor
+- Focused 验证：
+  - `cmake --build build-cuda-bootstrap --target vk-unittests --parallel 1 && ./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.IgnoresNonSampledDescriptorsWhenClassifyingCombinedTexturePlan:GraphicsBackendPipeline.IgnoresNonSampledDescriptorsWhenClassifyingSeparateTexturePlan'` passed (`2` tests)
+  - `SWIFTSHADER_CUDA_DUMP_SOURCE=0 ./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.TexturedTriangleSeparateImageSamplerNearest'` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.IgnoresNonSampledDescriptorsWhenClassifyingCombinedTexturePlan:GraphicsBackendPipeline.IgnoresNonSampledDescriptorsWhenClassifyingSeparateTexturePlan:GraphicsBackendPipeline.RejectsTextureBootstrapBindingForSeparateImageSampler'` passed (`3` tests)
+- 根据“不要逐步单点收敛、整体考虑 sample/image 资源方案”的新要求，重新把这一刀的目标从单个 negative boundary 扩成 formal sampled-image resource plan。
+- 新增设计/实现文档：
+  - `docs/plans/2026-03-12-graphics-executable-sampled-image-plan-design.md`
+  - `docs/plans/2026-03-12-graphics-executable-sampled-image-plan-implementation.md`
+- 这一刀的实现重心从“继续叠 texture bootstrap 条件”改为“先显式表达资源形态”：
+  - `GraphicsExecutable` 新增 `GraphicsExecutableTextureResourceKind` 和 `GraphicsExecutableTexturePlan`
+  - texture metadata 现在区分 `CombinedImageSampler` / `SeparateImageSampler` / `Other`
+  - `hasBootstrapTextureBinding()` 退化为兼容层，只在当前 supported combined-image-sampler path 上返回 `true`
+- `TriangleBootstrapDraw` 不需要理解新的 plan 细节；它继续通过兼容 accessor 只消费当前可物化的 combined-image-sampler bootstrap binding。
+- `PipelineIntrospection` 和 `GraphicsBackendPipelineTests` 已扩成资源方案级断言，不再只看 `hasBinding`：
+  - combined image sampler -> `resourceKind == CombinedImageSampler`
+  - separate image/sampler -> `resourceKind == SeparateImageSampler`
+  - 多个 combined sampled-image resource -> `resourceKind == Other`
+- 这个 pivot 还暴露了两个测试层工程问题：
+  - 直接在 Vulkan test TU 中包含 `Backend/GraphicsExecutable.hpp` 会把 test-side `vulkan.hpp` wrapper 拉进不稳定的内部 Vulkan 头编译边界
+  - `VkPipeline` 现在经由 `VkNonDispatchableHandle` 包装，`reinterpret_cast<uintptr_t>(tester.getPipelineHandle())` 不再是稳健桥接
+- 修复方式：
+  - 资源种类常量下沉到 `PipelineIntrospection.hpp`，测试不再直接依赖 backend 头
+  - `DrawTester` 新增 `getPipelineAddress()`，统一通过 `void *` 桥接到 introspection 层
+- TDD RED/GREEN（descriptor array indexing）：
+  - RED：把 `GraphicsBackendPipeline` 的 descriptor array case 从“应拒绝”改为“应支持并提取 array element”，并新增 index-one case
+  - GREEN：
+    - `GraphicsExecutableTexturePlan` 新增 `imageArrayElement` / `samplerArrayElement`，从 sample operand 的 `OpAccessChain`/`OpPtrAccessChain` 常量 index 提取并写入 plan
+    - combined image sampler 的 bootstrap 支持从 `descriptorCount == 1` 放宽为“常量 index 且 in-bounds”
+    - `TriangleBootstrapDraw` 按 `arrayElement * descriptorSize` 物化 descriptor element，确保 strict GPU bootstrap render 采样到正确的数组元素
+  - 新增 strict GPU draw regression：`DrawTest.TexturedTriangleDescriptorArrayIndexOneBootstrapNearest`（强制 `SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP=1` + `SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP=1`）
+  - 补充 separate array coverage：`GraphicsBackendPipeline.ExtractsSeparateTexturePlanArrayElementsForDescriptorArrayIndexOne` + `DrawTest.TexturedTriangleSeparateImageSamplerDescriptorArrayIndexOneBootstrapNearest`
+- 当前 focused 验证：
+  - `cmake --build build-cuda-bootstrap --target vk-unittests --parallel 1 && ./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`10` tests)
+- 按新的图形架构重构目标重新梳理了 draw 链路，确认当前主要问题不是某个 shader/stage 细节，而是 GPU draw 被插在 CPU `Renderer::draw()` 内部。
+- 读取并核对了当前关键实现位置：
+  - `src/Vulkan/VkCommandBuffer.cpp` 中 `CmdDrawBase::draw()`
+  - `src/Backend/CpuExecutionBackend.cpp`
+  - `src/Backend/GpuExecutionBackend.cpp`
+  - `src/Device/Renderer.cpp`
+- 收敛出首个重构切片：先引入 backend-owned draw seam，再把 triangle bootstrap 从 `Renderer.cpp` 抽到 backend helper。
+- 新增设计文档：`docs/plans/2026-03-12-gpu-graphics-execution-design.md`
+- 新增实现计划：`docs/plans/2026-03-12-gpu-graphics-execution-refactor.md`
+- TDD RED/GREEN（首个切片）：
+  - 先新增 `tests/BackendUnitTests/GraphicsDrawRoutingTests.cpp`，让 `GraphicsDraw.hpp` / `chooseGraphicsDrawRoute()` 缺失导致 `backend-unittests` 编译失败
+  - 再新增 `src/Backend/GraphicsDraw.hpp/.cpp` 和构建接线，最小实现 draw route 模型
+  - 继续把 `GraphicsDrawCall` / `ExecutionBackend::draw(...)` 接到 `CpuExecutionBackend`、`GpuExecutionBackend` 和 `CmdDrawBase`
+- 调试发现一个相邻的真实回归基线问题：
+  - `DrawTest.SolidColorTriangle` 在 strict GPU 路径下失败，根因是 `Renderer::draw()` 的实际 triangle-bootstrap render 分支没有把 fragment/bootstrap 推导参数传给 `runTrianglePipelineBootstrap(...)`
+  - 修复后，该分支会把 `fragmentConfig`、`colorStream`、`texCoordStream` 和 `pointSize` 一并传入
+- 当前下一步：继续把 triangle bootstrap 决策从 `Renderer.cpp` 迁到 backend helper，完成 Phase 4。
+- 继续按 TDD 推进 Phase 4：
+  - 先给 `GraphicsDrawRoutingTests.cpp` 补了一个新的 RED：`SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK=1` 且未显式 render-to-attachment 时，draw route 仍应是 `GpuBootstrapOptional`，因为现有 bring-up 语义还保留一次 warmup-only bootstrap。
+  - 再新增 `tests/BackendUnitTests/TriangleBootstrapDrawTests.cpp`，把 `TriangleBootstrapDraw.hpp` / `planTriangleBootstrapDraw(...)` 作为新的编译级 RED。
+- Phase 4 GREEN：
+  - 新增 `src/Backend/TriangleBootstrapDraw.hpp/.cpp`，把 env 读取、fragment/bootstrap 参数推导、triangle bootstrap launch、color attachment write-back 迁到 backend helper。
+  - `GpuExecutionBackend::draw()` 现在先调用 backend helper；helper 处理成功则直接返回，失败时再按 fallback / strict 规则决定是否落回 CPU renderer。
+  - `chooseGraphicsDrawRoute()` 语义修正为：只要 runtime 是 hardware-backed 且未 rasterizer-discard，就统一走 backend-owned GPU route；`SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP` 只影响 helper 选择 warmup-only 还是 render-to-attachment。
+  - `Renderer::draw()` 已删除 runtime/env/triangle-bootstrap 分支和 strict CPU abort，只保留 CPU draw state 准备与 `DrawCall::run()`。
+- 实现中的一个相邻工程问题：
+  - `backend-unittests` 一旦直接引用重型 `tryTriangleBootstrapDraw(...)` 实现，就会把 Vulkan-side hidden symbols 一起拉进链接。
+  - 解决方式是把 `planTriangleBootstrapDraw(...)` 收敛为 header-inline 的纯策略函数，而把真正依赖 `vk::Device` / `vk::PipelineLayout` / `vk::ImageView` 的 helper 留在 `.cpp`，避免破坏现有 backend test 链接边界。
+- 验证：
+  - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter='GraphicsDrawRouting.*:TriangleBootstrapDrawPlan.*'` passed (`9` tests)
+  - `./build-cuda-bootstrap/backend-unittests` passed (`105` tests)
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel 1 && ./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle` passed
+  - `cmake --build build-cuda-bootstrap --target vk-unittests --parallel 1 && ./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendSelection.*:BackendSmoke.*'` passed (`3` tests)
+- 继续推进第二个 graphics execution 切片：pipeline-time `GraphicsExecutable` scaffold。
+- 先新增设计/实现文档：
+  - `docs/plans/2026-03-12-graphics-executable-scaffold-design.md`
+  - `docs/plans/2026-03-12-graphics-executable-scaffold-implementation.md`
+- TDD RED/GREEN（第二个切片）：
+  - 先新增 `tests/BackendUnitTests/GraphicsExecutableTests.cpp`，让 `Backend/GraphicsExecutable.hpp` 缺失导致 `backend-unittests` 编译失败。
+  - 再新增 `tests/VulkanUnitTests/GraphicsBackendPipelineTests.cpp`，并用 `PipelineIntrospection.cpp` 避开 test-side `vulkan.hpp` wrapper 与内部 `src/Vulkan/VkPipeline.hpp` 的 `vk` 命名空间冲突。
+  - GREEN 后新增 `src/Backend/GraphicsExecutable.hpp/.cpp`，让它持有 vertex entry point、optional fragment entry point 和 vertex lowering metadata。
+  - `vk::GraphicsPipeline::compileShaders()` 现在会在 shader 编译完成后，通过 `SemanticIRBuilder` 构建 semantic modules，并在存在 vertex stage 时创建 backend executable。
+  - `vk::GraphicsPipeline::destroyPipeline()` 会 reset backend executable；`DrawTester` 增加了只读 raw pipeline handle getter，供 Vulkan 集成测试读取内部状态。
+- 一个构建层面的相邻工程问题：
+  - 分别并行跑两个独立的 `cmake --build ... --target backend-unittests` / `vk-unittests` 会同时重链接共享的 `vk_backend` 静态库，导致 `ar` / `ranlib` 在同一归档文件上竞争。
+  - 解决方式是改成单次串行 `cmake --build build-cuda-bootstrap --target backend-unittests vk-unittests --parallel 1`。
+- 当前 focused 验证：
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter=GraphicsExecutable.*` passed (`3` tests)
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*'` passed (`3` tests)
+- 继续推进第三个 graphics execution 切片：把 triangle bootstrap 的 shader-only 静态分析迁进 `GraphicsExecutable`。
+- 新增设计/实现文档：
+  - `docs/plans/2026-03-12-graphics-executable-bootstrap-analysis-design.md`
+  - `docs/plans/2026-03-12-graphics-executable-bootstrap-analysis-implementation.md`
+- TDD RED/GREEN（第三个切片）：
+  - 先在 `tests/BackendUnitTests/GraphicsExecutableTests.cpp` 写 bootstrap metadata 相关 RED；最初失败点是 `GraphicsExecutableCreateInfo`、`bootstrapPointSize()`、`hasBootstrapFragmentConfig()` 等 API 缺失。
+  - 在实现阶段把 `GraphicsExecutable` 扩展为持有 `bootstrapPointSize` 和 optional `FragmentBootstrapConfig`，并让 `vk::GraphicsPipeline::compileShaders()` 把 `SpirvShader*` 一并传进 create-info。
+  - `TriangleBootstrapDraw.cpp` 删除了本地的 vertex point-size / 非 texture fragment bootstrap 分析，改为优先消费 `GraphicsExecutable` metadata；texture descriptor/sampler 的 draw-time 物化仍保留在 helper 中。
+- 一个新的构建边界问题：
+  - `GraphicsExecutable.cpp` 初版直接调用 `Spirv::GetNumInputComponents()`，这会把 `SpirvShader.cpp.o` 整块拉进 `backend-unittests` 链接，进而暴露 `VkFormat` / `VkPipelineLayout` / `VkDevice` 等 Vulkan 隐藏符号未解析。
+  - 解决方式是改为在 `GraphicsExecutable.cpp` 内直接读取 `shader.inputs` 统计 location 的 component 数，避免跨进 `SpirvShader.cpp` 的重型链接边界。
+- 一个测试层次调整：
+  - “真实 shader 提取 bootstrap metadata”的断言最终放进了 `tests/VulkanUnitTests/GraphicsBackendPipelineTests.cpp`，通过 `PipelineIntrospection` 桥接读取内部 `GraphicsExecutable`；backend 单测只保留轻量 metadata / 组合规则断言。
+- 当前 focused / broader 验证：
+  - `cmake --build build-cuda-bootstrap --target backend-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter=GraphicsExecutable.*` passed (`3` tests)
+  - `cmake --build build-cuda-bootstrap --target vk-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*'` passed (`5` tests)
+  - `cmake --build build-cuda-bootstrap --target draw-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*:GraphicsBackendSelection.*'` passed (`6` tests)
+  - `./build-cuda-bootstrap/backend-unittests` passed (`108` tests)
+- 继续推进第四个 graphics execution 切片：把 texture bootstrap 的 shader metadata 也迁进 `GraphicsExecutable`。
+- 新增设计/实现文档：
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-design.md`
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-implementation.md`
+- TDD RED/GREEN（第四个切片）：
+  - 先在 `tests/BackendUnitTests/GraphicsExecutableTests.cpp` 增加默认 `hasBootstrapTextureBinding()==false` 的 RED。
+  - 再在 `tests/VulkanUnitTests/GraphicsBackendPipelineTests.cpp` / `PipelineIntrospection.*` 增加 combined-image-sampler graphics pipeline 的 texture bootstrap binding 提取 RED。
+  - `GraphicsExecutable` 新增 texture bootstrap binding metadata；提取规则限定在当前 narrow path：fragment location 0 至少有 2 个输入分量、存在 texture sample 指令、descriptor decorations 收敛到单个 set/binding。
+  - `TriangleBootstrapDraw` 的 texture config 物化现在改为只消费 executable 提供的 binding metadata，不再直接读取 fragment `SpirvShader`。
+- 一个新的模块边界收口：
+  - 在这个切片完成后，`TriangleBootstrapDraw.cpp` 已经不再包含 `Pipeline/SpirvShader.hpp`，triangle bootstrap helper 对 shader 的直接依赖已经全部移到 `GraphicsExecutable` 的 pipeline-time 创建阶段。
+- 当前 focused / broader 验证：
+  - `cmake --build build-cuda-bootstrap --target backend-unittests vk-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter=GraphicsExecutable.*` passed (`3` tests)
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*'` passed (`6` tests)
+  - `./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*:GraphicsBackendSelection.*'` passed (`7` tests)
+  - `./build-cuda-bootstrap/backend-unittests` passed (`108` tests)
+- 继续推进第五个 graphics execution 切片：把 texture bootstrap metadata 的适用边界从“location 0 至少 2 个分量”收紧成明确的 `location 0 == vec2`。
+- 新增设计/实现文档：
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-narrowing-design.md`
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-narrowing-implementation.md`
+- TDD RED/GREEN（第五个切片）：
+  - 先在 `tests/VulkanUnitTests/GraphicsBackendPipelineTests.cpp` 增加 negative RED：`location 0` 是 color、`location 1` 才是 texcoord 的 textured pipeline 不应暴露 texture bootstrap binding metadata。
+  - RED 已确认失败点就是当前 metadata 提取过宽：`textureState.hasBinding` 实际为 `true`。
+  - GREEN 只改 `GraphicsExecutable.cpp` 一处判定，把 `tryGetBootstrapTextureBinding(...)` 的输入约束从 “至少两个分量” 收紧成 “恰好两个分量”。
+  - 这一步之后，当前 narrow texture-bootstrap path 的支持边界变成：
+    - fragment input `location 0` 必须是 `vec2`
+    - shader 必须含有 texture sampling
+    - descriptor decorations 必须收敛到单个 set / binding
+- 当前 focused / broader 验证：
+  - `cmake --build build-cuda-bootstrap --target vk-unittests --parallel 1 && ./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`5` tests) after the narrowing change
+  - `cmake --build build-cuda-bootstrap --target vk-unittests backend-unittests draw-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*'` passed (`7` tests)
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter=GraphicsExecutable.*` passed (`3` tests)
+  - `./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*:GraphicsBackendSelection.*'` passed (`8` tests)
+  - `./build-cuda-bootstrap/backend-unittests` passed (`108` tests)
+  - `git diff --check` passed
+- 继续推进第六个 graphics execution 切片：把 texture-bootstrap metadata 从纯 shader 约束继续收紧成 layout-aware 的 narrow path，显式拒绝 descriptor array。
+- 新增设计/实现文档：
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-layout-validation-design.md`
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-layout-validation-implementation.md`
+- TDD RED/GREEN（第六个切片）：
+  - 先在 `tests/VulkanUnitTests/GraphicsBackendPipelineTests.cpp` 增加 descriptor-array RED：fragment shader 使用 `sampler2D texSampler[2]`，descriptor layout binding `descriptorCount = 2`，预期不暴露 texture bootstrap binding metadata。
+  - RED 已确认失败点是当前 metadata 仍然只看 shader set / binding 装饰，没有看 layout 形状：`textureState.hasBinding` 实际为 `true`。
+  - 第一版 GREEN 直接把 `vk::PipelineLayout` 传进 `GraphicsExecutable.cpp`，虽然行为正确，但立刻触发 `backend-unittests` 链接失败，把 `VkPipelineLayout` 的实现符号拉进了 backend test target。
+  - 最终实现改成窄桥接：
+    - `VkPipeline.cpp` 提供 descriptor binding info callback
+    - `GraphicsExecutable` 只消费轻量的 descriptor type / descriptorCount 信息
+    - 避免 backend 直接依赖 `VkPipelineLayout.cpp` 的链接面
+  - 最终 narrow texture-bootstrap path 变成：
+    - fragment input `location 0` 必须是 `vec2`
+    - shader 必须含有 texture sampling
+    - descriptor decorations 必须收敛到单个 set / binding
+    - layout 上该 binding 必须是 `COMBINED_IMAGE_SAMPLER`
+    - layout 上该 binding 必须满足 `descriptorCount == 1`
+- 当前 focused / broader 验证：
+  - `cmake --build build-cuda-bootstrap --target vk-unittests --parallel 1 && ./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`6` tests) after layout validation
+  - `cmake --build build-cuda-bootstrap --target vk-unittests backend-unittests draw-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*'` passed (`8` tests)
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter=GraphicsExecutable.*` passed (`3` tests)
+  - `./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle` passed
+- 继续推进第七个 graphics execution 切片：把 texture-bootstrap metadata 的适用边界从“看见 texture sample 即可”继续收紧成“必须直接把 sample 结果写到 `location 0` 输出”。
+- 新增设计/实现文档：
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-direct-sample-design.md`
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-direct-sample-implementation.md`
+- TDD RED/GREEN（第七个切片）：
+  - 先在 `tests/VulkanUnitTests/GraphicsBackendPipelineTests.cpp` 增加 negative RED：fragment shader 仍然是 narrow texcoord + single combined-image-sampler 形状，但输出改成 `texture(texSampler, inTexCoord) * 0.5`，预期不暴露 texture bootstrap binding metadata。
+  - RED 已确认失败点就是当前 metadata 仍然过宽：`textureState.hasBinding` 实际为 `true`。
+  - GREEN 在 `GraphicsExecutable.cpp` 中新增了更窄的 direct-sample 判定：
+    - 复用统一的 texture-sample opcode helper
+    - 提取 `location 0` 输出变量
+    - 只接受 `OpStore(location0, value)` 且 `value` 的定义指令本身就是支持的 image-sample 指令
+    - 如果 sample 结果又经过乘法、混色或其他值变换，再写回 `location 0`，则拒绝提取 metadata
+  - 这一步之后，当前 narrow texture-bootstrap path 变成：
+    - fragment input `location 0` 必须是 `vec2`
+    - shader 必须含有 texture sampling
+    - `location 0` 输出必须直接来自 texture sample 结果
+    - descriptor decorations 必须收敛到单个 set / binding
+    - layout 上该 binding 必须是 `COMBINED_IMAGE_SAMPLER`
+    - layout 上该 binding 必须满足 `descriptorCount == 1`
+- 当前 focused / broader 验证：
+  - `cmake --build build-cuda-bootstrap --target vk-unittests --parallel 1 && ./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.RejectsTextureBootstrapBindingWhenFragmentPostProcessesSampledColor'` passed after the direct-sample narrowing change
+  - `cmake --build build-cuda-bootstrap --target vk-unittests backend-unittests draw-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*'` passed (`9` tests)
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter=GraphicsExecutable.*` passed (`3` tests)
+  - `./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*:GraphicsBackendSelection.*'` passed (`10` tests)
+  - `./build-cuda-bootstrap/backend-unittests` passed (`108` tests)
+  - `git diff --check` passed
+- 继续推进第八个 graphics execution 切片：把 texture-bootstrap metadata 从“必须 direct-sample store”放宽到“允许极小的 trivial sample passthrough”，修掉语义等价 shader 的 false negative。
+- 新增设计/实现文档：
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-sample-passthrough-design.md`
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-sample-passthrough-implementation.md`
+- TDD RED/GREEN（第八个切片）：
+  - 先在 `tests/VulkanUnitTests/GraphicsBackendPipelineTests.cpp` 增加 positive RED：fragment shader 先做 `vec4 sampledColor = texture(texSampler, inTexCoord);`，再 `outColor = sampledColor;`，预期仍应暴露 texture bootstrap binding metadata。
+  - RED 已确认失败点就是上一刀规则过窄：`textureState.hasBinding` 实际为 `false`。
+  - GREEN 在 `GraphicsExecutable.cpp` 中把 final output value 的判断扩成极小的 value-chain resolver：
+    - 仍然从 `location 0` 的最终 `OpStore` 开始
+    - 新增 function-local `OpStore/OpLoad` 解析
+    - 新增 `OpCopyObject` passthrough 解析
+    - 只有当整条链最终收敛到支持的 image-sample 指令时才接受
+    - 乘法、混色、向量组装或其他真实片元运算仍然拒绝
+  - 这一步之后，当前 narrow texture-bootstrap path 变成：
+    - fragment input `location 0` 必须是 `vec2`
+    - shader 必须含有 texture sampling
+    - `location 0` 的最终值允许经过极小的 trivial passthrough，但必须最终收敛到 texture sample 结果
+    - descriptor decorations 必须收敛到单个 set / binding
+    - layout 上该 binding 必须是 `COMBINED_IMAGE_SAMPLER`
+    - layout 上该 binding 必须满足 `descriptorCount == 1`
+- 当前 focused / broader 验证：
+  - `cmake --build build-cuda-bootstrap --target vk-unittests --parallel 1 && ./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.ExtractsTextureBootstrapBindingWhenFragmentUsesSamplePassthrough:GraphicsBackendPipeline.RejectsTextureBootstrapBindingWhenFragmentPostProcessesSampledColor'` passed after the passthrough change
+  - `cmake --build build-cuda-bootstrap --target vk-unittests backend-unittests draw-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*'` passed (`10` tests)
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter=GraphicsExecutable.*` passed (`3` tests)
+  - `./build-cuda-bootstrap/draw-unittests --gtest_filter=DrawTest.SolidColorTriangle` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*:GraphicsBackendSelection.*'` passed (`11` tests)
+  - `./build-cuda-bootstrap/backend-unittests` passed (`108` tests)
+  - `git diff --check` passed
+- 继续推进第九个 graphics execution 切片：把 separate image/sampler 这个当前明确 unsupported 的 texture-bootstrap 边界锁成显式 Vulkan pipeline negative coverage。
+- 新增设计/实现文档：
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-separate-image-sampler-boundary-design.md`
+  - `docs/plans/2026-03-12-graphics-executable-texture-bootstrap-separate-image-sampler-boundary-implementation.md`
+- 覆盖新增（无生产代码改动）：
+  - 在 `tests/VulkanUnitTests/GraphicsBackendPipelineTests.cpp` 新增 `configureSeparateImageSamplerPipeline(...)`
+  - 新增 `GraphicsBackendPipeline.RejectsTextureBootstrapBindingForSeparateImageSampler`
+  - shader 形状使用真实的 `texture2D + sampler` 双 binding 资源，并通过 `PipelineIntrospection` 断言 executable 不暴露 texture bootstrap binding metadata
+- 这一步没有 production-code GREEN：
+  - 当前实现已经正确保持该边界，新的 test 首次运行即通过
+  - 价值在于把“separate image/sampler 仍然 unsupported”从隐式行为提升成显式回归门
+- 当前 focused 验证：
+  - `cmake --build build-cuda-bootstrap --target vk-unittests --parallel 1 && ./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.RejectsTextureBootstrapBindingForSeparateImageSampler'` passed
+  - `cmake --build build-cuda-bootstrap --target vk-unittests --parallel 1` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*:BackendSmoke.*:GraphicsBackendSelection.*'` passed (`12` tests)
+  - `git diff --check` passed
+
 ## 2026-03-08
 - User chose to continue implementation in the current workspace instead of a separate worktree.
 - Initialized `task_plan.md`, `findings.md`, and `progress.md` for review-driven document revision.

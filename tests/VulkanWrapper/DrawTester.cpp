@@ -347,6 +347,11 @@ void DrawTester::enableColorLoad()
 	colorLoadOp = vk::AttachmentLoadOp::eLoad;
 }
 
+void DrawTester::setColorStoreOp(vk::AttachmentStoreOp storeOp)
+{
+	colorStoreOp = storeOp;
+}
+
 void DrawTester::enableSecondSubpass()
 {
 	secondSubpassEnabled = true;
@@ -473,7 +478,7 @@ vk::RenderPass DrawTester::createRenderPass(vk::Format colorFormat)
 		attachments[0].format = colorFormat;
 		attachments[0].samples = vk::SampleCountFlagBits::e1;
 		attachments[0].loadOp = colorLoadOp;
-		attachments[0].storeOp = vk::AttachmentStoreOp::eStore;
+		attachments[0].storeOp = colorStoreOp;
 		attachments[0].stencilLoadOp = vk::AttachmentLoadOp::eDontCare;
 		attachments[0].stencilStoreOp = vk::AttachmentStoreOp::eDontCare;
 		attachments[0].initialLayout = (colorLoadOp == vk::AttachmentLoadOp::eLoad) ? vk::ImageLayout::ePresentSrcKHR : vk::ImageLayout::eUndefined;
@@ -825,7 +830,7 @@ void DrawTester::createCommandBuffers(vk::RenderPass renderPass)
 				colorAttachment.imageView = swapchain->getImageView(i);
 				colorAttachment.imageLayout = vk::ImageLayout::eColorAttachmentOptimal;
 				colorAttachment.loadOp = colorLoadOp;
-				colorAttachment.storeOp = vk::AttachmentStoreOp::eStore;
+				colorAttachment.storeOp = colorStoreOp;
 				colorAttachment.clearValue.color = vk::ClearColorValue(colorClearValue);
 
 				vk::RenderingInfo renderingInfo;

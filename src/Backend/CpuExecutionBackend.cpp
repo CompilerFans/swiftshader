@@ -74,6 +74,14 @@ public:
 	    : graphics(std::make_unique<CpuGraphicsBackend>(device))
 	{}
 
+	void draw(const GraphicsDrawCall &draw) override
+	{
+		auto *pushConstants = reinterpret_cast<const vk::Pipeline::PushConstantStorage *>(draw.pushConstants);
+		graphics->renderer()->draw(draw.pipeline, *draw.dynamicState, draw.count, draw.baseVertex,
+		                           draw.events, draw.instanceID, draw.layer, draw.indexBuffer,
+		                           draw.renderArea, *pushConstants);
+	}
+
 	void submit(vk::Device *device, vk::SubmitInfo &submitInfo, sw::CountedEvent *events) override
 	{
 		if(shouldTraceCpuSubmit())

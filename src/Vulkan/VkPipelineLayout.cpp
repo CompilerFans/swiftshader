@@ -59,6 +59,7 @@ PipelineLayout::PipelineLayout(const VkPipelineLayoutCreateInfo *pCreateInfo, vo
 
 	pushConstantRanges = reinterpret_cast<VkPushConstantRange *>(bindingStorage);
 	std::copy(pCreateInfo->pPushConstantRanges, pCreateInfo->pPushConstantRanges + pCreateInfo->pushConstantRangeCount, pushConstantRanges);
+	dynamicOffsetCount = dynamicOffsetIndex;
 
 	incRefCount();
 }
@@ -102,6 +103,11 @@ size_t PipelineLayout::getDescriptorSetCount() const
 uint32_t PipelineLayout::getBindingCount(uint32_t setNumber) const
 {
 	return descriptorSets[setNumber].bindingCount;
+}
+
+uint32_t PipelineLayout::getDynamicOffsetCount() const
+{
+	return dynamicOffsetCount;
 }
 
 uint32_t PipelineLayout::getDynamicOffsetIndex(uint32_t setNumber, uint32_t bindingNumber) const

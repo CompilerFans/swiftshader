@@ -2,6 +2,7 @@
 #include "GraphicsBackend.hpp"
 
 #include "Backend/RuntimeAPI.hpp"
+#include "Backend/TriangleBootstrapDraw.hpp"
 #include "Device/Renderer.hpp"
 #include "System/Debug.hpp"
 #include "Vulkan/VkCommandBuffer.hpp"
@@ -25,7 +26,22 @@ class GpuExecutionBackend : public ExecutionBackend
 public:
 	explicit GpuExecutionBackend(vk::Device *device)
 	    : runtime(device ? device->getRuntimeAPI() : nullptr)
+	    , device(device)
 	{}
+
+	void draw(const GraphicsDrawCall &draw) override
+	{
+		if(runtime && tryTriangleBootstrapDraw(device, *runtime, draw, &triangleBootstrapWarmupDone))
+		{
+			return;
+		}
+
+		ensureRenderer(device);
+		auto *pushConstants = reinterpret_cast<const vk::Pipeline::PushConstantStorage *>(draw.pushConstants);
+		renderer->draw(draw.pipeline, *draw.dynamicState, draw.count, draw.baseVertex,
+		               draw.events, draw.instanceID, draw.layer, draw.indexBuffer,
+		               draw.renderArea, *pushConstants);
+	}
 
 	void submit(vk::Device *device, vk::SubmitInfo &submitInfo, sw::CountedEvent *events) override
 	{
@@ -69,6 +85,8 @@ private:
 
 	std::unique_ptr<sw::Renderer> renderer;
 	RuntimeAPI *runtime = nullptr;
+	vk::Device *device = nullptr;
+	bool triangleBootstrapWarmupDone = false;
 };
 
 }  // namespace

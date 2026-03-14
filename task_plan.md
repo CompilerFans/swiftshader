@@ -1,251 +1,209 @@
-# Task Plan: CUDA backend unit-test stabilization
+# Task Plan: GPU graphics execution refactor
 
 ## Goal
-调整当前开发主线：优先把 SwiftShader 仓库自带的一批单元测试在 `build-cuda-bootstrap/` 这类 CUDA 自定义后端构建里跑通，并以仓库内测试通过作为主要验收标准；不再把“CPU 基线是否也失败/崩溃”作为本轮推进的决策门槛。
+沿着“backend-owned graphics execution”主线持续收口：前几刀已经把 draw 路由收进 `ExecutionBackend`、让 `Renderer::draw()` 变成 CPU-only，并把 triangle bootstrap 的 shader-only 与 texture metadata 逐步迁进 `GraphicsExecutable`；当前重心继续沿 sampled-image resource plan 推进，一方面用真实 sample-use provenance 收口 plan 输入，另一方面开始让 separate image/sampler 真正驱动 strict GPU draw。
 
 ## Current Phase
-Phase 7: Next (Compute bring-up)
+Phase 21: Attachment lifecycle/state tracking (planning)
 
 ## Phases
-### Phase 1: Requirements & Discovery
-- [x] Confirm user-directed scope shift away from CPU-baseline comparisons
-- [x] Identify which built-in test binaries / filters are the best first targets
-- [x] Record the pivot and scope constraints in findings.md
+### Phase 1: Discovery
+- [x] 重新梳理 `VkCommandBuffer -> Renderer -> DrawCall` 的现有 draw 链路
+- [x] 确认 GPU draw 目前只是 `Renderer::draw()` 内的 bootstrap 旁路
+- [x] 明确第一刀不直接做完整 `GraphicsExecutable`
 - **Status:** complete
 
-### Phase 2: Failure Triage
-- [x] Run focused SwiftShader built-in tests under the CUDA build
-- [x] Capture failing test names, exit modes, and first reproducible cluster
-- [x] Select the smallest high-value failure family to fix first
+### Phase 2: Design & Planning
+- [x] 写图形执行重构设计文档
+- [x] 写分任务实现计划（按 TDD 拆分）
+- [x] 记录首个切片的边界与验收标准
 - **Status:** complete
 
-### Phase 3: Implementation
-- [x] Add or reuse the narrowest existing regression signal for the chosen failure family
-- [x] Fix the root cause in harness/backend/runtime code
-- [x] Keep changes scoped to the failing unit-test family
+### Phase 3: Draw routing seam
+- [x] 先写失败测试，覆盖 draw 路由策略/接口
+- [x] 给 `ExecutionBackend` 增加 draw dispatch seam
+- [x] 让 `CmdDrawBase` 通过 backend 发起 draw，而不是直接调 `renderer->draw()`
 - **Status:** complete
 
-### Phase 4: Verification
-- [x] Re-run the fixed focused tests in the CUDA build
-- [x] Re-run adjacent built-in tests that cover the same area
-- [x] Record commands and results in progress.md
+### Phase 4: GPU bootstrap extraction
+- [x] 把 triangle bootstrap 路由从 `Renderer::draw()` 抽到 backend helper
+- [x] 让 `GpuExecutionBackend` 负责 GPU bootstrap / CPU fallback / strict abort 决策
+- [x] 清掉 `Renderer::draw()` 中与 runtime/env 绑定的 GPU 分支
 - **Status:** complete
 
-### Phase 5: Delivery
-- [x] Summarize which built-in tests were stabilized
-- [x] Note remaining failing families / next candidates
-- [x] Confirm planning files reflect the latest state
+### Phase 5: Verification & cleanup
+- [x] 跑通针对性 backend / draw / Vulkan 测试
+- [x] 更新 bring-up 文档中的 draw 架构说明
+- [x] 记录剩余后续项：graphics executable、transfer/present/backend memory model
 - **Status:** complete
 
-### Phase 6: Gerrit Submission
-- [x] Commit CUDA runtime stability fix
-- [x] Push to Gerrit (`refs/for/master`)
+### Phase 6: Graphics executable scaffold
+- [x] 写 metadata-only `GraphicsExecutable` 设计与实现计划
+- [x] 先写 backend / Vulkan 失败测试，锁住 stage 组合和 pipeline hookup
+- [x] 给 `vk::GraphicsPipeline` 接入 backend executable 构建与生命周期
+- [x] 跑通 focused backend / draw / Vulkan 验证
 - **Status:** complete
 
-### Phase 7: Next (Compute bring-up)
-- [ ] Wire Vulkan compute dispatch to CUDA runtime
-- [ ] Unskip compute unit tests under CUDA build
-- **Status:** pending
+### Phase 7: Graphics executable bootstrap metadata
+- [x] 写 bootstrap-analysis 设计与实现计划
+- [x] 先写失败测试，锁住 bootstrap point size / fragment template 提取行为
+- [x] 让 `GraphicsExecutable` 持有 shader-only bootstrap metadata
+- [x] 让 `TriangleBootstrapDraw` 改为消费 executable metadata，并保留 texture descriptor 的 draw-time 物化
+- [x] 跑通 focused 和 broader backend / draw / Vulkan 验证
+- **Status:** complete
 
-## Key Questions
-1. 哪一批 SwiftShader 自带测试最适合作为当前 CUDA 构建的第一组稳定化目标？
-2. 当前失败更集中在测试 harness、后端接线，还是某个具体图形/描述符/状态族？
-3. 哪些失败适合通过已有测试直接验收，哪些需要补更窄的新回归用例？
+### Phase 8: Graphics executable texture bootstrap metadata
+- [x] 写 texture-bootstrap metadata 设计与实现计划
+- [x] 先写失败测试，锁住 texture binding metadata 的默认值和 graphics pipeline 提取行为
+- [x] 让 `GraphicsExecutable` 持有 texture bootstrap descriptor set / binding metadata
+- [x] 让 `TriangleBootstrapDraw` 用 executable metadata 做 texture config 物化，并停止直接读取 fragment shader
+- [x] 跑通 focused 和 broader backend / draw / Vulkan 验证
+- **Status:** complete
+
+### Phase 9: Graphics executable texture bootstrap narrowing
+- [x] 写 texture-bootstrap narrowing 设计与实现计划
+- [x] 先写失败测试，锁住 “location 0 不是 `vec2` texcoord” 时不得提取 texture binding metadata
+- [x] 把 texture bootstrap metadata 的 narrow path 收紧为 `fragment location 0 == vec2`
+- [x] 跑通 focused 和 broader backend / draw / Vulkan 验证
+- **Status:** complete
+
+### Phase 10: Graphics executable texture bootstrap layout validation
+- [x] 写 texture-bootstrap layout-validation 设计与实现计划
+- [x] 先写失败测试，锁住 layout 形状不匹配时不得误报 texture bootstrap binding metadata（含 descriptor array / descriptorCount 约束）
+- [x] 让 `GraphicsExecutable` 在 texture metadata 提取时同时验证 layout 上的 descriptor type / descriptorCount
+- [x] 跑通 focused 和 broader backend / draw / Vulkan 验证
+- **Status:** complete
+
+### Phase 11: Graphics executable texture bootstrap direct-sample validation
+- [x] 写 texture-bootstrap direct-sample 设计与实现计划
+- [x] 先写失败测试，锁住 sample 后又做额外片元运算的 shader 不得被识别为当前 texture bootstrap binding metadata
+- [x] 把 texture bootstrap metadata 的 narrow path 收紧为 `location 0` 必须直接存储 texture sample 的结果
+- [x] 跑通 focused 和 broader backend / draw / Vulkan 验证
+- **Status:** complete
+
+### Phase 12: Graphics executable texture bootstrap sample passthrough validation
+- [x] 写 texture-bootstrap sample-passthrough 设计与实现计划
+- [x] 先写失败测试，锁住“sample 结果经 trivial pass-through 再写回”仍应被识别为当前 texture bootstrap binding metadata
+- [x] 把 texture bootstrap metadata 的 narrow path 扩为允许极小的 sample passthrough value chain
+- [x] 跑通 focused 和 broader backend / draw / Vulkan 验证
+- **Status:** complete
+
+### Phase 13: Graphics executable texture bootstrap separate-image-sampler boundary
+- [x] 写 separate-image-sampler boundary 设计与实现计划
+- [x] 增加 Vulkan pipeline negative test，锁住 separate image/sampler 不得被识别为当前 texture bootstrap binding metadata
+- [x] 更新跟踪文档，明确当前 narrow path 只覆盖 combined image sampler
+- [x] 跑 focused Vulkan 验证
+- **Status:** complete
+
+### Phase 14: Graphics executable sampled-image resource plan
+- [x] 写 sampled-image resource plan 设计与实现计划
+- [x] 把 `GraphicsExecutable` 的 texture metadata 提升成显式 texture plan，区分 `CombinedImageSampler` / `SeparateImageSampler` / `Other`
+- [x] 保留 `hasBootstrapTextureBinding()` 作为兼容入口，只对当前 supported combined-image-sampler path 返回 `true`
+- [x] 扩 Vulkan pipeline tests，覆盖 combined / separate / multi-sampled-resource (`Other`) 三类形态
+- [x] 跑 focused 与 broader backend / draw / Vulkan 验证
+- **Status:** complete
+
+### Phase 15: Graphics executable sampled-image provenance
+- [x] 写 sampled-image provenance 设计与实现计划
+- [x] 先写失败测试，锁住 unrelated non-sampled descriptors 不得把 sampled-image plan 降成 `Other`
+- [x] 把 texture plan descriptor 收集改成真实 sample-use provenance，而不是 fragment shader 全量 descriptor decorations
+- [x] 跑 focused 与 broader backend / draw / Vulkan 验证
+- **Status:** complete
+
+### Phase 16: Triangle bootstrap separate-image-sampler materialization
+- [x] 写 separate-image-sampler materialization 设计与实现计划
+- [x] 复现 strict GPU `DrawTest.TexturedTriangleSeparateImageSamplerNearest` 的失败
+- [x] 让 narrow direct-sample `SeparateImageSampler` plan 标记为 bootstrap-supported
+- [x] 让 `TriangleBootstrapDraw` 直接消费 richer texture plan，并物化 separate image/sampler 的 `Texture2DColor` config
+- [x] 跑 focused 与 broader backend / draw / Vulkan 验证
+- **Status:** complete
+
+### Phase 17: Texture bootstrap descriptor-array indexing
+- [x] 先写失败测试，锁住 combined/separate descriptor array 在常量 index 情况下应被识别为可 bootstrap 的 texture plan
+- [x] 扩 `GraphicsExecutableTexturePlan`：记录 `imageArrayElement` / `samplerArrayElement`，并从 sample operand 的 access-chain 中提取常量 index
+- [x] 扩 `TriangleBootstrapDraw`：按 array element + descriptor size 物化正确的 descriptor element
+- [x] 增加 strict GPU bootstrap render 的 draw regressions：`DrawTest.TexturedTriangleDescriptorArrayIndexOneBootstrapNearest` / `DrawTest.TexturedTriangleSeparateImageSamplerDescriptorArrayIndexOneBootstrapNearest`
+- [x] 跑 focused 与 broader backend / draw / Vulkan 验证
+- **Status:** complete
+
+### Phase 18: Image resource plan (sampled + storage)
+- [x] 先写失败测试：fragment 含 `imageStore` 的 direct-sample shader 不得被识别为可 bootstrap 的 texture binding（避免 strict GPU triangle bootstrap 静默跳过 side-effect）
+- [x] 给 `GraphicsExecutable` 增加 image resource plan：显式列出 fragment shader 的 sampled-image 相关 descriptors 与 storage image descriptors（含 array element）
+- [x] 扩 Vulkan pipeline introspection/tests：验证 combined / separate / storage-image-write pipeline 的资源 plan 计数与 binding 位置
+- [x] 跑 focused Vulkan / backend / draw 验证
+- **Status:** complete
+
+### Phase 19: General resource plan + capability gate (scaffold)
+- [x] 写框架结论落盘：整体 GPU 迁移仍需补的模块面与建议里程碑（见 `docs/plans/2026-03-12-gpu-migration-framework-adjustments.md`）
+- [x] 增加更通用的 `GraphicsExecutableResourcePlan`（先建模/暴露，不强行执行）：layout 轮廓 + descriptor refs（含 dynamic/array element）
+- [x] 扩 pipeline introspection：覆盖至少 push constants / dynamic offsets / buffer descriptors 的 plan 轮廓（计数与关键 binding）
+- [x] 增加 fragment feature mask（discard/storage-image/image-query/derivatives/atomics/subgroup）作为 capability gate 的输入，并在 pipeline/executable 创建期生成
+- [x] 建立 capability/side-effect gate 的统一入口：输出可测试的 unsupported reason list，并用于 strict/fallback 决策
+- **Status:** complete
+
+### Phase 20: IR-based codegen migration evaluation
+- [x] 落盘“从 nvcc 文本源码路径迁到 IR 的时机与可行性”评估（见 `docs/plans/2026-03-12-ir-codegen-migration-timing.md`）
+- [x] 明确短期 hard gate：不得每 draw 编译 module；编译/缓存必须收敛到 pipeline-time 或等价层级（已实现 CUDA module cache，避免重复 nvcc 编译）
+- [x] 评估并记录可行过渡：NVRTC/in-process compile vs. IR-consuming runtime（以 toolchain/依赖/调试性为约束）
+- **Status:** complete
+
+### Phase 21: Attachment lifecycle/state tracking (planning)
+- [x] 写 offscreen color attachment lifecycle/state tracking 设计与实现计划（见 `docs/plans/2026-03-14-graphics-attachment-lifecycle-design.md` / `docs/plans/2026-03-14-graphics-attachment-lifecycle-implementation.md`）
+- [ ] 先写失败测试，锁住 clear/store/layout 的最小 backend-owned 闭环（先覆盖离屏 color attachment）
+- [ ] 把 strict GPU triangle bootstrap 的 color write-back 从 ad-hoc helper 推进到可跟踪的 attachment lifecycle scaffold
+- [ ] 扩 focused draw / Vulkan 验证，覆盖 render pass 与 dynamic rendering 下的 offscreen color attachment 路径
+- **Status:** in_progress
+
+### Phase 22: Compiler analysis module extraction (planning)
+- [x] 写 compiler analysis 独立模块设计与实现计划（见 `docs/plans/2026-03-14-compiler-analysis-module-design.md` / `docs/plans/2026-03-14-compiler-analysis-module-implementation.md`）
+- [x] 新增第一层 `SpirvToCompilerAnalysis` 单测，覆盖当前 graphics 路线上的 supported + gated shader 特性
+- [x] 从 `GraphicsExecutable.cpp` 提取通用 compiler analysis 到 `src/Pipeline/ShaderCompilerAnalysis.*`
+- [x] 让 `GraphicsExecutable` 改为消费独立 analysis 模块，并补第二层 `KernelIR` / 第三层 emitter-ABI parity 覆盖
+- **Status:** complete
 
 ## Decisions Made
 | Decision | Rationale |
 |----------|-----------|
-| 在当前工作区执行实现 | 用户此前已明确不创建 worktree，本轮继续沿用 |
-| Use `planning-with-files` for this turn | 用户显式指定，并且任务已切换到新的多阶段方向 |
-| Prioritize built-in SwiftShader tests over external samples | 用户明确要求先把仓库自带测试跑通 |
-| Do not gate progress on CPU-baseline comparisons | 用户明确说明 CPU 版本原本应可通过，无需继续纠结对比 CPU 是否支持或崩溃 |
+| 第一刀先做 draw routing seam，不直接上完整 `GraphicsExecutable` | 能先修正最明显的错层问题，风险最低 |
+| `Renderer::draw()` 目标形态是 CPU-only | CPU renderer 继续承担现有 CPU 语义，不再混 GPU 分支 |
+| GPU triangle bootstrap 暂时保留，但降级为 backend-owned helper | 现阶段它仍是必要 bring-up/验证工具 |
+| 继续保留 `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK` | 仍需要可控 bring-up/诊断开关，但语义中心不再放在 fallback |
+| 当前 `GraphicsExecutable` 只做 metadata scaffold，不改变 draw 执行路径 | 先建立 pipeline-time backend ownership，避免把 graphics execution / resource model 一次性耦合进来 |
+| `GraphicsExecutable` 先只吸收 shader-only bootstrap metadata，不吸 descriptor/materialized texture state | texture bootstrap 依赖 draw-time binding state，过早塞进 pipeline object 会错层 |
+| texture bootstrap 只迁 descriptor set / binding metadata，不迁 texture bytes / sampler state | 保持 pipeline-time 与 draw-time 职责边界清晰，同时去掉 draw helper 对 fragment shader 的直接依赖 |
+| 当前 texture bootstrap metadata 只接受 `fragment location 0 == vec2` 的窄路径 | 先避免 false-positive metadata，等后续有真正 varying 语义映射后再扩范围 |
+| 当前 texture bootstrap metadata 仍要求 layout 上的 descriptor type 为 `COMBINED_IMAGE_SAMPLER`，并要求 descriptor-array index 为常量且 in-bounds | 通过把 array element 纳入 plan，descriptor array 不再需要一刀切拒绝；non-constant index 仍然保守拒绝 |
+| 当前 texture bootstrap metadata 还要求 `location 0` 的输出直接来自 texture sample 结果 | 现有 `Texture2DColor` bootstrap 只能表达“直接采样并输出”，不能猜测 sample 后的额外片元运算 |
+| 当前 texture bootstrap metadata 允许极小的 trivial passthrough（如 `OpLoad`/`OpCopyObject`）通向 texture sample | 保留 direct-sample 语义边界的同时，避免把语义等价的局部临时变量写法误判成 unsupported |
+| texture bootstrap 一旦检测到 fragment shader 含 storage image read/write（`OpImageRead`/`OpImageWrite`），必须拒绝 bootstrapSupported | triangle bootstrap 不能模拟 storage image side-effect；必须避免 strict GPU bootstrap 静默错误 |
+| `hasBootstrapTextureBinding()` 继续不支持 separate image/sampler | 保持 combined-only compatibility；separate image/sampler 通过 sampled-image plan + draw-time 物化支持 narrow direct-sample case |
+| texture metadata 现在先建模 sampled-image resource plan，再从中派生 bootstrap support | 需要先把 combined / separate / other 资源方案建模清楚，避免继续把“资源形态”和“当前 bootstrap 可执行性”揉成一个布尔值 |
+| sampled-image plan 的 descriptor 收集以真实 sample-use provenance 为准，而不是 fragment shader 的全量 descriptor decorations | non-sampled UBO / 其他 descriptor 不应污染 sampled-image plan 分类 |
+| `TriangleBootstrapDraw` 现在直接消费 `GraphicsExecutableTexturePlan`，而不是只消费 combined-binding compatibility accessor | separate image/sampler 需要 richer plan 才能驱动 draw-time 物化；兼容 accessor 保留给仍只理解 combined 的调用方 |
+| `GraphicsExecutable` 新增 image resource plan（sampled + storage），为后续更一般的 GPU 资源建模预留稳定入口 | 避免继续把“纹理 bootstrap”当成资源方案；sampled image 与 storage image 都必须有明确 plan 载体 |
+
+## Key Questions
+1. `GraphicsExecutable` 下一步要承载哪些真正执行期信息，而不是只停留在 metadata？
+2. triangle bootstrap helper 如何自然演进到正式 graphics executable 入口？
+3. 哪些路径仍会继续保留 CPU-only（copy/blit/resolve/present/resource model）？
 
 ## Errors Encountered
 | Error | Attempt | Resolution |
 |-------|---------|------------|
-| `cmake --build build-custom ...` failed with missing cache | 1 | Re-ran `cmake -S . -B build-custom` to recreate cache, then resumed incremental build |
-| `rm -rf build-custom .cache` blocked by policy | 1 | Used Python `shutil.rmtree()` instead |
-| Shell backtick expansion in `rg` command | 1 | Re-ran with `grep -F` and proper quoting |
-| `draw-unittests` intermittently saw `countStampedLaunches(...) == 0` | 1 | Prefer CUDA primary context via `cuDevicePrimaryCtxRetain/Release`, fallback to `cuCtxCreate` |
+| None yet | - | - |
 
 ## Notes
-- 2026-03-11 new pivot: active next feature work is no longer draw/vk test stabilization; it is real `Vulkan compute dispatch -> CUDA runtime` bring-up, with first acceptance gated on `ComputeTests` narrow cases (`Memcpy`, `GlobalInvocationId`) executing for real in the CUDA build.
-- 2026-03-10 pivot: the active plan is no longer the external Vulkan-Samples ladder. The immediate objective is to stabilize selected repository-owned unit tests in the CUDA-enabled build.
-- 2026-03-10 first stabilization result: the initial failing family in `backend-unittests` was fixed by restoring layout parity between the raster CUDA kernel's invocation struct and host-side `FragmentBootstrapInvocation`.
-- 2026-03-10 second stabilization result: `draw-unittests` has no concrete failing CUDA case when sharded, while `vk-unittests` yielded three selection/smoke expectation fixes, one compute-fixture skip fix, and one discard-test stability fix.
-- Current next blocker: full `vk-unittests` in the CUDA build still reaches a later `SIGSEGV` after the early DrawTests prefix, so the next cycle should continue isolating that remaining crash window.
-- 2026-03-10 lifecycle isolation update: in both CPU and CUDA builds, `DrawTest.ConstructThenDestroyWithoutInitialize` and `DrawTest.InitializeThenDestroyWithoutRender` repeat cleanly; the remaining CUDA-only crash still requires `renderFrame()`, so the active root-cause search is now narrowed to submit/present or post-submit teardown rather than plain tester construction/initialization.
-- 2026-03-10 no-present update: `DrawTest.RenderWithoutPresentThenDestroy` also reproduces the CUDA-only repeat crash, so `queuePresent()` / surface presentation is no longer the leading suspect; the remaining search narrows further to the real draw submit path after swapchain acquire.
-- 2026-03-10 launch-shape update: `InitializeThenDestroyWithoutRender` still performs the expected single CUDA warmup launch and remains stable, while real draw tests perform additional stage launches and are the ones that crash. The active search is therefore inside the actual draw bootstrap/submit path, not generic CUDA runtime bring-up.
-- 2026-03-10 acquire update: `DrawTest.AcquireWithoutSubmitThenDestroy` repeats cleanly in both CPU and CUDA builds, so the remaining CUDA-only repeat crash now narrows to work that happens after swapchain acquire and during the real submitted frame.
-- 2026-03-10 primitive-boundary update: `DrawTest.SubmitWithoutDrawThenDestroy`, `DrawTest.DrawZeroVerticesThenDestroy`, `DrawTest.DrawOneVertexThenDestroy`, and `DrawTest.DrawTwoVerticesThenDestroy` all repeat cleanly in both CPU and CUDA builds. The remaining CUDA-only repeat crash first appears when the draw path forms a complete 3-vertex triangle, so the active search should move into triangle assembly / raster / fragment execution rather than generic submit or VS-only work.
-- 2026-03-10 degenerate-triangle update: `DrawTest.DrawDegenerateTriangleThenDestroy` also crashes under CUDA repeats while passing on CPU, so the active boundary is narrower than “produces visible fragments”. A complete 3-vertex primitive is already sufficient; the next search should focus on primitive assembly / bootstrap stage launch / no-coverage triangle handling rather than only covered-fragment generation.
-- 2026-03-10 backend degenerate-raster fix: `runRasterBootstrap()` now explicitly rejects zero-area triangles instead of launching a full-frame raster pass with divide-by-zero barycentrics. This fixed the new backend regression test and changed the draw-level symptoms: `RenderWithoutPresentThenDestroy` is now stable, but `SolidColorTriangle`, `VertexShaderNoPositionOutput`, and the synthetic degenerate draw repeat still expose a remaining CUDA-only crash family.
-- 2026-03-10 present-only update: after the degenerate-raster fix, `DrawTest.RenderWithPresentThenDestroy` repeats cleanly on CPU but still crashes under CUDA repeats, while `RenderWithoutPresentThenDestroy` stays stable. The remaining normal-triangle repeat crash is therefore narrowed to work that happens only on the present path after a successful submitted frame.
-- 2026-03-11 present-boundary update: adding an explicit `device.waitIdle()` after `renderFrame()` does not stabilize the CUDA crash, so the issue is not a simple “present returned before all work drained” bug. However `SubmitWithoutDrawWithPresentThenDestroy` and `DrawTwoVerticesWithPresentThenDestroy` both repeat cleanly in CPU/CUDA builds, which narrows the remaining normal-triangle present crash to “present after a complete triangle primitive” rather than generic present or incomplete-primitive work.
-- 2026-03-11 queue-present update: diagnostic early-return probes show the remaining crash survives even when `XcbSurfaceKHR::present()` and `SwapchainKHR::present()` are effectively skipped, as long as `Queue::present()` still goes through its synchronization path. Skipping the initial `Queue::waitIdle()` does not crash quickly; instead it hangs in the present path, which points to a deeper mismatch between SwiftShader's binary-semaphore/present synchronization and the renderer's asynchronous draw completion model.
-- 2026-03-11 wait-idle update: newer diagnostics show `RenderWaitFenceThenPresentThenDestroy` and even `RenderWaitFenceThenPresentWithoutSemaphoreThenDestroy` still crash under CUDA repeats, while `RenderWithoutPresentThenWaitIdleDestroy` also crashes without any present at all. The active root boundary is therefore “complete triangle draw + extra explicit `waitIdle()`” rather than present or present-wait-semaphore specifically.
-- Historical milestones below remain useful as implementation context, but they are no longer the active phase tracker for this turn.
-- Task 1: backend build skeleton complete.
-- Task 2 complete: backend-neutral queue seam added with CPU default backend.
-- Task 3 complete: dedicated `backend-unittests` target added and passing.
-- Task 4 complete: minimal `SemanticIR` skeleton and tests added.
-- Task 5 complete: minimal `KernelIR`/`KernelABI` skeletons and quad metadata tests added.
-- Task 6 complete: standalone `SemanticIRBuilder` bootstrap path added.
-- Task 7 complete: codegen text emitters and ABI parity checks added.
-- Task 8 complete: runtime adapter and fake runtime bootstrap added.
-- Task 9 complete: compute backend executable bootstrap and fake dispatch validation added.
-- Task 10 complete: logical resource state tracker added and threaded into execution state.
-- Task 11 complete: graphics backend stub extracted with CPU default implementation.
-- Task 12 complete: fallback present adapter integrated into swapchain acquire/present flow.
-- Task 13 complete: custom-backend build flags, presubmit smoke config, and bring-up doc added.
-- Task 14 complete: smoke tests, bring-up checklist, and design status update added.
-- Post-bootstrap compute runtime routing complete: custom backend now owns a device runtime and compute dispatch can flow into fake runtime capture when the custom backend flag is enabled.
-- Post-bootstrap present factory complete: present adapter selection now follows backend factory rules, and custom builds expose fake acquire/present capture.
-- Post-bootstrap graphics execution routing complete: custom builds now select an explicit custom execution backend bootstrap mode that still delegates graphics to CPU fallback cleanly.
-- Pure color triangle milestone complete: `DrawTest.SolidColorTriangle` now performs pixel readback and passes in both default and custom fast-test builds.
-- CUDA bootstrap design and implementation docs added:
-  - `docs/plans/2026-03-08-custom-gpu-cuda-bootstrap-design.md`
-  - `docs/plans/2026-03-08-custom-gpu-cuda-bootstrap-implementation.md`
-- Real CUDA bootstrap milestone in progress: the repository now has a dedicated `SWIFTSHADER_CUSTOM_GPU_USE_CUDA` build mode, `CudaCompilerDriver`, `CudaRuntimeAPI`, and an extended `RuntimeAPI` with real module/memory/launch primitives.
-- Current verified CUDA milestone: direct backend unit tests can compile CUDA-like source with `nvcc`, launch `kernel_main` through the CUDA Driver API, and read back a 32-bit device-memory result.
-- Current graphics milestone: `DrawTest.SolidColorTriangle` passes in `build-cuda-bootstrap/` when run from the build directory, and the test's stamp-file assertion confirms that the custom CUDA build performed at least one real CUDA launch during initialization.
-- Current multi-draw milestone: `DrawTest.MultipleSolidColorTriangles` passes in both `build-cuda-bootstrap/` and `build-draw-custom-subzero/`, using a test-only multi-draw recording hook in `DrawTester` while preserving the default single-draw path.
-- Current artifact milestone: both triangle draw tests now save `BMP` snapshots under `draw-test-artifacts/` in the build directory via the test-only `DrawTester::saveFrame()` helper.
-- Current CUDA debug milestone: the real CUDA runtime path now dumps kernel source to `stderr` by default, with `SWIFTSHADER_CUDA_DUMP_SOURCE=0|false|off|no` available to suppress it when needed.
-- Current graphics-bootstrap milestone: the custom execution backend now performs one minimal `vertex bootstrap` CUDA compile+launch on the first graphics submit, while still delegating actual triangle rendering to the CPU fallback path.
-- Current vertex-style bootstrap milestone: the graphics bootstrap kernel now carries an explicit vertex input/output contract and a `w = 1.0f` writeback, instead of the earlier comment-only placeholder.
-- Current vertex wrapper/body milestone: the graphics bootstrap kernel now uses a `VsParams` launch contract plus an explicit `vs_entry` wrapper and generated-style `vs_main` body, and the temporary `kernel_main` compatibility wrapper has been removed.
-- Current runtime entrypoint milestone: `RuntimeAPI` now supports per-module entrypoint names, `CudaRuntimeAPI` can launch `vs_entry` directly, and default callers still fall back to `kernel_main` until each stage is migrated.
-- Current bootstrap execution milestone: `GraphicsBootstrap` now launches a real three-vertex `vs_entry` invocation on the CUDA runtime, and backend tests verify the written-back `x/y/z/w` outputs.
-- Current generated-VS milestone: `GraphicsBootstrap` now supports a minimal compile-time `GraphicsBootstrapShaderConfig`, letting generated `vs_main` apply constant position offsets and proving a first step beyond pure passthrough lowering.
-- Current builtin-lowering milestone: generated `vs_main` now supports a minimal `gl_VertexIndex`-style term on `x`, proving the wrapper-supplied builtin can flow into emitted CUDA source and real runtime execution.
-- Current runtime-parameter milestone: `VsParams` now carries a minimal runtime offset payload, giving the bootstrap path its first push-constant-like data flow through the launch ABI.
-- Current attribute-lowering milestone: the vertex wrapper now fetches `vec3 position` from raw vertex memory through `vertexStride` and `positionOffset`, proving a first minimal attribute/binding lowering path.
-- Current instance-builtin milestone: generated `vs_main` now supports a minimal `gl_InstanceIndex`-style term on `y`, proving a second wrapper-supplied builtin can flow through emitted CUDA source and runtime execution.
-- Current minimal SPIR-V vertex-lowering milestone: `SemanticIRBuilder` can now extract `Location 0`, `BuiltIn VertexIndex`, and `BuiltIn InstanceIndex` from a real `SpirvBinary`, `lowerToKernelIR()` carries that metadata forward, and `emitCudaLikeSource()` can emit a vertex-style CUDA wrapper/body from the lowered result.
-- Current vertex-input-width milestone: the minimal SPIR-V path now also preserves the declared vector width for `Location 0`, so `vec2` position inputs lower into CUDA-like source with an explicit zero `z` fill instead of an invalid third-float fetch.
-- Accepted VS completion gate: before starting raster/fragment follow-up work, vertex bring-up must finish minimal builtin support, minimal attribute/binding lowering, minimal `SPIR-V -> CUDA-like source` vertex lowering, and a small set of Vulkan-runtime vertex tests sourced from GLSL or SPIR-V.
-- VS completion gate satisfied: the repository now has minimal builtin support, minimal attribute/binding lowering, minimal `SPIR-V -> CUDA-like source` vertex lowering, plus Vulkan runtime vertex tests covering both GLSL and explicit SPIR-V module creation.
-- Current fragment-bootstrap milestone: the backend now has a standalone `FragmentBootstrap` path that emits `fs_entry/fs_main`, launches through `RuntimeAPI`, writes constant RGBA8 output, and validates helper/export suppression before raster integration.
-- Current fragment-position test milestone: `DrawTest` now includes a `gl_FragCoord` quadrant-color case that saves a BMP artifact and verifies four screen-space sample points without needing new runtime-side draw infrastructure.
-- Current fragment-position triangle milestone: `DrawTest` now also includes an ordinary-triangle variant of the `gl_FragCoord` quadrant-color test, with BMP export and interior sample points chosen from the triangle's actual coverage.
-- Accepted performance observation gate: after the VS gate, establish CPU-only draw-performance baselines for `SolidColorTriangle` and `ManySolidTriangles`, plus a window-visible FPS observer, and require the future GPU draw path to reuse the same scenes for CPU/GPU comparison before broader feature expansion continues.
-- Current performance-baseline milestone: `VulkanBenchmarks` now has a CPU `ManySolidTriangles` case at `1K`, `16K`, and `64K` scales, with labeled output including `triangle_count`, `fps`, `case`, `backend`, and `mode`.
-- Current FPS-observer milestone: a standalone `draw-fps-observer` tool can continuously render the simple CPU draw scenes and print once-per-second FPS; benchmark tools now suppress CUDA source dumps by default so the output stays readable, and on non-Windows platforms the tool reports the repository's existing headless-surface limitation instead of opening a visible native window.
-- Accepted raster bring-up rule: implement raster with a simple in-house CUDA path first, use the existing CPU raster behavior only as a reference oracle, align through dedicated CPU-reference and GPU-specific tests, and allow stub/dummy fields early as long as each step is driven by failing tests.
-- Current raster-bootstrap milestone: the backend now has a standalone `RasterBootstrap` path with a CPU reference oracle, a real CUDA `raster_entry` kernel that emits dense coverage and compacts it into `FragmentBootstrapInvocation` records, and a narrow helper that feeds those invocations directly into `FragmentBootstrap`.
-- Current triangle-pipeline bootstrap milestone: the backend now has a standalone `TrianglePipelineBootstrap` path that chains `GraphicsBootstrap`, `RasterBootstrap`, and `FragmentBootstrap`; the custom execution backend now uses that three-stage bootstrap on first graphics submit instead of launching only the vertex stage.
-- Current triangle-pipeline config milestone: `TrianglePipelineBootstrap` now accepts an explicit config for framebuffer size and fragment output color, so the bootstrap chain is no longer hard-coded to one green triangle and is one step closer to consuming real draw-state inputs.
-- Current triangle-pipeline vertex-input milestone: `TrianglePipelineBootstrap` now accepts both explicit vertex triples and raw vertex bytes plus stride/offset binding metadata, so the bootstrap chain can already consume the same minimal position-fetch contract used by `GraphicsBootstrap`.
-- Current limitation: Vulkan shared-library compute dispatch in the real CUDA build is not yet wired end-to-end and is explicitly skipped in `tests/VulkanUnitTests/ComputeBackendPipelineTests.cpp`.
-- Re-read this file before changing either plan document.
-- Record accept/reject decisions explicitly.
-- Keep design and implementation plan synchronized.
-- Current draw-state bridge milestone: `TrianglePipelineBootstrap` now has a narrow real-draw bridge from `sw::Stream` for `triangle list + one primitive`, and `Renderer::draw()` uses it to trigger the first hardware-backed `VS -> Raster -> FS` bootstrap from actual bound vertex bytes instead of a queue-time hard-coded triangle.
-- Current multi-triangle bootstrap milestone: the real-draw bridge now accepts positive non-indexed triangle-list primitive counts, and `TrianglePipelineBootstrap` can rasterize multiple triangles by iterating the existing stage bootstrap and composing the resulting color buffers.
-- Current fragment-semantic milestone: `FragmentBootstrap` now supports both constant-color and `gl_FragCoord` quadrant modes through a minimal `shaderKind` config, and `TrianglePipelineBootstrap` can pass that fragment mode into the final CUDA stage.
-- Current CUDA-source-observation milestone: `CudaRuntimeAPI` now mirrors dumped kernel source to an optional `SWIFTSHADER_CUDA_SOURCE_DUMP_PATH`, so Vulkan draw tests can verify which fragment bootstrap shader was compiled even when rendering happens inside `libvk_swiftshader.so`.
-- Current fragment-constant bridge milestone: for the simplest fragment shaders that write one constant `vec4` directly to `Location 0`, `Renderer::draw()` now extracts that constant from `SpirvShader` and feeds it into the CUDA bootstrap path, so `fs_main` matches the real shader's constant color instead of falling back to the old hard-coded green.
-- Current varying-color bridge milestone: the bootstrap path now carries one minimal color varying end-to-end. `GraphicsBootstrap` can fetch a color attribute, `RasterBootstrap` interpolates it per covered pixel, `FragmentBootstrap` has an `InterpolatedColor` mode, and `Renderer::draw()` can route a simple `location 0` fragment input through that path using `stream[1]` as the color source.
-- Current visible benchmark milestone: the repository now has a scriptable `animated-triangle-benchmark` path for a rotating interpolated-color triangle with time-varying colors, visible window presentation on Linux/XCB, stdout/window-title FPS reporting, and a wrapper script that selects CPU or CUDA by choosing the corresponding build directory.
-- Current next-phase planning milestone: CPU SwiftShader `VS / Raster / FS` support has been audited into a stage feature matrix and a concrete next-phase roadmap, so upcoming CUDA work can be scheduled against explicit parity families instead of ad hoc demos.
-- Current indexed-draw milestone: the CUDA bootstrap path now accepts indexed triangle-list draws by expanding indices on the host side before launching the existing stage chain, and the lightweight draw harness can record indexed draws through a minimal index-buffer helper.
-- Current barycentric milestone: the CUDA bootstrap path now carries first-class barycentric payloads from raster to fragment, and interpolated-color fragment execution reconstructs colors from barycentrics plus per-triangle vertex colors instead of relying on the older pre-interpolated color shortcut.
-- Current FrontFacing milestone: the CUDA bootstrap path now carries a per-triangle `frontFacing` flag from raster to fragment, `Renderer::draw()` detects `BuiltInFrontFacing`, and a minimal binary-colors fragment mode validates the end-to-end path against the CPU renderer.
-- Current discard milestone: the CUDA bootstrap path now recognizes a narrow `FragCoord + discard` fragment family, emits a left-half discard mode, and validates it end-to-end against the CPU renderer.
-- Current FragDepth milestone: the CUDA bootstrap path now supports a narrow interpolated-color-driven `FragDepth` mode, optional fragment depth-buffer output, and host-side depth composition across overlapping triangles.
-- Current point-list milestone: the CUDA bootstrap path now accepts `POINT_LIST` draws through a temporary host-side point-to-quad expansion, and the draw harness can configure point topology for focused tests.
-- Current PointCoord milestone: the CUDA bootstrap path now carries `pointCoordX/Y` for point-list draws and validates a minimal `PointCoordGradient` fragment mode end-to-end.
-- Current flat-interpolation milestone: the CUDA bootstrap path now distinguishes `flat` varying color from smooth interpolation and validates it against the default `FIRST_VERTEX` provoking rule.
-- Current triangle-strip milestone: the CUDA bootstrap path now accepts `TRIANGLE_STRIP` draws through host-side strip expansion that follows the CPU default provoking-vertex ordering.
-- Current triangle-fan milestone: the CUDA bootstrap path now accepts `TRIANGLE_FAN` draws through host-side fan expansion, while primitive restart remains tracked separately as a CPU baseline blocker.
-- Current line-list milestone: the CUDA bootstrap path now accepts `LINE_LIST` draws through a temporary host-side line-to-quad expansion, and the draw harness can force a wider line width for stable validation.
-
-- Current topology-breadth milestone: `LINE_LIST` and `LINE_STRIP` now run through the CUDA bootstrap path via host-side line-to-quad expansion, with dedicated backend coverage and draw tests that dump BMP artifacts.
-
-- Current VS builtin milestone: the CUDA bootstrap path now carries a minimal constant `gl_PointSize` from `SpirvShader` into point-list rendering, so point coverage no longer relies on the previous hard-coded 64-pixel fallback.
-
-- Current indexed-topology milestone: `indexed line-strip` and `indexed triangle-fan` are now covered by backend and Vulkan draw tests, confirming that the existing host-side deindex + topology expansion path already handles these two shapes.
-
-- Current indexed-point milestone: `indexed point-list` is now covered by backend and Vulkan draw tests, confirming that the existing host-side deindexing path already composes with the point-list bootstrap and `PointSize` bridge.
-
-- Current primitive-restart draw milestone: `IndexedTriangleStripWithPrimitiveRestart` is now covered in the draw harness and passes in both CPU and CUDA builds; the earlier failure was a bad sample point, not a renderer defect.
-
-- Update: the original `noperspective` blocker was glslang crashing on `#version 310 es` + `noperspective`. `DrawTest.FragmentShaderUsesNoPerspectiveColor` now provides repo-local coverage using Vulkan GLSL `#version 450` and passes in both CPU and CUDA builds.
-
-- Current indexed-pointcoord milestone: `indexed point-list` now also has `PointCoord` gradient coverage in both CPU and CUDA draw builds.
-
-- Texture bootstrap planning complete: narrow `combined image sampler + vec2 uv + texture()` design and implementation plan are saved under `docs/plans/2026-03-09-texture-bootstrap-*.md`.
-
-- Texture bootstrap implementation milestone: narrow `combined image sampler + uv + texture()` is now live in both non-indexed and indexed triangle draws.
-
-- Current texture-followup milestone: `linear/repeat` textured draw coverage and texture benchmark integration are now in progress.
-
-- Current texture-followup milestone: `linear/repeat` textured draw coverage is now green, and the texture benchmark shader/descriptors are binding-aligned.
-
-- Clear-background harness milestone: `DrawTester` now has an explicit opt-in color clear path for tests that need stable backgrounds, while the default non-MSAA path remains `eDontCare` to match the original CPU behavior.
-
-- Animated benchmark milestone: `animated-triangle-benchmark` now supports `--scene=color|texture`, and both scenes explicitly clear the background for stable visible output.
-
-- Push-constant milestone: draw harness now supports explicit push constant ranges/data, and narrow VS offset / FS tint cases pass in both CPU and CUDA builds.
-
-- Current instancing milestone: `gl_InstanceIndex` draw coverage is now present in both CPU and CUDA builds.
-
-- Current indexed-baseVertex milestone: `drawIndexed(..., vertexOffset, ...)` coverage is now present in both CPU and CUDA builds.
-
-- Vulkan Samples compatibility roadmap added: the current sample ladder now explicitly highlights missing capabilities such as mipmap generation, dynamic blending, and broader vertex dynamic state coverage.
-
-- Update: `separate image + sampler` now has repo-local draw coverage via `DrawTest.TexturedTriangleSeparateImageSamplerNearest`; the earlier failure was `ErrorOutOfPoolMemory` from DrawTester descriptor-pool sizing, not a renderer capability gap.
-
-- Update: `dynamic uniform buffers` now have repo-local draw coverage via `DrawTest.DynamicUniformBufferOffsetsSelectPerDrawColor`; the earlier probe was blocked by DrawTester not binding dynamic descriptor sets with dynamic offsets.
-
-- Current per-instance-input milestone: `VK_VERTEX_INPUT_RATE_INSTANCE` draw coverage is now present in both CPU and CUDA builds.
-
-- Current firstInstance milestone: `draw(..., firstInstance)` / `gl_InstanceIndex` offset coverage is now present in both CPU and CUDA builds.
-
-- Update: `dynamic rendering` now has repo-local draw coverage via `DrawTest.DynamicRenderingSolidColorTriangle`.
-
-- Current sample-aligned milestone: `MSAA resolve` draw coverage is now present in both CPU and CUDA builds.
-
-- Current sample-aligned milestone: `vertex_dynamic_state` now has repo-local draw coverage via `DrawTest.VertexInputDynamicStateSolidColorTriangle`, so it moves out of the “missing” bucket and into the staged compatibility ladder.
-
-- Current sample-aligned milestone: `vertex_dynamic_state` now has both solid-color and interpolated-color repo-local draw coverage, making the sample path materially stronger before tackling broader format/topology combinations.
-
-- Current sample-gap finding: a local `texture_mipmap_generation` explicit-LOD probe does not yet produce the expected level-1 color even in the CPU baseline, so mip/LOD work should stay out of the immediate low-risk lane for now.
-
-- Current sample-aligned milestone: `vertex_dynamic_state` now also covers the `VK_VERTEX_INPUT_RATE_INSTANCE` combination, so the local sample ladder includes both multi-attribute and instance-rate dynamic vertex input cases.
-
-- Current sample-aligned milestone: `render_passes` now has a first repo-local coverage point via `vkCmdClearAttachments`, while load/store, subpass dependency, and layout-transition cases remain future work.
-
-- Current sample-aligned milestone: `msaa` now has repo-local resolve coverage for both solid-color and interpolated-color triangles, improving confidence before tackling heavier sample scenarios.
-
-- Current sample-aligned milestone: `render_passes` now also has a repo-local `loadOp = LOAD` preservation test on swapchain images, strengthening attachment load semantics before subpass work.
-
-- Current sample-aligned milestone: `render_passes` now also covers depth-aspect `vkCmdClearAttachments`, not just color clears and `loadOp = LOAD` preservation.
-
-- Current sample-aligned milestone: `instancing` now also has repo-local coverage for the combined `drawIndexed + baseVertex + firstInstance + instance-rate` path, not just the simpler individual pieces.
-
-- Current sample-aligned milestone: `render_passes` now also has a repo-local two-subpass overlay case, so the local ladder no longer stops at single-subpass attachment operations.
-
-- Current sample-aligned milestone: `vertex_dynamic_state` now also covers the combined indexed instancing path with `baseVertex` and `firstInstance`, not just the simpler dynamic vertex-input cases.
-
-- Current sample-aligned milestone: `swapchain_images` now has repo-local coverage for configurable `minImageCount`, not just the fixed double-buffered default path.
-
-- Current sample-aligned milestone: `render_passes` now also has repo-local depth `loadOp = LOAD` coverage, not just color LOAD and subpass sequencing.
-
-- Current sample-aligned milestone: `render_passes` now also has a repo-local two-subpass depth-blocking case, strengthening subpass/depth interaction coverage alongside the existing color overlay case.
-
-- Current sample-aligned milestone: `msaa` now also covers a depth-tested case, not just resolved color output, and the multisample clear-value indexing bug in the harness has been fixed.
-
-- Current sample-aligned milestone: `swapchain_images` now also has a repo-local multi-frame triple-buffered color-cycle test, not just a one-frame `minImageCount` probe.
-
-- Current sample-aligned milestone: `texture_loading` now also has repo-local descriptor-update coverage across frames, not just static combined-image-sampler draws.
-
-- Current sample-aligned milestone: `texture_loading` now also has repo-local instanced textured draw coverage, not just static and descriptor-updated single-draw cases.
-
-- Current sample-aligned milestone: the local overlap between `vertex_dynamic_state`, `instancing`, and `texture_loading` is now covered by a repo-local instanced textured draw using dynamic vertex input.
-
-- 2026-03-11 draw-lifecycle root-cause milestone: the remaining CUDA repeat crash was not a `present()` / `waitIdle()` synchronization bug after all. The hardware-backed triangle bootstrap path in `Renderer::draw()` was reading pooled `DrawCall::fragmentPipelineLayout` before assigning it for the current draw, which fed stale layout state into descriptor preparation. Initializing that field before the bootstrap branch made the previously red CUDA repeat cases green again.
-- 2026-03-11 draw-suite milestone: after removing the temporary skip-destructor-idle diagnostics, switching `LineStripConstantColor` to `renderFrameWithoutPresent()`, clearing `PointListUsesVertexPointSize` explicitly, and relaxing one brittle CUDA launch-observability assertion, the CUDA `draw-unittests` binary is back to `75/75` passing in a full run.
-- 2026-03-11 vk-suite milestone: `vk-unittests` in the CUDA build now runs cleanly as `83` pass / `138` skip after aligning the parameterized Vulkan compute suite with the already-deferred CUDA compute-dispatch status and dropping one more brittle draw-side CUDA observability assertion.
+- 旧的 CUDA 稳定化/compute bring-up 历史信息保存在 `progress.md` 和 git 历史中；`task_plan.md` 从本次开始切换为图形执行重构主线。
+- 本轮首个验收不追求“完整 GPU graphics backend”，而是先把 draw 的调度层次改对。
+- 当前切片已完成：draw dispatch 现在由 backend 直接接管，`Renderer::draw()` 收敛为 CPU-only。
+- 当前第二个切片也已完成：`vk::GraphicsPipeline` 现在会在有 vertex stage 时构建 metadata-only `GraphicsExecutable`，但 draw 仍沿用现有 backend helper / CPU renderer 路径。
+- 当前第三个切片也已完成：`GraphicsExecutable` 现在会在 pipeline 创建期提取 constant point size 和非 texture fragment bootstrap 模板，`TriangleBootstrapDraw` 不再自己重扫这些 shader-only 信息。
+- 当前第四个切片也已完成：`GraphicsExecutable` 现在也会提取 narrow texture bootstrap 的 descriptor set / binding metadata，`TriangleBootstrapDraw` 已不再直接读取 fragment `SpirvShader`。
+- 当前第五个切片也已完成：texture bootstrap metadata 的支持边界已显式收紧为 `fragment location 0 == vec2`；`location 1` 才是 texcoord 的 shader 不再被误判为当前 narrow path。
+- 当前第六个切片也已完成：texture bootstrap metadata 现在也会校验 layout 形状；descriptor array 不再被误判为当前 narrow combined-image-sampler path。
+- 当前新增切片也已完成：`GraphicsExecutableTexturePlan` 现在能提取 combined descriptor array 的常量 index，并在 strict GPU triangle bootstrap render 下按 array element 正确物化/采样。
+- 当前第七个切片也已完成：texture bootstrap metadata 现在还要求 `location 0` 直接存储 texture sample 结果；sample 后再做乘法等片元运算的 shader 不再被误判为当前 narrow `Texture2DColor` path。
+- 当前第八个切片也已完成：texture bootstrap metadata 现在允许极小的 sample passthrough value chain；`vec4 sampledColor = texture(...); outColor = sampledColor;` 这类语义等价 shader 不再被误判为 unsupported。
+- 当前第九个切片也已完成：`GraphicsBackendPipeline` 现在显式覆盖 separate image/sampler negative case，锁住该 descriptor 形态继续留在当前 narrow texture-bootstrap path 之外。
+- 2026-03-14 会话恢复已确认：Phase 19/20 对应实现仍在当前工作区，且 focused `backend-unittests` / `vk-unittests` / `draw-unittests` 全绿；之前未同步的主要问题是 `Current Phase` 指针仍停在旧的 Phase 19。
+- 后续主线保留为：把 `GraphicsExecutable` 从 metadata scaffold 演进成正式 graphics execution 入口，以及 transfer/copy/blit/resolve/present 的 backend ownership 和更明确的 backend memory/resource model。

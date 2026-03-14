@@ -198,10 +198,18 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
           "	b = b0 + (b1 - b0) * ty;\n"
           "	a = a0 + (a1 - a0) * ty;\n"
           "}\n\n"
-          "static __device__ void fs_main(FsParams params, unsigned int invocationIndex, const FragmentInvocation &invocation, unsigned char &outR, unsigned char &outG, unsigned char &outB, unsigned char &outA, float &outDepth)\n"
+	          "static __device__ void fs_main(FsParams params, unsigned int invocationIndex, const FragmentInvocation &invocation, unsigned char &outR, unsigned char &outG, unsigned char &outB, unsigned char &outA, float &outDepth)\n"
 	          "{\n"
 	          "\t(void)invocationIndex;\n";
-	if(config.shaderKind == FragmentBootstrapShaderKind::FragCoordQuadrants)
+	if(config.shaderKind == FragmentBootstrapShaderKind::ConstantColor)
+	{
+		source << "\toutDepth = 1.0f;\n"
+		          "\toutR = packColor(params.colorR);\n"
+		          "\toutG = packColor(params.colorG);\n"
+		          "\toutB = packColor(params.colorB);\n"
+		          "\toutA = packColor(params.colorA);\n";
+	}
+	else if(config.shaderKind == FragmentBootstrapShaderKind::FragCoordQuadrants)
 	{
 		source << "\toutDepth = 1.0f;\n"
 		          "\tbool left = invocation.x * 2u < params.width;\n"

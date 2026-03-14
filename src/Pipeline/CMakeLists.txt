@@ -39,6 +39,11 @@ set(PIPELINE_SRC_FILES
     SamplerCore.cpp
     SemanticIR.cpp
     SemanticIR.hpp
+    ShaderCompiler.cpp
+    ShaderCompiler.hpp
+    ShaderCompilerAnalysis.cpp
+    ShaderCompilerAnalysis.hpp
+    ShaderModuleInput.hpp
     SemanticIRBuilder.cpp
     SemanticIRBuilder.hpp
     SemanticIRBuilderSpirvShader.cpp

@@ -17,6 +17,24 @@ TEST(CodegenEmitter, EmitsLlvmIRHeader)
     EXPECT_NE(text.find("define"), std::string::npos);
 }
 
+TEST(CodegenEmitter, EmitsCompilerAnalysisMetadataInLlvmIR)
+{
+    sw::KernelIRModule module;
+    sw::CompilerAnalysisInfo analysis = {};
+    analysis.fragmentFeatureMask = 0x12;
+    analysis.unsupportedReasonMask = 0x40;
+    analysis.hasTexturePlan = true;
+    analysis.hasImageResourcePlan = true;
+    analysis.hasResourcePlan = false;
+    module.setCompilerAnalysisInfo(analysis);
+
+    std::string text = sw::emitLlvmIR(module);
+    EXPECT_NE(text.find("@swiftshader.fragment_feature_mask = internal constant i32 18"), std::string::npos);
+    EXPECT_NE(text.find("@swiftshader.unsupported_reason_mask = internal constant i32 64"), std::string::npos);
+    EXPECT_NE(text.find("@swiftshader.has_texture_plan = internal constant i1 true"), std::string::npos);
+    EXPECT_NE(text.find("@swiftshader.has_image_resource_plan = internal constant i1 true"), std::string::npos);
+}
+
 TEST(CodegenEmitter, EmitsVertexStageCudaLikeSource)
 {
     sw::KernelIRModule module;

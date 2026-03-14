@@ -28,6 +28,7 @@ class SpirvShader;
 
 namespace backend {
 class ComputeExecutable;
+class GraphicsExecutable;
 }
 
 namespace vk {
@@ -112,11 +113,14 @@ public:
 	bool fragmentContainsImageWrite() const;
 
 	const std::shared_ptr<sw::SpirvShader> getShader(const VkShaderStageFlagBits &stage) const;
+	bool hasBackendExecutable() const { return backendExecutable != nullptr; }
+	const backend::GraphicsExecutable *getBackendExecutable() const { return backendExecutable.get(); }
 
 private:
 	void setShader(const VkShaderStageFlagBits &stage, const std::shared_ptr<sw::SpirvShader> spirvShader);
 	std::shared_ptr<sw::SpirvShader> vertexShader;
 	std::shared_ptr<sw::SpirvShader> fragmentShader;
+	std::shared_ptr<backend::GraphicsExecutable> backendExecutable;
 
 	const GraphicsState state;
 

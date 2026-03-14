@@ -9,9 +9,11 @@
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
+#include <functional>
 #include <fstream>
 #include <mutex>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -23,6 +25,8 @@ namespace {
 std::string gLastModuleSource;
 LaunchRecord gLastLaunch = {};
 uint32_t gLaunchCount = 0;
+uint32_t gModuleCompilationCount = 0;
+uint32_t gModuleCacheHitCount = 0;
 
 const char *kCudaLibraries[] = {
 	"libcuda.so.1",
@@ -106,6 +110,19 @@ bool shouldDumpCudaSource()
 	return normalized != "0" && normalized != "false" && normalized != "off" && normalized != "no";
 }
 
+bool shouldUseCudaModuleCache()
+{
+	static int cached = -1;
+	if(cached >= 0)
+	{
+		return cached != 0;
+	}
+
+	// Enabled by default. Set SWIFTSHADER_CUDA_DISABLE_MODULE_CACHE=1 to disable.
+	cached = envEnabled("SWIFTSHADER_CUDA_DISABLE_MODULE_CACHE") ? 0 : 1;
+	return cached != 0;
+}
+
 std::string cudaSourceDumpPath()
 {
 	const char *path = std::getenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
@@ -166,6 +183,13 @@ void dumpCudaSource(const std::string &source)
 
 struct CudaRuntimeAPI::Impl
 {
+	struct ModuleCacheEntry
+	{
+		std::string entryPoint;
+		std::string source;
+		uint64_t moduleId = 0;
+	};
+
 	using CuInitFn = CUresult(CUDAAPI *)(unsigned int);
 	using CuDeviceGetCountFn = CUresult(CUDAAPI *)(int *);
 	using CuDeviceGetFn = CUresult(CUDAAPI *)(CUdevice *, int);
@@ -224,6 +248,7 @@ struct CudaRuntimeAPI::Impl
 	uint64_t nextMemoryId = 1;
 	std::unordered_map<uint64_t, CUmodule> modules;
 	std::unordered_map<uint64_t, std::string> moduleEntrypoints;
+	std::unordered_map<size_t, std::vector<ModuleCacheEntry>> moduleCache;
 	std::unordered_map<uint64_t, CUdeviceptr> allocations;
 	mutable std::mutex mutex;
 
@@ -459,6 +484,8 @@ void CudaRuntimeAPI::resetGlobalCapture()
 	gLastModuleSource.clear();
 	gLastLaunch = {};
 	gLaunchCount = 0;
+	gModuleCompilationCount = 0;
+	gModuleCacheHitCount = 0;
 }
 
 const std::string &CudaRuntimeAPI::globalLastModuleSource()
@@ -474,6 +501,16 @@ const LaunchRecord &CudaRuntimeAPI::globalLastLaunch()
 uint32_t CudaRuntimeAPI::globalLaunchCount()
 {
 	return gLaunchCount;
+}
+
+uint32_t CudaRuntimeAPI::globalModuleCompilationCount()
+{
+	return gModuleCompilationCount;
+}
+
+uint32_t CudaRuntimeAPI::globalModuleCacheHitCount()
+{
+	return gModuleCacheHitCount;
 }
 
 CudaRuntimeAPI::CudaRuntimeAPI()
@@ -507,6 +544,33 @@ ModuleHandle CudaRuntimeAPI::createModule(const std::string &sourceOrIR, const s
 
 	traceCuda("createModule(entryPoint=%s, bytes=%zu)\n", entryPoint.c_str(), sourceOrIR.size());
 
+	gLastModuleSource = sourceOrIR;
+
+	const bool useCache = shouldUseCudaModuleCache();
+	size_t cacheKey = 0;
+	if(useCache)
+	{
+		// Hash the request (entry point + source). Collisions are resolved by string equality checks.
+		cacheKey = std::hash<std::string_view>{}(std::string_view(sourceOrIR));
+		size_t entryHash = std::hash<std::string_view>{}(std::string_view(entryPoint));
+		cacheKey ^= entryHash + 0x9e3779b97f4a7c15ULL + (cacheKey << 6) + (cacheKey >> 2);
+
+		auto cacheIt = impl->moduleCache.find(cacheKey);
+		if(cacheIt != impl->moduleCache.end())
+		{
+			for(const auto &entry : cacheIt->second)
+			{
+				if(entry.moduleId != 0 && entry.entryPoint == entryPoint && entry.source == sourceOrIR)
+				{
+					gModuleCacheHitCount++;
+					traceCuda("createModule cache hit: id=%llu\n", static_cast<unsigned long long>(entry.moduleId));
+					return ModuleHandle{ entry.moduleId };
+				}
+			}
+		}
+	}
+
+	// Only dump source when we actually compile, to avoid spamming on cache hits.
 	dumpCudaSource(sourceOrIR);
 
 	auto compile = impl->compiler.compileToFatbin(sourceOrIR, impl->gpuArchitecture);
@@ -539,7 +603,17 @@ ModuleHandle CudaRuntimeAPI::createModule(const std::string &sourceOrIR, const s
 	traceCuda("created module id=%llu (entryPoint=%s)\n",
 	          static_cast<unsigned long long>(handle.id),
 	          entryPoint.c_str());
-	gLastModuleSource = sourceOrIR;
+	gModuleCompilationCount++;
+
+	if(useCache)
+	{
+		Impl::ModuleCacheEntry cacheEntry = {};
+		cacheEntry.entryPoint = entryPoint;
+		cacheEntry.source = sourceOrIR;
+		cacheEntry.moduleId = handle.id;
+		impl->moduleCache[cacheKey].push_back(std::move(cacheEntry));
+	}
+
 	return handle;
 }
 

@@ -26,6 +26,7 @@
 #include "VkPipelineLayout.hpp"
 #include "VkQueryPool.hpp"
 #include "VkRenderPass.hpp"
+#include "Backend/ExecutionBackend.hpp"
 #include "Device/Renderer.hpp"
 
 #include "./Debug/Context.hpp"
@@ -38,6 +39,48 @@
 #include <cstring>
 
 namespace {
+
+backend::GraphicsColorAttachmentTarget getColorAttachmentTarget0(const vk::CommandBuffer::ExecutionState &executionState)
+{
+	backend::GraphicsColorAttachmentTarget target = {};
+
+	if(executionState.renderPass && executionState.renderPassFramebuffer)
+	{
+		const auto &subpass = executionState.renderPass->getSubpass(executionState.subpassIndex);
+		if(subpass.colorAttachmentCount == 0 || subpass.pColorAttachments == nullptr)
+		{
+			return target;
+		}
+
+		const VkAttachmentReference attachmentReference = subpass.pColorAttachments[0];
+		if(attachmentReference.attachment == VK_ATTACHMENT_UNUSED)
+		{
+			return target;
+		}
+
+		target.imageView = executionState.renderPassFramebuffer->getAttachment(attachmentReference.attachment);
+		target.layout = attachmentReference.layout;
+		target.storeOp = executionState.renderPass->getAttachment(attachmentReference.attachment).storeOp;
+		target.present = (target.imageView != nullptr);
+		return target;
+	}
+
+	if(executionState.dynamicRendering)
+	{
+		const VkRenderingAttachmentInfo *colorAttachment = executionState.dynamicRendering->getColorAttachment(0);
+		if(colorAttachment == nullptr || colorAttachment->imageView == VK_NULL_HANDLE)
+		{
+			return target;
+		}
+
+		target.imageView = vk::Cast(colorAttachment->imageView);
+		target.layout = colorAttachment->imageLayout;
+		target.storeOp = colorAttachment->storeOp;
+		target.present = (target.imageView != nullptr);
+	}
+
+	return target;
+}
 
 class CmdBeginRenderPass : public vk::CommandBuffer::Command
 {
@@ -997,9 +1040,19 @@ public:
 
 				for(auto indexBuffer : indexBuffers)
 				{
-					executionState.renderer->draw(pipeline, executionState.dynamicState, indexBuffer.first, vertexOffset,
-					                              executionState.events, instance, layer, indexBuffer.second,
-					                              renderArea, executionState.pushConstants);
+					backend::GraphicsDrawCall graphicsDraw = {};
+					graphicsDraw.pipeline = pipeline;
+					graphicsDraw.dynamicState = &executionState.dynamicState;
+					graphicsDraw.count = indexBuffer.first;
+					graphicsDraw.baseVertex = vertexOffset;
+					graphicsDraw.events = executionState.events;
+					graphicsDraw.instanceID = instance;
+					graphicsDraw.layer = layer;
+					graphicsDraw.indexBuffer = indexBuffer.second;
+					graphicsDraw.renderArea = renderArea;
+					graphicsDraw.colorAttachment0 = getColorAttachmentTarget0(executionState);
+					graphicsDraw.pushConstants = &executionState.pushConstants;
+					executionState.executionBackend->draw(graphicsDraw);
 				}
 			}
 

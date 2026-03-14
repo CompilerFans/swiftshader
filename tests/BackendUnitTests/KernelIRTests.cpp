@@ -2,6 +2,7 @@
 #include "Pipeline/KernelIR.hpp"
 #include "Pipeline/KernelIRLowering.hpp"
 #include "Pipeline/SemanticIR.hpp"
+#include "Pipeline/ShaderCompilerAnalysis.hpp"
 
 #include <gtest/gtest.h>
 
@@ -52,4 +53,26 @@ TEST(KernelIR, LowersMinimalVertexSemanticInfo)
     EXPECT_EQ(kernel.vertexLoweringInfo().vertexStride, 12u);
     EXPECT_EQ(kernel.vertexLoweringInfo().positionOffset, 4u);
     EXPECT_TRUE(kernel.vertexLoweringInfo().usesVertexIndex);
+}
+
+TEST(KernelIR, PreservesCompilerAnalysisMetadata)
+{
+    sw::ShaderCompilerAnalysisResult analysis = {};
+    analysis.texturePlan.resourceKind = sw::ShaderTextureResourceKind::CombinedImageSampler;
+    analysis.imageResourcePlan.sampledDescriptors.push_back({});
+    analysis.resourcePlan.descriptorSetCount = 1;
+    analysis.resourcePlan.descriptors.push_back({});
+    analysis.fragmentFeatureMask = static_cast<uint32_t>(sw::ShaderFragmentFeature::Derivatives);
+    analysis.unsupportedReasonMask = static_cast<uint32_t>(sw::ShaderUnsupportedReason::Derivatives);
+
+    sw::KernelIRModule kernel;
+    sw::applyCompilerAnalysisToKernelIR(analysis, &kernel);
+
+    EXPECT_EQ(kernel.compilerAnalysisInfo().fragmentFeatureMask,
+              static_cast<uint32_t>(sw::ShaderFragmentFeature::Derivatives));
+    EXPECT_EQ(kernel.compilerAnalysisInfo().unsupportedReasonMask,
+              static_cast<uint32_t>(sw::ShaderUnsupportedReason::Derivatives));
+    EXPECT_TRUE(kernel.compilerAnalysisInfo().hasTexturePlan);
+    EXPECT_TRUE(kernel.compilerAnalysisInfo().hasImageResourcePlan);
+    EXPECT_TRUE(kernel.compilerAnalysisInfo().hasResourcePlan);
 }

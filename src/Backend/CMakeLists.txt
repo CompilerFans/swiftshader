@@ -2,17 +2,23 @@ set(BACKEND_SRC_FILES
     BackendConfig.hpp
     BackendFactory.cpp
     ComputeExecutable.cpp
+    GraphicsExecutable.cpp
     GpuExecutionBackend.cpp
     CpuExecutionBackend.cpp
     FragmentBootstrap.cpp
+    GraphicsDraw.cpp
     GraphicsBootstrap.cpp
     RasterBootstrap.cpp
+    TriangleBootstrapDraw.cpp
     TrianglePipelineBootstrap.cpp
     ComputeExecutable.hpp
+    GraphicsExecutable.hpp
     FragmentBootstrap.hpp
+    GraphicsDraw.hpp
     GraphicsBackend.cpp
     GraphicsBootstrap.hpp
     RasterBootstrap.hpp
+    TriangleBootstrapDraw.hpp
     TrianglePipelineBootstrap.hpp
     PresentAdapter.cpp
     PresentAdapter.hpp

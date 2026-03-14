@@ -307,9 +307,13 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 	std::vector<GraphicsBootstrapVertexOutput> vsOutputs;
 	if(runtime.isHardwareBacked())
 	{
+		GraphicsBootstrapShaderConfig shaderConfig = {};
+		shaderConfig.pointSize = config.pointSize;
+		GraphicsBootstrapRuntimeConfig runtimeConfig = {};
+
 		if(!config.rawVertexData.empty() && config.vertexCount != 0)
 		{
-			if(!runGraphicsBootstrap(runtime, config.rawVertexData, config.vertexCount, config.binding, GraphicsBootstrapShaderConfig{}, GraphicsBootstrapRuntimeConfig{}, &vsOutputs))
+			if(!runGraphicsBootstrap(runtime, config.rawVertexData, config.vertexCount, config.binding, shaderConfig, runtimeConfig, &vsOutputs))
 			{
 				return false;
 			}
@@ -317,7 +321,7 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		else
 		{
 			std::vector<GraphicsBootstrapVertexInput> vertexInputs(config.vertices.begin(), config.vertices.end());
-			if(!runGraphicsBootstrap(runtime, vertexInputs, &vsOutputs))
+			if(!runGraphicsBootstrap(runtime, vertexInputs, shaderConfig, runtimeConfig, &vsOutputs))
 			{
 				return false;
 			}

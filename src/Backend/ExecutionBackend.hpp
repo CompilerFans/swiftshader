@@ -1,6 +1,8 @@
 #ifndef SWIFTSHADER_EXECUTION_BACKEND_HPP_
 #define SWIFTSHADER_EXECUTION_BACKEND_HPP_
 
+#include "Backend/GraphicsDraw.hpp"
+
 #include <memory>
 
 namespace sw {
@@ -25,6 +27,7 @@ class ExecutionBackend
 public:
 	virtual ~ExecutionBackend() = default;
 
+	virtual void draw(const GraphicsDrawCall &draw) = 0;
 	virtual void submit(vk::Device *device, vk::SubmitInfo &submitInfo, sw::CountedEvent *events) = 0;
 	virtual void synchronize() = 0;
 };

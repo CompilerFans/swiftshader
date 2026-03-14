@@ -29,7 +29,10 @@ set(VULKAN_UNIT_TESTS_SRC_FILES
     Device.cpp
     Device.hpp
     DrawTests.cpp
+    GraphicsBackendPipelineTests.cpp
     GraphicsBackendSelectionTests.cpp
+    PipelineIntrospection.cpp
+    PipelineIntrospection.hpp
     Driver.cpp
     Driver.hpp
     PresentAdapterCaptureTests.cpp

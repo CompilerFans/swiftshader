@@ -808,6 +808,55 @@ TEST_F(DrawTest, DynamicRenderingSolidColorTriangle)
 #endif
 }
 
+TEST_F(DrawTest, StrictGpuTriangleBootstrapRejectsRenderPassColorStoreDontCare)
+{
+#if SWIFTSHADER_GPU_USE_CUDA
+	::setenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP", "1", 1);
+	::setenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP", "1", 1);
+	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
+
+	ASSERT_DEATH(
+	    {
+		    DrawTester tester;
+		    configureSolidColorTriangleDraw(tester);
+		    tester.enableColorClear({ 0.5f, 0.5f, 0.5f, 1.0f });
+		    tester.setColorStoreOp(vk::AttachmentStoreOp::eDontCare);
+		    tester.initialize();
+		    tester.renderFrame();
+	    },
+	    "triangle bootstrap");
+
+	::unsetenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP");
+	::unsetenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP");
+	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
+#endif
+}
+
+TEST_F(DrawTest, StrictGpuTriangleBootstrapRejectsDynamicRenderingColorStoreDontCare)
+{
+#if SWIFTSHADER_GPU_USE_CUDA
+	::setenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP", "1", 1);
+	::setenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP", "1", 1);
+	::setenv("SWIFTSHADER_CUDA_DISABLE_WARMUP", "1", 1);
+
+	ASSERT_DEATH(
+	    {
+		    DrawTester tester;
+		    tester.enableDynamicRendering();
+		    configureSolidColorTriangleDraw(tester);
+		    tester.enableColorClear({ 0.5f, 0.5f, 0.5f, 1.0f });
+		    tester.setColorStoreOp(vk::AttachmentStoreOp::eDontCare);
+		    tester.initialize();
+		    tester.renderFrame();
+	    },
+	    "triangle bootstrap");
+
+	::unsetenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP");
+	::unsetenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP");
+	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
+#endif
+}
+
 TEST_F(DrawTest, MultipleSolidColorTriangles)
 {
 	auto artifactPath = makeDrawArtifactPath("multiple-solid-color-triangles.bmp");
@@ -2491,6 +2540,301 @@ TEST_F(DrawTest, TexturedTriangleNearest)
 	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
 	::unsetenv("SWIFTSHADER_CUDA_SOURCE_DUMP_PATH");
 	::unsetenv("SWIFTSHADER_CUDA_DISABLE_WARMUP");
+#endif
+}
+
+TEST_F(DrawTest, TexturedTriangleDescriptorArrayIndexOneBootstrapNearest)
+{
+	auto artifactPath = makeDrawArtifactPath("textured-triangle-descriptor-array-index-one-bootstrap-nearest.bmp");
+	std::filesystem::remove(artifactPath);
+
+#if SWIFTSHADER_GPU_USE_CUDA
+	auto stampPath = makeCudaLaunchStampPath("textured-triangle-descriptor-array-index-one-bootstrap-nearest");
+	std::filesystem::remove(stampPath);
+	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+	::setenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP", "1", 1);
+	::setenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP", "1", 1);
+#endif
+
+	DrawTester tester;
+	tester.enableColorClear({ 0.5f, 0.5f, 0.5f, 1.0f });
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex { float position[3]; float texCoord[2]; };
+		Vertex vertexBufferData[] = {
+			{ { -0.95f, -0.85f, 0.5f }, { 0.0f, 0.0f } },
+			{ { -0.20f,  0.95f, 0.5f }, { 0.0f, 1.0f } },
+			{ {  0.95f, -0.85f, 0.5f }, { 1.0f, 0.0f } },
+		};
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)));
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 310 es
+			layout(location = 0) in vec3 inPos;
+			layout(location = 1) in vec2 inTexCoord;
+			layout(location = 0) out vec2 outTexCoord;
+			void main()
+			{
+				gl_Position = vec4(inPos.xyz, 1.0);
+				outTexCoord = inTexCoord;
+			})";
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 310 es
+			precision highp float;
+			layout(location = 0) in vec2 inTexCoord;
+			layout(location = 0) out vec4 outColor;
+			layout(binding = 1) uniform sampler2D texSampler[2];
+			void main() { outColor = texture(texSampler[1], inTexCoord); })";
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.onCreateDescriptorSetLayouts([](DrawTester &) -> std::vector<vk::DescriptorSetLayoutBinding> {
+		vk::DescriptorSetLayoutBinding samplerLayoutBinding;
+		samplerLayoutBinding.binding = 1;
+		samplerLayoutBinding.descriptorCount = 2;
+		samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		samplerLayoutBinding.pImmutableSamplers = nullptr;
+		samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		return { samplerLayoutBinding };
+	});
+
+	tester.onUpdateDescriptorSet([](DrawTester &tester, vk::CommandPool &commandPool, vk::DescriptorSet &descriptorSet) {
+		auto &device = tester.getDevice();
+		auto &physicalDevice = tester.getPhysicalDevice();
+		auto &queue = tester.getQueue();
+
+		auto &texture0 = tester.addImage(device, physicalDevice, 1, 1, vk::Format::eR8G8B8A8Unorm, vk::SampleCountFlagBits::e1,
+		                                 vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)
+		                     .obj;
+		auto &texture1 = tester.addImage(device, physicalDevice, 1, 1, vk::Format::eR8G8B8A8Unorm, vk::SampleCountFlagBits::e1,
+		                                 vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)
+		                     .obj;
+
+		auto uploadSolidColor = [&](vk::Image image, uint8_t r, uint8_t g, uint8_t b) {
+			Buffer buffer(physicalDevice, device, 4, vk::BufferUsageFlagBits::eTransferSrc);
+			auto *data = static_cast<uint8_t *>(buffer.mapMemory());
+			data[0] = r;
+			data[1] = g;
+			data[2] = b;
+			data[3] = 255u;
+			buffer.unmapMemory();
+			Util::transitionImageLayout(device, commandPool, queue, image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferDstOptimal);
+			Util::copyBufferToImage(device, commandPool, queue, buffer.getBuffer(), image, 1, 1);
+			Util::transitionImageLayout(device, commandPool, queue, image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+		};
+
+		uploadSolidColor(texture0.getImage(), 255u, 0u, 0u);
+		uploadSolidColor(texture1.getImage(), 0u, 0u, 255u);
+
+		vk::SamplerCreateInfo samplerInfo;
+		samplerInfo.magFilter = vk::Filter::eNearest;
+		samplerInfo.minFilter = vk::Filter::eNearest;
+		samplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
+		samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
+		samplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerInfo.mipmapMode = vk::SamplerMipmapMode::eNearest;
+		auto sampler = tester.addSampler(samplerInfo);
+
+		vk::DescriptorImageInfo imageInfos[2] = {};
+		imageInfos[0].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		imageInfos[0].imageView = texture0.getImageView();
+		imageInfos[0].sampler = sampler.obj;
+		imageInfos[1].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		imageInfos[1].imageView = texture1.getImageView();
+		imageInfos[1].sampler = sampler.obj;
+
+		vk::WriteDescriptorSet descriptorWrite = {};
+		descriptorWrite.dstSet = descriptorSet;
+		descriptorWrite.dstBinding = 1;
+		descriptorWrite.dstArrayElement = 0;
+		descriptorWrite.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		descriptorWrite.descriptorCount = 2;
+		descriptorWrite.pImageInfo = imageInfos;
+		device.updateDescriptorSets(1, &descriptorWrite, 0, nullptr);
+	});
+
+	tester.initialize();
+	tester.renderFrame();
+	tester.saveFrame(artifactPath);
+
+	auto pixel = tester.readbackPixel(480, 420);
+	EXPECT_GT(pixel[3], 200);
+	EXPECT_LT(pixel[0], 80);
+	EXPECT_LT(pixel[1], 80);
+	EXPECT_GT(pixel[2], 200);
+	EXPECT_TRUE(std::filesystem::exists(artifactPath));
+
+#if SWIFTSHADER_GPU_USE_CUDA
+	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP");
+	::unsetenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP");
+#endif
+}
+
+TEST_F(DrawTest, TexturedTriangleSeparateImageSamplerDescriptorArrayIndexOneBootstrapNearest)
+{
+	auto artifactPath = makeDrawArtifactPath("textured-triangle-separate-image-sampler-descriptor-array-index-one-bootstrap-nearest.bmp");
+	std::filesystem::remove(artifactPath);
+
+#if SWIFTSHADER_GPU_USE_CUDA
+	auto stampPath = makeCudaLaunchStampPath("textured-triangle-separate-image-sampler-descriptor-array-index-one-bootstrap-nearest");
+	std::filesystem::remove(stampPath);
+	::setenv("SWIFTSHADER_CUDA_LAUNCH_STAMP", stampPath.c_str(), 1);
+	::setenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP", "1", 1);
+	::setenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP", "1", 1);
+#endif
+
+	DrawTester tester;
+	tester.enableColorClear({ 0.5f, 0.5f, 0.5f, 1.0f });
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex { float position[3]; float texCoord[2]; };
+		Vertex vertexBufferData[] = {
+			{ { -0.95f, -0.85f, 0.5f }, { 0.0f, 0.0f } },
+			{ { -0.20f,  0.95f, 0.5f }, { 0.0f, 1.0f } },
+			{ {  0.95f, -0.85f, 0.5f }, { 1.0f, 0.0f } },
+		};
+
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position)));
+		inputAttributes.push_back(vk::VertexInputAttributeDescription(1, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord)));
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 450
+			layout(location = 0) in vec3 inPos;
+			layout(location = 1) in vec2 inTexCoord;
+			layout(location = 0) out vec2 outTexCoord;
+			void main()
+			{
+				gl_Position = vec4(inPos.xyz, 1.0);
+				outTexCoord = inTexCoord;
+			})";
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 450
+			precision highp float;
+			layout(location = 0) in vec2 inTexCoord;
+			layout(location = 0) out vec4 outColor;
+			layout(set = 0, binding = 0) uniform texture2D tex[2];
+			layout(set = 0, binding = 1) uniform sampler texSampler[2];
+			void main()
+			{
+				outColor = texture(sampler2D(tex[1], texSampler[1]), inTexCoord);
+			})";
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.onCreateDescriptorSetLayouts([](DrawTester &) -> std::vector<vk::DescriptorSetLayoutBinding> {
+		vk::DescriptorSetLayoutBinding imageBinding;
+		imageBinding.binding = 0;
+		imageBinding.descriptorCount = 2;
+		imageBinding.descriptorType = vk::DescriptorType::eSampledImage;
+		imageBinding.pImmutableSamplers = nullptr;
+		imageBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+
+		vk::DescriptorSetLayoutBinding samplerBinding;
+		samplerBinding.binding = 1;
+		samplerBinding.descriptorCount = 2;
+		samplerBinding.descriptorType = vk::DescriptorType::eSampler;
+		samplerBinding.pImmutableSamplers = nullptr;
+		samplerBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+
+		return { imageBinding, samplerBinding };
+	});
+
+	tester.onUpdateDescriptorSet([](DrawTester &tester, vk::CommandPool &commandPool, vk::DescriptorSet &descriptorSet) {
+		auto &device = tester.getDevice();
+		auto &physicalDevice = tester.getPhysicalDevice();
+		auto &queue = tester.getQueue();
+
+		auto &texture0 = tester.addImage(device, physicalDevice, 1, 1, vk::Format::eR8G8B8A8Unorm, vk::SampleCountFlagBits::e1,
+		                                 vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)
+		                     .obj;
+		auto &texture1 = tester.addImage(device, physicalDevice, 1, 1, vk::Format::eR8G8B8A8Unorm, vk::SampleCountFlagBits::e1,
+		                                 vk::ImageUsageFlagBits::eTransferDst | vk::ImageUsageFlagBits::eSampled)
+		                     .obj;
+
+		auto uploadSolidColor = [&](vk::Image image, uint8_t r, uint8_t g, uint8_t b) {
+			Buffer buffer(physicalDevice, device, 4, vk::BufferUsageFlagBits::eTransferSrc);
+			auto *data = static_cast<uint8_t *>(buffer.mapMemory());
+			data[0] = r;
+			data[1] = g;
+			data[2] = b;
+			data[3] = 255u;
+			buffer.unmapMemory();
+			Util::transitionImageLayout(device, commandPool, queue, image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eGeneral, vk::ImageLayout::eTransferDstOptimal);
+			Util::copyBufferToImage(device, commandPool, queue, buffer.getBuffer(), image, 1, 1);
+			Util::transitionImageLayout(device, commandPool, queue, image, vk::Format::eR8G8B8A8Unorm, vk::ImageLayout::eTransferDstOptimal, vk::ImageLayout::eShaderReadOnlyOptimal);
+		};
+
+		uploadSolidColor(texture0.getImage(), 255u, 0u, 0u);
+		uploadSolidColor(texture1.getImage(), 0u, 0u, 255u);
+
+		vk::SamplerCreateInfo samplerInfo;
+		samplerInfo.magFilter = vk::Filter::eNearest;
+		samplerInfo.minFilter = vk::Filter::eNearest;
+		samplerInfo.addressModeU = vk::SamplerAddressMode::eClampToEdge;
+		samplerInfo.addressModeV = vk::SamplerAddressMode::eClampToEdge;
+		samplerInfo.addressModeW = vk::SamplerAddressMode::eClampToEdge;
+		samplerInfo.unnormalizedCoordinates = VK_FALSE;
+		samplerInfo.mipmapMode = vk::SamplerMipmapMode::eNearest;
+		auto sampler = tester.addSampler(samplerInfo);
+
+		vk::DescriptorImageInfo imageInfos[2] = {};
+		imageInfos[0].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		imageInfos[0].imageView = texture0.getImageView();
+		imageInfos[1].imageLayout = vk::ImageLayout::eShaderReadOnlyOptimal;
+		imageInfos[1].imageView = texture1.getImageView();
+
+		vk::DescriptorImageInfo samplerInfos[2] = {};
+		samplerInfos[0].sampler = sampler.obj;
+		samplerInfos[1].sampler = sampler.obj;
+
+		vk::WriteDescriptorSet descriptorWrites[2] = {};
+		descriptorWrites[0].dstSet = descriptorSet;
+		descriptorWrites[0].dstBinding = 0;
+		descriptorWrites[0].dstArrayElement = 0;
+		descriptorWrites[0].descriptorType = vk::DescriptorType::eSampledImage;
+		descriptorWrites[0].descriptorCount = 2;
+		descriptorWrites[0].pImageInfo = imageInfos;
+
+		descriptorWrites[1].dstSet = descriptorSet;
+		descriptorWrites[1].dstBinding = 1;
+		descriptorWrites[1].dstArrayElement = 0;
+		descriptorWrites[1].descriptorType = vk::DescriptorType::eSampler;
+		descriptorWrites[1].descriptorCount = 2;
+		descriptorWrites[1].pImageInfo = samplerInfos;
+
+		device.updateDescriptorSets(2, descriptorWrites, 0, nullptr);
+	});
+
+	tester.initialize();
+	tester.renderFrame();
+	tester.saveFrame(artifactPath);
+
+	auto pixel = tester.readbackPixel(480, 420);
+	EXPECT_GT(pixel[3], 200);
+	EXPECT_LT(pixel[0], 80);
+	EXPECT_LT(pixel[1], 80);
+	EXPECT_GT(pixel[2], 200);
+	EXPECT_TRUE(std::filesystem::exists(artifactPath));
+
+#if SWIFTSHADER_GPU_USE_CUDA
+	EXPECT_GT(countStampedLaunches(stampPath), 0u);
+	::unsetenv("SWIFTSHADER_CUDA_LAUNCH_STAMP");
+	::unsetenv("SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP");
+	::unsetenv("SWIFTSHADER_GPU_REQUIRE_TRIANGLE_BOOTSTRAP");
 #endif
 }
 

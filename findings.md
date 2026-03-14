@@ -1,5 +1,151 @@
 # Findings & Decisions
 
+## 2026-03-14 Session recovery
+
+### New Findings
+- 这次恢复后最大的状态偏差不在实现，而在计划文件：Phase 19/20 对应代码和测试仍然成立，但 `task_plan.md` 的 `Current Phase` 指针没有随之推进，导致单看计划文件会误以为 capability gate 仍在进行中。
+- 当前工作区中的 `CudaRuntimeAPI` module cache、`GraphicsExecutable` resource/capability introspection、以及 strict GPU descriptor-array draw regressions 是同一批连续改动，focused build/tests 没有暴露中间断层。
+- `TrianglePipelineBootstrap.CudaRuntimeReusesCompiledModulesWithModuleCache` 现在提供了直接证据：同一个 runtime 进程内第二次 triangle bootstrap 不会再次增加 module compile 计数，说明“不得每 draw 编译 module”这个 hard gate 目前已被实际测试覆盖。
+- `GraphicsBackendPipeline.*` 的 23 个 Vulkan pipeline tests 全绿，说明当前 general resource plan + fragment capability gate 脚手架至少在 sampled image / storage image / dynamic uniform offset / unsupported reason 这些已收敛面上是稳定的。
+- 因为 Phase 19/20 已经通过 focused 验证，下一刀不应继续在 resource-plan metadata 上叠 patch；更合理的推进面是框架文档里尚未落地的 attachment lifecycle/state tracking 最小闭环（先覆盖离屏 color attachment 的 clear/store/layout）。
+- render pass 与 dynamic rendering 的 color `loadOp == CLEAR` 已经分别在 `CmdBeginRenderPass` / `CmdBeginRendering` 的开始阶段执行；Phase 21 的真实缺口不是“重新实现 clear”，而是把 draw-time color attachment write-back 从 `TriangleBootstrapDraw.cpp` 里的 ad-hoc 直接内存写改造成显式的 attachment target / lifecycle scaffold。
+- `CmdDrawBase::draw()` 现在只把 `renderArea`、`layer`、pipeline 和 push constants 传入 backend；它还没有把“当前活跃 color attachment 0 的 image view / layout / storeOp / sampleCount / format 来源”建模成 draw contract。这正是最小 attachment lifecycle 切口。
+- 把 attachment 目标状态建模在 draw-call/runtime 层，比塞进 `GraphicsExecutable` 更合理，因为 `loadOp` / `storeOp` / imageView / dynamic rendering attachment 都属于 command-buffer state，而不是 pipeline-time metadata。
+- 现有 IR 单测入口已经自然分层：
+  - `tests/BackendUnitTests/SpirvToSemanticIRTests.cpp`
+  - `tests/BackendUnitTests/KernelIRTests.cpp`
+  - `tests/BackendUnitTests/CodegenEmitterTests.cpp` / `tests/BackendUnitTests/AbiParityTests.cpp`
+- 目前这些测试更偏 IR 骨架和最小 smoke，尚未按“当前 graphics 路线已落地的 shader 特性”去系统化覆盖。
+- 当前 `SemanticIR` 还只显式保存 `stage/entryPoint/vertexLowering`，而与现有 graphics 路线更相关的 compiler functionality 主要散落在 `GraphicsExecutable.cpp`：feature mask、resource/image/texture plan、以及 unsupported reason mask。
+- 因此若要做“compilerIR 单测”并独立设计模块，第一刀最自然的对象不是重写 `SemanticIR`，而是先把 `GraphicsExecutable.cpp` 中通用的 compiler analysis 提取成 `src/Pipeline/ShaderCompilerAnalysis.*`。
+- point-size bootstrap 推断与 static bootstrap fragment template 推断当前仍更像 bring-up strategy，而不是通用 compiler core semantics；把它们留在 backend 侧能避免首刀模块边界被 bootstrap 过渡逻辑污染。
+- `ShaderCompilerAnalysis` 的首个稳定 API 已经验证更适合采用 `entryPoint + SpirvBinary + context`，而不是 `SpirvShader`。这既减少了测试/模块的 Vulkan 依赖面，也让“标准 SPIR-V bc/txt 解析 -> compiler analysis”这一步具备独立演进空间。
+- 在此基础上，引入统一输入抽象 `ShaderModuleInput` 是合理的下一步：它把标准 SPIR-V binary 和标准 SPIR-V assembly text 统一到一个 front-end 契约下，为后续 LLVM dialect/LLVM IR lowering 保留稳定入口。
+- 第一层 `SpirvToCompilerAnalysis` 现在已经能覆盖一批真实 graphics-route shader 特性：
+  - supported：combined image sampler、separate image/sampler、descriptor array constant index
+  - gated/unsupported：storage image write、discard、derivatives、image query、image fetch、atomics、subgroup、buffer descriptors
+- `ShaderCompilerAnalysis` 已经证明可以直接吃标准 SPIR-V assembly text：当前 text-path tests 不只是测试夹具先 assemble 再比较，而是直接走模块公开 API。
+- `GraphicsExecutable` 可以先低风险消费 compiler-analysis 的通用部分：`fragmentFeatureMask`、`imageResourcePlan`、`resourcePlan`。texture bootstrap narrow-path 与 static bootstrap fragment template 保持旧实现，不会破坏现有 pipeline tests。
+- `KernelIR` 和 `NormalizedAbiDescription` 先只保存 compiler-analysis 摘要元数据，是一条稳妥的中间路线：既能把第二层/第三层测试打通，又不会过早把未来私有 GPU ABI 细节锁死。
+- `ShaderCompilerAnalysis` 现在已经开始接管 texture bootstrap narrow-path 的一部分真实语义，而不只是 resource/gate 粗粒度分析：
+  - `location 0` 必须是 `vec2`
+  - output value 必须直接来自 texture sample 或极小 passthrough
+  - sample 后做真实片元运算会把 `bootstrapSupported` 置为 false
+- 这说明“通用 compiler analysis”与“bootstrap-specific bring-up strategy”之间并不是绝对硬边界：像 direct-sample/passthrough 这种实际上属于 shader semantic analysis，本身适合继续下沉进 compiler-analysis 模块。
+- `LlvmIREmitter` 现在已经不是纯 placeholder：虽然还没有 lower 到真正有计算语义的 LLVM IR，但它已经能把 compiler-analysis 摘要编码成标准 LLVM IR 文本常量，这为后续接入真正的 LLVM/MLIR lowering 提供了稳定的 metadata 落点。
+- 新增 `ShaderCompiler` 协调模块后，当前独立编译器链第一次形成了真正的前端到输出闭环：
+  - `ShaderModuleInput` 接标准 SPIR-V bc/txt
+  - `ShaderCompilerAnalysis` 做独立分析
+  - `KernelIR` 保留 compiler-analysis 摘要
+  - `ShaderCompiler` 按目标生成 CUDA-like source 或 LLVM IR text
+- 但当前 CUDA/LLVM 输出仍然是 metadata-driven skeleton，不应误判成“已经能把通用 fragment shader fully lower 成可编译 CUDA kernel”：
+  - CUDA-like source 已包含 compiler-analysis 常量和空壳 kernel
+  - LLVM IR text 已包含 compiler-analysis constant definitions 和空壳 `kernel_main`
+  - 真正的 fragment instruction lowering 仍是下一阶段工作
+- 不过在 CUDA-like source 这一侧，已经不是“只有空壳 kernel”了：对于当前独立分析已能证明安全的两条纹理窄路径，
+  - `CombinedImageSampler + direct-sample/passthrough`
+  - `SeparateImageSampler + direct-sample/passthrough`
+  当前独立编译器已经能直接输出带 `FsParams` / `sampleTexture(...)` / `fs_entry` 的真实 fragment kernel skeleton。
+- 这说明下一阶段最合理的推进方式不是一口气做“通用 fragment lowering”，而是沿现有分析已证明安全的窄路径逐条把 codegen 补实：先 combined/separate sampled-image，再考虑 constant-color/fragcoord/frontfacing 等非纹理模板。
+
+### New Decisions
+- **Accept:** 会话恢复后的首要动作是同步计划文件与真实代码状态，而不是重新打开已经通过 focused 验证的 Phase 19/20 实现。
+- **Accept:** 下一阶段编号推进到 Phase 21，并以 attachment lifecycle/state tracking 最小闭环作为当前推荐主线。
+
+## 2026-03-12 Graphics execution refactor
+
+### New Findings
+- sampled-image plan 如果从 fragment shader 的全量 `descriptorDecorations` 出发，就会把 unrelated UBO 这类 non-sampled 资源误解释成 sampled-image 复杂度，从而把本该是 `CombinedImageSampler` / `SeparateImageSampler` 的 shader 错降成 `Other`。
+- 对当前阶段更稳妥的 plan 输入不是“shader 有哪些 descriptors”，而是“哪些 descriptors 真实喂给了 texture sample 指令”。这要求从 sample operand 回溯 provenance，而不是做全量 descriptor 枚举。
+- 对当前 SPIR-V 形状，sample-use provenance 至少需要识别：
+  - `OpSampledImage`
+  - `OpImage`
+  - trivial forwarding：`OpCopyObject` / `OpCopyLogical` / function-local `OpLoad`
+- `SeparateImageSampler` 继续停留在 metadata 层已经不够了：strict GPU triangle bootstrap 下，`DrawTest.TexturedTriangleSeparateImageSamplerNearest` 会直接暴露这个缺口，读回像素呈现 bootstrap 默认绿色，而不是 sampled texture 的红色。
+- 真正卡住 strict GPU separate image/sampler draw 的不是 pipeline-time 分类，而是 draw-time consumption：`TriangleBootstrapDraw` 一直只认 `hasBootstrapTextureBinding()`，而这个 compatibility accessor 按设计只覆盖 combined image sampler。
+- `texturePlan.bootstrapSupported` 的语义应该比 `hasBootstrapTextureBinding()` 更宽：前者表达“当前 narrow bootstrap 语义下这条 sampled-image plan 是否可执行”，后者只是给 combined-only 调用方保留的兼容视图。
+- 继续只围绕某个 unsupported case 收紧 texture-bootstrap 条件，已经开始把“sample/image 资源形态”和“当前 bootstrap 是否支持”混成同一个布尔值；这会让后续支持面扩展越来越难解释。
+- 更稳妥的中间形态是：`GraphicsExecutable` 先持有 sampled-image resource plan，再从 plan 中派生当前 bootstrap 是否支持。至少要先显式区分 `CombinedImageSampler`、`SeparateImageSampler` 和 `Other`。
+- 一旦把资源形态单独建模，`TriangleBootstrapDraw` 就可以继续只消费兼容的 combined-image-sampler binding，而不需要知道 separate image/sampler 或更复杂 sampled-resource 形态的细节。
+- `GraphicsBackendPipeline` 的测试面也应该从 “`hasBinding` true/false” 升级为 “资源方案分类 + 当前 bootstrap support”；否则 separate image/sampler 和 multiple combined samplers 这两类非常不同的 shader 都会被压成同一种 negative。
+- 在 Vulkan test translation unit 里直接包含 backend 内部头会再次撞上 `vulkan.hpp` wrapper 与内部 Vulkan 头的脆弱边界；资源方案相关常量更适合放在 test-side introspection bridge，而不是让测试直接 include backend metadata 类型。
+- `VkPipeline` 现在通过 `VkNonDispatchableHandle` 表达时，测试层应统一先走 `void *`/`uintptr_t` bridge，而不是继续依赖旧式裸 handle 的 `reinterpret_cast` 写法。
+- texture bootstrap 的最后一段 shader metadata 也适合放进 `GraphicsExecutable`，但只应迁 descriptor set / binding 这种 pipeline-time 可确定的信息；texture bytes 和 sampler state 仍然必须留在 draw-time。
+- 对当前 narrow texture bootstrap，足够稳定的 pipeline-time 判定条件是：
+  - fragment location 0 必须恰好是 `vec2`
+  - shader 含有 image sample 指令
+  - descriptor decorations 最终收敛到单个 set / binding
+- descriptor array 是另一个真实的坑：shader decorations 仍然只会指向单个 set / binding，因此必须额外追踪 descriptor-array element；把 access-chain 的常量 index 提取进 plan 后，`descriptorCount > 1` 的 descriptor array 在 index 常量且 in-bounds 时也能被 narrow texture-bootstrap 支持（non-constant index 仍拒绝）。
+- 如果 `location 0` 是 color、而真正的 texcoord 在 `location 1`，当前 bootstrap metadata 必须拒绝提取；在没有 varying 语义映射之前，接受这类 shader 只会产生 false-positive metadata。
+- 对当前 `Texture2DColor` bootstrap 来说，“shader 里出现 texture sample” 仍然过宽。若 `location 0` 最终写回的是 `texture(...) * 0.5` 之类的后处理结果，metadata 仍会误报 supported，但 draw-time bootstrap 只会执行直接采样并输出。
+- 上一刀的 strict direct-sample 规则又带来了一个真实 false negative：`vec4 sampledColor = texture(...); outColor = sampledColor;` 与直接采样输出语义等价，但若 SPIR-V 经过 function-local `OpStore/OpLoad` 或 `OpCopyObject`，metadata 不应因此误判 unsupported。
+- 当前 separate image/sampler 形态已经被正确排除在 texture-bootstrap metadata 路径之外：sample-use 分析和 descriptor-binding 收敛都不应把双 binding 资源误解释成当前单 `COMBINED_IMAGE_SAMPLER` narrow path。
+- 这个约束天然会把 separate image/sampler、texture+额外 descriptor 资源等更复杂形态排除在 metadata 路径之外；这不是回归，而是当前 bootstrap scope 的显式边界。
+- `GraphicsExecutable` 需要 layout 形状信息，但不应该为此直接把 `VkPipelineLayout.cpp` 的符号面拉进 backend test target。一个由 `VkPipeline.cpp` 提供的轻量 descriptor-info callback 足够表达当前 narrow path 所需的 `descriptorType + descriptorCount`，同时保持链接边界稳定。
+- `TriangleBootstrapDraw` 一旦改为只消费 executable metadata，它就不再需要包含 `Pipeline/SpirvShader.hpp`。这是一个很有价值的模块边界信号：graphics draw helper 终于不再自己做 shader reflection。
+- `GraphicsBackendPipeline` 级别的 Vulkan 集成测试非常适合继续承接这类 metadata 提取断言：不需要真的 submit draw，也能用真实 shader 编译路径验证 executable contents。
+- `GraphicsExecutable` 可以开始承载真正稳定的 pipeline-time bootstrap metadata，而不必等完整 graphics executable 执行路径落地。当前最合适的第一批 metadata 是：
+  - vertex shader 的 constant `gl_PointSize`
+  - fragment shader 的 shader-only bootstrap 模板（constant color、FragCoord、FrontFacing、PointCoord、flat/smooth color）
+- texture bootstrap 仍然不适合现在迁进 `GraphicsExecutable`：它依赖 draw-time descriptor set、image view 和 sampler state 物化，因此应继续留在 `TriangleBootstrapDraw` 里做 draw-time 派生。
+- `backend-unittests` 不能让 `GraphicsExecutable.cpp` 直接跨到 `SpirvShader.cpp` 的重型实现边界。一个看似无害的 `Spirv::GetNumInputComponents()` 调用，就会把 `SpirvShader.cpp.o` 拉进链接，并暴露 `VkFormat` / `VkPipelineLayout` / `VkDevice` 等 Vulkan C++ 内部符号未解析。
+- 对 `SpirvShader` 这类半反射、半运行时代码，backend 层应优先消费 header 中已有的轻量公开状态（例如 `inputs`、`outputBuiltins`、`analysis`），而不是随手跨进 `.cpp` helper；否则很容易污染测试和模块链接边界。
+- “真实 shader -> pipeline-time executable metadata”的最稳测试层不在 backend unit tests，而在 Vulkan pipeline integration tests。通过一个窄的 `PipelineIntrospection` bridge 读取 `GraphicsPipeline` 内部 `GraphicsExecutable`，可以既验证真实 GLSL/SPIR-V 编译路径，又不把 backend test target 拉进 Vulkan 内部链接域。
+- 当前切片完成后，triangle bootstrap 的职责边界更清晰：
+  - `GraphicsExecutable` 拥有 shader-only bootstrap metadata
+  - `TriangleBootstrapDraw` 只做 draw-time texture bootstrap 派生、launch 和 write-back
+  - `vk::GraphicsPipeline` 负责在 compile-time 把两者接起来
+- `CmdDrawBase::draw()` 目前已经完成了 attachments、descriptor sets、vertex/index 输入和 render area 的准备，因此它是引入 backend-owned draw seam 的合适位置；没必要再把 draw 先压进 `Renderer::draw()` 再决定路由。
+- `ExecutionBackend` 现在只有 `submit()` / `synchronize()`，这让 graphics draw 没有单独的后端入口，只能复用 CPU renderer。
+- `GpuExecutionBackend` 当前只是“带 runtime 的 submit 壳”，并不真正拥有 graphics draw 决策；它仍然依赖 `Renderer::draw()` 中的 GPU bootstrap 分支。
+- `Renderer::draw()` 中的 GPU 逻辑并不依赖 CPU `DrawCall` 的大部分后半段状态，因此可以独立抽到 backend helper：
+  - env / strict / fallback 判断
+  - fragment bootstrap config 推导
+  - triangle bootstrap launch
+  - color attachment write-back
+- triangle bootstrap 仍然不等于正式 graphics backend，但它是当前唯一已经打通 CUDA launch 的 draw 路径，所以第一刀应当“迁出并降级为 helper”，而不是直接删除。
+- `DrawTest.SolidColorTriangle` 的当前 strict-GPU 失败并不是新加的 draw seam 引入的：根因是 `Renderer::draw()` 在真正写回 color attachment 的 triangle-bootstrap 分支里一直把 `fragmentConfig` / `colorStream` / `texCoordStream` / `pointSize` 丢掉了，导致实际 render 走到了 bootstrap 的默认片元着色（绿色常量色），而不是从 fragment shader 推导出的常量红色。
+- 当前 draw route 模型若把 “fallback 允许 + 未显式 render-to-attachment” 简化成 `CpuRenderer`，会丢掉现有 bring-up 里保留的一次 warmup-only CUDA bootstrap。因此 route helper 至少要把这种情况建模成 `GpuBootstrapOptional`，再由后续 helper 决定是 warmup-only 还是 render-to-attachment。
+- `backend-unittests` 不能直接把重型 triangle-bootstrap runtime helper 当成普通 backend 纯逻辑来测；一旦测试目标引用这个实现，就会把 `vk::Device` / `vk::PipelineLayout` / `vk::ImageView` 等 Vulkan 侧隐藏符号一起拉进链接。把纯策略函数 `planTriangleBootstrapDraw(...)` 留在 header 内联、把 runtime helper 留在 `.cpp`，可以保持现有测试链接边界不变。
+- 现在的首个切片已经达到预期架构形态：`GpuExecutionBackend` 持有 triangle-bootstrap helper 和 warmup state，`Renderer::draw()` 不再读取 GPU runtime/env，也不再承担 strict/fallback 决策。
+- `SemanticIRModule` 目前已经承载了 pipeline-time `GraphicsExecutable` scaffold 所需的最小信息：shader stage、entry point 和 vertex lowering。当前阶段没必要再发明新的 graphics IR 层。
+- `GraphicsPipeline::compileShaders()` 在现有结构下就是合适的挂接点：它在 stage 编译完成后已经持有 `vertexShader` / `fragmentShader`，并且同样能覆盖 graphics pipeline library 拼装后的成员状态。
+- graphics pipeline library 的 fragment-only 组合不应伪造 backend executable；当前更稳妥的规则是“有 vertex 才创建 executable，fragment 仅作为 optional stage metadata”。
+- 不能在同一个测试翻译单元里同时包含 test-side `vulkan.hpp` wrapper 和内部 `src/Vulkan/VkPipeline.hpp`：两者都占用 `vk` 命名空间。一个窄的 `uintptr_t` introspection bridge 足够解决 graphics pipeline hookup 测试，而不会污染 wrapper 层。
+
+### New Decisions
+- **Accept:** sampled-image plan 的 descriptor 收集改成 sample-use provenance；unrelated non-sampled descriptors 不参与 sampled-image plan 分类。
+- **Accept:** 当前 provenance resolver 显式支持 `OpSampledImage`、`OpImage`、`OpCopyObject`、`OpCopyLogical` 和 function-local `OpLoad` 这条最小闭环，不在这一刀扩到更大的 SSA/data-flow 图。
+- **Accept:** narrow direct-sample `SeparateImageSampler` plan 现在视为 bootstrap-supported；这不改变 `hasBootstrapTextureBinding()` 的 combined-only 兼容语义。
+- **Accept:** `TriangleBootstrapDraw` 开始直接消费 richer `GraphicsExecutableTexturePlan`，而不是继续把 draw-time texture bootstrap 绑定死在 combined-binding compatibility accessor 上。
+- **Accept:** `GraphicsExecutable` 的 texture metadata 先提升成 sampled-image resource plan，把“资源形态”和“bootstrap support”显式分层。
+- **Accept:** 当前 plan 至少显式覆盖三类 sampled-image 资源形态：`CombinedImageSampler`、`SeparateImageSampler`、`Other`。
+- **Accept:** `TriangleBootstrapDraw` 暂时继续只消费 plan 中 `bootstrapSupported == true` 的 combined-image-sampler 路径，不在这一刀扩大 draw-time 物化职责。
+- **Accept:** Vulkan pipeline tests 需要显式覆盖 `Other` 资源形态，例如多个 combined image samplers，而不只是 combined 与 separate 两类。
+- **Accept:** 测试侧资源种类常量放在 `PipelineIntrospection` bridge 中，避免把 backend 内部头直接暴露到 `vulkan.hpp` wrapper 所在的 test TU。
+- **Accept:** `GraphicsExecutable` 继续吸收 texture bootstrap 的 descriptor set / binding metadata，但不扩大到 texture bytes / sampler state。
+- **Accept:** 当前 texture metadata 提取保持 narrow-path 保守策略；遇到多 descriptor binding 或更复杂纹理资源形态，宁可不提取，也不在 executable 中猜测错误 metadata。
+- **Accept:** 当前 narrow texture-bootstrap path 显式要求 `fragment location 0 == vec2`；把 texcoord 放在其他 location 的 shader 暂不视为已支持。
+- **Accept:** 当前 narrow texture-bootstrap path 仍要求 layout binding 为 `COMBINED_IMAGE_SAMPLER`；descriptor array 在 array element 为常量且 in-bounds 时视为已支持（non-constant index 仍拒绝）。
+- **Accept:** 当前 narrow texture-bootstrap path 还要求 `location 0` 的输出直接来自支持的 texture sample 指令；sample 后的乘法、混色或其他片元运算暂不视为已支持。
+- **Accept:** 当前 narrow texture-bootstrap path 允许极小的 trivial passthrough value chain，只跟踪到支持的 texture sample 为止；本轮仅接受 function-local `OpLoad` 和 `OpCopyObject` 这类语义等价转发。
+- **Accept:** `hasBootstrapTextureBinding()` 继续保持 combined-only 兼容语义；但 `GraphicsExecutableTexturePlan` + `TriangleBootstrapDraw` 已支持 narrow direct-sample `SeparateImageSampler` 的 strict GPU bootstrap 物化。
+- **Accept:** 在 `GraphicsExecutable` 需要少量 Vulkan layout 信息时，优先使用窄 callback / POD bridge，而不是把 Vulkan 实现类型直接拖进 backend 链接面。
+- **Accept:** `TriangleBootstrapDraw` 不再直接读取 fragment `SpirvShader`；今后新增 bootstrap shader 分析优先落在 executable create path，而不是 draw helper。
+- **Accept:** `GraphicsExecutable` 在本阶段开始持有 bootstrap-specific metadata，但只限 shader-only、pipeline-time 可确定的数据。
+- **Accept:** 真实 shader bootstrap 提取验证从 backend 单测下沉到 Vulkan pipeline 集成测试；backend 单测继续保持轻量链接边界。
+- **Accept:** 在 backend 层避免直接依赖 `SpirvShader.cpp` 的 helper；能用 header 状态表达的分析，不引入额外链接面。
+- **Accept:** `chooseGraphicsDrawRoute()` 在 hardware-backed runtime 下不再区分“是否显式 render-to-attachment”来决定 CPU/GPU 路由；显式 render 开关只影响 backend helper 内部选择 `WarmupOnly` 还是 `RenderToColorAttachment`。
+- **Accept:** `TriangleBootstrapDraw` 拆成两层：header-inline 的纯 planning 逻辑，和 `.cpp` 中的 Vulkan/runtime 依赖 helper；这样既能做 backend unit tests，也不把 Vulkan 私有链接边界拖进测试目标。
+- **Accept:** 当前切片完成后，CPU-only 的剩余范围明确保留为 `Renderer::draw()`、以及更大范围内尚未 backend-owned 的 transfer/copy/blit/resolve/present/resource model。
+
+### New Decisions
+- **Accept:** 第一阶段采用 `ExecutionBackend::draw(...)` seam，而不是继续把 GPU draw 留在 `Renderer::draw()` 内部。
+- **Accept:** 第一阶段不直接做完整 `GraphicsExecutable`；那会把 pipeline ABI、resource handle、barrier、present 等问题一次性耦合进来。
+- **Accept:** 第一阶段保留 `SWIFTSHADER_GPU_ALLOW_CPU_FALLBACK`，但相关决策迁移到 GPU backend，而不是留在 CPU renderer。
+- **Accept:** `Renderer::draw()` 的目标形态是 CPU-only；与 runtime / triangle bootstrap 相关的 helper 要迁出。
+- **Accept:** 在继续抽离 triangle bootstrap 之前，先修正 actual render 分支遗漏 bootstrap 参数的根因问题，避免后续 refactor 以错误行为为基线。
+
 ## Requirements
 - Review two existing plan documents using new user-provided feedback.
 - Decide technically whether the design doc and implementation plan need modification.

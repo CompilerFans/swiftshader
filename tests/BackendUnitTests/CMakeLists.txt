@@ -9,6 +9,9 @@ set(ROOT_PROJECT_LINK_LIBRARIES
 
 set(BACKEND_UNIT_TESTS_SRC_FILES
     ExecutionBackendFactoryTests.cpp
+    GraphicsExecutableTests.cpp
+    GraphicsDrawRoutingTests.cpp
+    TriangleBootstrapDrawTests.cpp
     GraphicsBootstrapModeTests.cpp
     PresentAdapterFactoryTests.cpp
     GraphicsBootstrapTests.cpp
@@ -20,7 +23,10 @@ set(BACKEND_UNIT_TESTS_SRC_FILES
     RuntimeAPITests.cpp
     CodegenEmitterTests.cpp
     AbiParityTests.cpp
+    ShaderCompilerTests.cpp
+    SpirvToCompilerAnalysisTests.cpp
     SpirvToSemanticIRTests.cpp
+    ${SWIFTSHADER_DIR}/src/Pipeline/ShaderCompiler.cpp
     ${SWIFTSHADER_DIR}/src/Pipeline/CudaLikeSourceEmitter.cpp
     ${SWIFTSHADER_DIR}/src/Pipeline/LlvmIREmitter.cpp
     ${SWIFTSHADER_DIR}/src/Backend/ComputeExecutable.cpp

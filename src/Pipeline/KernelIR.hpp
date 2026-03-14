@@ -1,6 +1,7 @@
 #ifndef SWIFTSHADER_KERNEL_IR_HPP_
 #define SWIFTSHADER_KERNEL_IR_HPP_
 
+#include "ShaderCompilerAnalysis.hpp"
 #include "VertexLoweringInfo.hpp"
 
 #include <cstdint>
@@ -13,6 +14,17 @@ struct FragmentExecutionInfo
 	uint32_t quadHeight = 2;
 	uint32_t helperLaneMask = 0;
 	uint32_t exportMask = 0;
+};
+
+struct CompilerAnalysisInfo
+{
+	uint32_t fragmentFeatureMask = 0;
+	uint32_t unsupportedReasonMask = 0;
+	bool hasTexturePlan = false;
+	ShaderTextureResourceKind textureResourceKind = ShaderTextureResourceKind::None;
+	bool textureBootstrapSupported = false;
+	bool hasImageResourcePlan = false;
+	bool hasResourcePlan = false;
 };
 
 class KernelIRModule
@@ -46,10 +58,21 @@ public:
 		return vertex;
 	}
 
+	void setCompilerAnalysisInfo(const CompilerAnalysisInfo &value)
+	{
+		compilerAnalysis = value;
+	}
+
+	const CompilerAnalysisInfo &compilerAnalysisInfo() const
+	{
+		return compilerAnalysis;
+	}
+
 private:
 	FragmentExecutionInfo fragment = {};
 	VertexLoweringInfo vertex = {};
 	bool hasVertexLowering = false;
+	CompilerAnalysisInfo compilerAnalysis = {};
 };
 
 }  // namespace sw

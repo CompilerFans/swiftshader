@@ -18,6 +18,8 @@ public:
 	static const std::string &globalLastModuleSource();
 	static const LaunchRecord &globalLastLaunch();
 	static uint32_t globalLaunchCount();
+	static uint32_t globalModuleCompilationCount();
+	static uint32_t globalModuleCacheHitCount();
 
 	bool isAvailable() const;
 	const std::string &initializationError() const;

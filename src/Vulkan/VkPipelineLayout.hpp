@@ -31,6 +31,7 @@ public:
 
 	size_t getDescriptorSetCount() const;
 	uint32_t getBindingCount(uint32_t setNumber) const;
+	uint32_t getDynamicOffsetCount() const;
 
 	// Returns the index into the pipeline's dynamic offsets array for
 	// the given descriptor set and binding number.
@@ -66,6 +67,7 @@ private:
 	const uint32_t descriptorSetCount = 0;
 	const uint32_t pushConstantRangeCount = 0;
 	VkPushConstantRange *pushConstantRanges = nullptr;
+	uint32_t dynamicOffsetCount = 0;
 
 	std::atomic<uint32_t> refCount{ 0 };
 };

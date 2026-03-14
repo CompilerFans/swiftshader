@@ -28,6 +28,7 @@
 #include <initializer_list>
 #include <memory>
 #include <string>
+#include <cstdint>
 #include <vector>
 
 enum class Multisample
@@ -54,6 +55,8 @@ public:
 	std::vector<uint8_t> readbackFrameRgba();
 	std::array<uint8_t, 4> readbackPixel(uint32_t x, uint32_t y);
 	void saveFrame(const std::filesystem::path &path);
+	VkPipeline getPipelineHandle() const { return pipeline; }
+	uintptr_t getPipelineAddress() const { return reinterpret_cast<uintptr_t>(static_cast<void *>(pipeline)); }
 	void updateVertexBufferData(const void *vertexBufferData, size_t vertexBufferDataSize);
 	void updateDescriptorSetNow();
 	void show();
@@ -64,6 +67,7 @@ public:
 	void setLineWidth(float width);
 	void enableColorClear(const std::array<float, 4> &color);
 	void enableColorLoad();
+	void setColorStoreOp(vk::AttachmentStoreOp storeOp);
 	void enableSecondSubpass();
 	void enableVertexInputDynamicState();
 	void enablePushConstantRange(vk::ShaderStageFlags stageFlags, uint32_t size);
@@ -202,6 +206,7 @@ private:
 	bool colorClearEnabled = false;
 	bool secondSubpassEnabled = false;
 	vk::AttachmentLoadOp colorLoadOp = vk::AttachmentLoadOp::eDontCare;
+	vk::AttachmentStoreOp colorStoreOp = vk::AttachmentStoreOp::eStore;
 	std::array<float, 4> colorClearValue = { 0.5f, 0.5f, 0.5f, 1.0f };
 	bool pushConstantEnabled = false;
 	bool vertexInputDynamicStateEnabled = false;
