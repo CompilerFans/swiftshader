@@ -246,6 +246,44 @@ std::string fragmentBootstrapCudaSource(const FragmentBootstrapConfig &config)
 		          "	outB = packColor(colorB);\n"
 		          "	outA = packColor(colorA);\n";
 	}
+	else if(config.shaderKind == FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
+	{
+		source << "	outDepth = 1.0f;\n"
+		          "	float u = params.vertexTexCoord0U * invocation.barycentric0 + params.vertexTexCoord1U * invocation.barycentric1 + params.vertexTexCoord2U * invocation.barycentric2;\n"
+		          "	float v = params.vertexTexCoord0V * invocation.barycentric0 + params.vertexTexCoord1V * invocation.barycentric1 + params.vertexTexCoord2V * invocation.barycentric2;\n"
+		          "	float colorR;\n"
+		          "	float colorG;\n"
+		          "	float colorB;\n"
+		          "	float colorA;\n"
+		          "	sampleTexture(params, u, v, colorR, colorG, colorB, colorA);\n"
+		          "	float edge1X = params.vertexColor1R - params.vertexColor0R;\n"
+		          "	float edge1Y = params.vertexColor1G - params.vertexColor0G;\n"
+		          "	float edge1Z = params.vertexColor1B - params.vertexColor0B;\n"
+		          "	float edge2X = params.vertexColor2R - params.vertexColor0R;\n"
+		          "	float edge2Y = params.vertexColor2G - params.vertexColor0G;\n"
+		          "	float edge2Z = params.vertexColor2B - params.vertexColor0B;\n"
+		          "	float normalX = edge1Y * edge2Z - edge1Z * edge2Y;\n"
+		          "	float normalY = edge1Z * edge2X - edge1X * edge2Z;\n"
+		          "	float normalZ = edge1X * edge2Y - edge1Y * edge2X;\n"
+		          "	float normalLength = sqrtf(normalX * normalX + normalY * normalY + normalZ * normalZ);\n"
+		          "	if(normalLength > 0.0f)\n"
+		          "	{\n"
+		          "		normalX /= normalLength;\n"
+		          "		normalY /= normalLength;\n"
+		          "		normalZ /= normalLength;\n"
+		          "	}\n"
+		          "	else\n"
+		          "	{\n"
+		          "		normalX = 0.0f;\n"
+		          "		normalY = 0.0f;\n"
+		          "		normalZ = 1.0f;\n"
+		          "	}\n"
+		          "	float light = normalZ > 0.0f ? normalZ : 0.0f;\n"
+		          "	outR = packColor(colorR * light);\n"
+		          "	outG = packColor(colorG * light);\n"
+		          "	outB = packColor(colorB * light);\n"
+		          "	outA = packColor(colorA);\n";
+	}
 	else if(config.shaderKind == FragmentBootstrapShaderKind::PointCoordGradient)
 	{
 		source << "\toutDepth = 1.0f;\n"

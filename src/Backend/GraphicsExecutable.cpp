@@ -1327,6 +1327,20 @@ bool tryBuildStaticBootstrapFragmentConfig(const sw::SpirvShader &shader, backen
 		return true;
 	}
 
+	const uint32_t featureMask = fragmentFeatureMaskForShader(shader);
+	if(shaderContainsTextureSampling(shader) &&
+	   (featureMask & static_cast<uint32_t>(backend::GraphicsExecutableFragmentFeature::Derivatives)) != 0 &&
+	   !shader.hasBuiltinInput(spv::BuiltInFragCoord) &&
+	   !shader.hasBuiltinInput(spv::BuiltInPointCoord) &&
+	   !shader.hasBuiltinInput(spv::BuiltInFrontFacing) &&
+	   !shader.getAnalysis().ContainsDiscard &&
+	   getNumInputComponentsAtLocation(shader, 0) >= 2 &&
+	   getNumInputComponentsAtLocation(shader, 1) >= 3)
+	{
+		config->shaderKind = backend::FragmentBootstrapShaderKind::DerivativeLitTexture2DColor;
+		return true;
+	}
+
 	const uint32_t inputComponents = getNumInputComponentsAtLocation(shader, 0);
 
 	if(inputComponents >= 3 && shader.inputs[0].Flat)
@@ -1434,6 +1448,13 @@ std::shared_ptr<GraphicsExecutable> GraphicsExecutable::create(const GraphicsExe
 	const bool texturePlanValid = (texturePlan.resourceKind != backend::GraphicsExecutableTextureResourceKind::None);
 	const bool imageResourcePlanValid = !imageResourcePlan.sampledDescriptors.empty() || !imageResourcePlan.storageDescriptors.empty();
 
+	if(texturePlanValid &&
+	   bootstrapFragmentConfigValid &&
+	   bootstrapFragmentConfig.shaderKind == FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
+	{
+		texturePlan.bootstrapSupported = true;
+	}
+
 	uint32_t triangleBootstrapUnsupportedReasonMask = 0;
 	if(!createInfo.fragmentShader)
 	{
@@ -1450,7 +1471,11 @@ std::shared_ptr<GraphicsExecutable> GraphicsExecutable::create(const GraphicsExe
 		{
 			triangleBootstrapUnsupportedReasonMask |= static_cast<uint32_t>(GraphicsExecutableTriangleBootstrapUnsupportedReason::ImageQueryOrFetch);
 		}
-		if((features & static_cast<uint32_t>(GraphicsExecutableFragmentFeature::Derivatives)) != 0)
+		const bool supportsDerivativeTextureTemplate =
+		    bootstrapFragmentConfigValid &&
+		    bootstrapFragmentConfig.shaderKind == FragmentBootstrapShaderKind::DerivativeLitTexture2DColor;
+		if((features & static_cast<uint32_t>(GraphicsExecutableFragmentFeature::Derivatives)) != 0 &&
+		   !supportsDerivativeTextureTemplate)
 		{
 			triangleBootstrapUnsupportedReasonMask |= static_cast<uint32_t>(GraphicsExecutableTriangleBootstrapUnsupportedReason::Derivatives);
 		}
@@ -1491,7 +1516,7 @@ std::shared_ptr<GraphicsExecutable> GraphicsExecutable::create(const GraphicsExe
 		const bool samplesTextures = texturePlanValid;
 		if(samplesTextures)
 		{
-			if(!texturePlan.bootstrapSupported)
+			if(!texturePlan.bootstrapSupported && !supportsDerivativeTextureTemplate)
 			{
 				triangleBootstrapUnsupportedReasonMask |= static_cast<uint32_t>(GraphicsExecutableTriangleBootstrapUnsupportedReason::TextureSamplingUnsupported);
 			}

@@ -526,3 +526,7 @@
 - New 2026-03-14 shared-tracker finding:
   - After the first two Direction-1 slices, resource-state tracking was still structurally split: `ExecutionState` had one tracker copy while `VkSwapchainKHR` had another. That meant barrier transitions and present transitions were both recorded, but not in the same state store.
   - Making `ResourceStateTracker` a shared-state value type is the lowest-risk way to converge these paths without immediately redesigning the whole queue/device ownership model. It lets `vk::Device`, submit-time execution state, and swapchain/present all observe the same logical image layout map while keeping call sites almost unchanged.
+
+- New 2026-03-14 vkcube-fragment finding:
+  - The immediate strict-GPU `vkcube` blocker was not generic “texture sampling”, but a narrower fragment family: textured output modulated by derivative-derived face lighting. A minimal local reproduction using `dFdx/dFdy` on a secondary varying plus `texture(..., texcoord.xy)` matches the observed gate (`TextureSamplingUnsupported + Derivatives`) and is enough to drive a controlled bootstrap extension.
+  - The original bootstrap template ordering in `GraphicsExecutable` could misclassify this family when location 0 was a `vec4` carrying texture coordinates in `.xy`: the generic `InterpolatedColor*` path ran before the derivative-texture recognizer. Reordering that decision point is necessary for any `vkcube`-like shader support, even before broader vertex semantics are addressed.

@@ -116,6 +116,79 @@ void configureTexturedTrianglePipeline(DrawTester &tester)
 	});
 }
 
+void configureDerivativeLitTexturedTrianglePipeline(DrawTester &tester)
+{
+	tester.onCreateVertexBuffers([](DrawTester &tester) {
+		struct Vertex
+		{
+			float position[3];
+			float fragPos[3];
+			float texCoord[2];
+		};
+
+		Vertex vertexBufferData[] = {
+			{ { -0.95f, -0.85f, 0.5f }, { -0.95f, -0.85f, 0.5f }, { 0.0f, 0.0f } },
+			{ { -0.20f,  0.95f, 0.5f }, { -0.20f,  0.95f, 0.5f }, { 0.0f, 1.0f } },
+			{ {  0.95f, -0.85f, 0.5f }, {  0.95f, -0.85f, 0.5f }, { 1.0f, 0.0f } },
+		};
+
+		std::vector<vk::VertexInputAttributeDescription> inputAttributes;
+		inputAttributes.emplace_back(0, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, position));
+		inputAttributes.emplace_back(1, 0, vk::Format::eR32G32B32Sfloat, offsetof(Vertex, fragPos));
+		inputAttributes.emplace_back(2, 0, vk::Format::eR32G32Sfloat, offsetof(Vertex, texCoord));
+		tester.addVertexBuffer(vertexBufferData, sizeof(vertexBufferData), std::move(inputAttributes));
+	});
+
+	tester.onCreateVertexShader([](DrawTester &tester) {
+		const char *vertexShader = R"(#version 310 es
+			layout(location = 0) in vec3 inPos;
+			layout(location = 1) in vec3 inFragPos;
+			layout(location = 2) in vec2 inTexCoord;
+			layout(location = 0) out vec4 outTexCoord;
+			layout(location = 1) out vec3 outFragPos;
+
+			void main()
+			{
+				gl_Position = vec4(inPos.xyz, 1.0);
+				outTexCoord = vec4(inTexCoord, 0.0, 1.0);
+				outFragPos = inFragPos;
+			})";
+
+		return tester.createShaderModule(vertexShader, EShLanguage::EShLangVertex);
+	});
+
+	tester.onCreateFragmentShader([](DrawTester &tester) {
+		const char *fragmentShader = R"(#version 310 es
+			precision highp float;
+
+			layout(location = 0) in vec4 inTexCoord;
+			layout(location = 1) in vec3 inFragPos;
+			layout(location = 0) out vec4 outColor;
+			layout(binding = 1) uniform sampler2D texSampler;
+
+			void main()
+			{
+				vec3 dx = dFdx(inFragPos);
+				vec3 dy = dFdy(inFragPos);
+				vec3 normal = normalize(cross(dx, dy));
+				float light = max(dot(vec3(0.0, 0.0, 1.0), normal), 0.0);
+				outColor = texture(texSampler, inTexCoord.xy) * light;
+			})";
+
+		return tester.createShaderModule(fragmentShader, EShLanguage::EShLangFragment);
+	});
+
+	tester.onCreateDescriptorSetLayouts([](DrawTester &) -> std::vector<vk::DescriptorSetLayoutBinding> {
+		vk::DescriptorSetLayoutBinding samplerLayoutBinding;
+		samplerLayoutBinding.binding = 1;
+		samplerLayoutBinding.descriptorCount = 1;
+		samplerLayoutBinding.descriptorType = vk::DescriptorType::eCombinedImageSampler;
+		samplerLayoutBinding.pImmutableSamplers = nullptr;
+		samplerLayoutBinding.stageFlags = vk::ShaderStageFlagBits::eFragment;
+		return { samplerLayoutBinding };
+	});
+}
+
 void configureTexturedTrianglePipelineWithStorageImageWrite(DrawTester &tester)
 {
 	tester.onCreateVertexBuffers([](DrawTester &tester) {
@@ -962,6 +1035,22 @@ TEST(GraphicsBackendPipeline, ExtractsTextureBootstrapBindingFromGraphicsPipelin
 	EXPECT_EQ(textureState.imageBinding, 1u);
 	EXPECT_EQ(textureState.samplerDescriptorSet, 0u);
 	EXPECT_EQ(textureState.samplerBinding, 1u);
+}
+
+TEST(GraphicsBackendPipeline, SupportsDerivativeLitTexturedTrianglePipeline)
+{
+	DrawTester tester;
+	configureDerivativeLitTexturedTrianglePipeline(tester);
+
+	tester.initialize();
+
+	const auto textureState = graphicsPipelineBootstrapTextureState(tester.getPipelineAddress());
+	ASSERT_TRUE(textureState.hasPlan);
+	EXPECT_TRUE(textureState.hasBinding);
+
+	const auto planState = graphicsPipelineResourcePlanState(tester.getPipelineAddress());
+	ASSERT_TRUE(planState.hasPlan);
+	EXPECT_EQ(planState.triangleBootstrapUnsupportedReasonMask, 0u);
 }
 
 TEST(GraphicsBackendPipeline, IgnoresNonSampledDescriptorsWhenClassifyingCombinedTexturePlan)

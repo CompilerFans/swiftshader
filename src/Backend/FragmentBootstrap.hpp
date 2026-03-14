@@ -20,6 +20,7 @@ enum class FragmentBootstrapShaderKind
 	PointCoordGradient,
 	FlatInterpolatedColor,
 	Texture2DColor,
+	DerivativeLitTexture2DColor,
 };
 
 struct FragmentBootstrapInvocation

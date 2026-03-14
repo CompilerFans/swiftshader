@@ -524,7 +524,10 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				vsOutputs[primitiveIndex + 2],
 			};
 			const auto triangle = toRasterVertices(fanVertices, config.width, config.height);
-			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::FlatInterpolatedColor)
+			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor ||
+			   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth ||
+			   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::FlatInterpolatedColor ||
+			   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
 			{
 				fragmentConfig.vertexColor0R = triangle[0].colorR;
 				fragmentConfig.vertexColor0G = triangle[0].colorG;
@@ -539,7 +542,8 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				fragmentConfig.vertexColor2B = triangle[2].colorB;
 				fragmentConfig.vertexColor2A = triangle[2].colorA;
 			}
-			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::Texture2DColor)
+			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::Texture2DColor ||
+			   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
 			{
 				fragmentConfig.vertexTexCoord0U = fanVertices[0].u;
 				fragmentConfig.vertexTexCoord0V = fanVertices[0].v;
@@ -566,7 +570,10 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				vsOutputs[primitiveIndex + 2 - (primitiveIndex & 1)],
 			};
 			const auto triangle = toRasterVertices(stripVertices, config.width, config.height);
-			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::FlatInterpolatedColor)
+			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor ||
+			   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth ||
+			   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::FlatInterpolatedColor ||
+			   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
 			{
 				fragmentConfig.vertexColor0R = triangle[0].colorR;
 				fragmentConfig.vertexColor0G = triangle[0].colorG;
@@ -581,7 +588,8 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 				fragmentConfig.vertexColor2B = triangle[2].colorB;
 				fragmentConfig.vertexColor2A = triangle[2].colorA;
 			}
-			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::Texture2DColor)
+			if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::Texture2DColor ||
+			   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
 			{
 				fragmentConfig.vertexTexCoord0U = stripVertices[0].u;
 				fragmentConfig.vertexTexCoord0V = stripVertices[0].v;
@@ -601,7 +609,10 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 		}
 
 		const auto triangle = toRasterVertices(vsOutputs.data() + primitiveIndex * 3, config.width, config.height);
-		if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth || fragmentConfig.shaderKind == FragmentBootstrapShaderKind::FlatInterpolatedColor)
+		if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColor ||
+		   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::InterpolatedColorBlueNearFragDepth ||
+		   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::FlatInterpolatedColor ||
+		   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
 		{
 			fragmentConfig.vertexColor0R = triangle[0].colorR;
 			fragmentConfig.vertexColor0G = triangle[0].colorG;
@@ -615,6 +626,16 @@ bool runTrianglePipelineBootstrap(RuntimeAPI &runtime, const TrianglePipelineBoo
 			fragmentConfig.vertexColor2G = triangle[2].colorG;
 			fragmentConfig.vertexColor2B = triangle[2].colorB;
 			fragmentConfig.vertexColor2A = triangle[2].colorA;
+		}
+		if(fragmentConfig.shaderKind == FragmentBootstrapShaderKind::Texture2DColor ||
+		   fragmentConfig.shaderKind == FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
+		{
+			fragmentConfig.vertexTexCoord0U = vsOutputs[primitiveIndex * 3 + 0].u;
+			fragmentConfig.vertexTexCoord0V = vsOutputs[primitiveIndex * 3 + 0].v;
+			fragmentConfig.vertexTexCoord1U = vsOutputs[primitiveIndex * 3 + 1].u;
+			fragmentConfig.vertexTexCoord1V = vsOutputs[primitiveIndex * 3 + 1].v;
+			fragmentConfig.vertexTexCoord2U = vsOutputs[primitiveIndex * 3 + 2].u;
+			fragmentConfig.vertexTexCoord2V = vsOutputs[primitiveIndex * 3 + 2].v;
 		}
 		std::vector<uint8_t> triangleColorBuffer;
 		std::vector<float> triangleDepthBuffer;

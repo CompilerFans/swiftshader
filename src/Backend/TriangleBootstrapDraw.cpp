@@ -315,6 +315,7 @@ TriangleBootstrapInvocationConfig buildTriangleBootstrapInvocationConfig(const v
 		}
 		if(fragmentState && executable->hasTexturePlan() && executable->texturePlan().bootstrapSupported)
 		{
+			const auto originalShaderKind = config.fragmentConfig.shaderKind;
 			if(fragmentState->getPipelineLayout() != preRasterizationState.getPipelineLayout())
 			{
 				vk::DescriptorSet::PrepareForSampling(inputs.getDescriptorSetObjects(), fragmentState->getPipelineLayout(), device);
@@ -325,6 +326,7 @@ TriangleBootstrapInvocationConfig buildTriangleBootstrapInvocationConfig(const v
 			                                 device,
 			                                 &config.fragmentConfig))
 			{
+				config.fragmentConfig.shaderKind = originalShaderKind;
 				config.fragmentConfigPtr = &config.fragmentConfig;
 			}
 		}
@@ -335,6 +337,17 @@ TriangleBootstrapInvocationConfig buildTriangleBootstrapInvocationConfig(const v
 		if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
 		{
 			config.texCoordStream = &inputs.getStream(1);
+		}
+	}
+	else if(config.fragmentConfigPtr && config.fragmentConfig.shaderKind == FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
+	{
+		if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
+		{
+			config.colorStream = &inputs.getStream(1);
+		}
+		if(inputs.getStream(2).format != VK_FORMAT_UNDEFINED)
+		{
+			config.texCoordStream = &inputs.getStream(2);
 		}
 	}
 	else if(inputs.getStream(1).format != VK_FORMAT_UNDEFINED)
@@ -464,7 +477,9 @@ bool tryTriangleBootstrapDraw(vk::Device *device,
 			}
 			return false;
 		}
-		if(requiresTextureFragmentConfig && config.fragmentConfigPtr->shaderKind != FragmentBootstrapShaderKind::Texture2DColor)
+		if(requiresTextureFragmentConfig &&
+		   config.fragmentConfigPtr->shaderKind != FragmentBootstrapShaderKind::Texture2DColor &&
+		   config.fragmentConfigPtr->shaderKind != FragmentBootstrapShaderKind::DerivativeLitTexture2DColor)
 		{
 			if(plan.requireSuccessfulWriteback)
 			{

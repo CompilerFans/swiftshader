@@ -100,6 +100,19 @@ TEST(FragmentBootstrap, EmitsFragCoordDiscardLeftShaderWhenRequested)
 	EXPECT_NE(source.find("outA = 0u;"), std::string::npos);
 }
 
+TEST(FragmentBootstrap, EmitsDerivativeLitTextureShaderWhenRequested)
+{
+	backend::FragmentBootstrapConfig config = {};
+	config.shaderKind = backend::FragmentBootstrapShaderKind::DerivativeLitTexture2DColor;
+
+	std::string source = backend::fragmentBootstrapCudaSource(config);
+
+	EXPECT_NE(source.find("sampleTexture(params, u, v, colorR, colorG, colorB, colorA);"), std::string::npos);
+	EXPECT_NE(source.find("float edge1X = params.vertexColor1R - params.vertexColor0R;"), std::string::npos);
+	EXPECT_NE(source.find("float normalZ = edge1X * edge2Y - edge1Y * edge2X;"), std::string::npos);
+	EXPECT_NE(source.find("float light = normalZ > 0.0f ? normalZ : 0.0f;"), std::string::npos);
+}
+
 TEST(FragmentBootstrap, LaunchUsesSingleFsParamsArgument)
 {
 	backend::StubRuntimeAPI runtime;

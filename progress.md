@@ -75,6 +75,30 @@
     - `./build-cuda-bootstrap/backend-unittests --gtest_filter='PresentAdapterFactory.*:ResourceStateTracker.*'` passed (`7` tests)
     - `./build-cuda-bootstrap/vk-unittests --gtest_filter='PresentAdapterCaptureTest.*:PresentAdapter.*'` passed (`2` tests)
     - `./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.DynamicRenderingSolidColorTriangle'` passed (`1` test)
+- 面向真实 app 的下一刀：vkcube-like derivative-lit texture fragment
+  - 真实 `vkcube` strict GPU smoke 先前直接 abort，原因是 `triangle bootstrap unsupported: TextureSamplingUnsupported, Derivatives`。
+  - 新增 RED/GREEN：
+    - `GraphicsBackendPipeline.SupportsDerivativeLitTexturedTrianglePipeline`
+    - `FragmentBootstrap.EmitsDerivativeLitTextureShaderWhenRequested`
+    - `DrawTest.DerivativeLitTexturedTriangleStrictGpu`
+  - 新增 `FragmentBootstrapShaderKind::DerivativeLitTexture2DColor`。
+  - `GraphicsExecutable` 的 bootstrap-specific fragment config 识别新增一条窄模式：
+    - texture sampling present
+    - derivative feature present
+    - location 0 input has at least 2 components
+    - location 1 input has at least 3 components
+    - no discard / FragCoord / PointCoord / FrontFacing special path
+  - `TriangleBootstrapDraw` 现已为该模式同时物化 `colorStream`(承载 fragPos) 与 `texCoordStream`。
+  - `TrianglePipelineBootstrap` / `FragmentBootstrap` 现已支持该模式，通过三角形三个 fragPos 向量构造面法线并对 sampled color 做方向光照调制。
+  - `tryBuildStaticBootstrapFragmentConfig()` 的判断顺序也已调整，避免 `location 0 == vec4` 先被 generic interpolated-color path 误吞掉；这对更接近真实 `vkcube` 的 `texcoord.xy` 形态是必要条件。
+- 当前 focused 验证：
+  - `./build-cuda-bootstrap/backend-unittests --gtest_filter='FragmentBootstrap.*'` passed
+  - `./build-cuda-bootstrap/vk-unittests --gtest_filter='GraphicsBackendPipeline.*'` passed (`24` tests)
+  - `./build-cuda-bootstrap/draw-unittests --gtest_filter='DrawTest.DerivativeLitTexturedTriangleStrictGpu:DrawTest.DynamicRenderingSolidColorTriangle:DrawTest.TexturedTriangleNearest'` passed (`3` tests)
+  - `git diff --check` passed
+- 真实 app smoke：
+  - `VK_ICD_FILENAMES=$PWD/build-cuda-bootstrap/Linux/vk_swiftshader_icd.json SWIFTSHADER_CUDA_DUMP_SOURCE=0 SWIFTSHADER_CUDA_DISABLE_WARMUP=1 SWIFTSHADER_GPU_RENDER_TRIANGLE_BOOTSTRAP=1 SWIFTSHADER_CUDA_LAUNCH_STAMP=/tmp/vkcube_cuda_stamps.txt vkcube --c 20`
+  - 结果：不再在 `TextureSamplingUnsupported, Derivatives` 上直接 abort，`/tmp/vkcube_cuda_stamps.txt` 计数为 `60`，对应 `20` 帧 * `3` stage launches
 - 会话恢复：
   - 读取并核对 `task_plan.md`、`progress.md`、`findings.md`，确认图形执行重构主线已经推进到 Phase 20 完成，但 `Current Phase` 仍停在旧的 Phase 19。
   - 结合 `git status --short` / `git diff --stat` 确认当前脏树正是前一轮 graphics execution refactor + module cache + pipeline introspection 的实现集合，不是新的未记录分叉。
